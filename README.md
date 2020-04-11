@@ -7,5 +7,5 @@ This library is a cheap wrapper around otpauth, qrcode and image to seamlessly m
 Add this to your Cargo.toml
 ```toml
 [dependencies.totp]
-git = "https://github.com/constantoine/totp-ts"
+git = "https://github.com/constantoine/totp-rs"
 ```
