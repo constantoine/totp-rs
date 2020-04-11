@@ -1,0 +1,13 @@
+[package]
+name = "totp"
+version = "0.1.0"
+authors = ["Cleo Rebert <cleo.rebert@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+otpauth = "0.4.1"
+qrcode = "0.12.0"
+image = "0.23.3"
+base64 = "0.12.0"
