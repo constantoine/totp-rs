@@ -1,4 +1,19 @@
 //! This library permits the creation of 2FA authentification tokens per TOTP, the verification of said tokens, with configurable time skew, validity time of each token, algorithm and number of digits!
+//!
+//! # Examples
+//!
+//! ```
+//! use totp_rs::{TOTP, Algorithm};
+//! use std::time::SystemTime;
+//!
+//! let username = "example".to_string();
+//! let totp = TOTP::new(Algorithm::SHA1, 6, 1, 30, "supersecret".to_string().into_bytes());
+//! let time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?.as_secs();
+//! let url = totp.get_url(format!("account:{}", username), "my-org.com".to_string());
+//! println!("{}", url);
+//! let token = totp.generate(time);
+//! println!("{}", token);
+//! ```
 
 use base32;
 use byteorder::{BigEndian, ReadBytesExt};
@@ -113,6 +128,12 @@ impl TOTP {
     }
 
     /// Will return a qrcode to automatically add a TOTP as a base64 string
+    ///
+    /// # Errors
+    ///
+    /// This will return an error in case the URL gets too long to encode into a QR code
+    ///
+    /// It will also return an error in case it can't encode the qr into a png. This shouldn't happen unless either the qrcode library returns malformed data, or the image library doesn't encode the data correctly
     pub fn get_qr(
         &self,
         label: String,
