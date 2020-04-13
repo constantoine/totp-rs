@@ -1,4 +1,4 @@
-//! This library permits the creation of authentification tokens per TOTP, the verification of said tokens, with configurable time skew, and validity time of each toke, algorithm and number of digits!
+//! This library permits the creation of 2FA authentification tokens per TOTP, the verification of said tokens, with configurable time skew, validity time of each token, algorithm and number of digits!
 
 use base32;
 use ring::hmac;
