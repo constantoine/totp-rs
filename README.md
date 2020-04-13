@@ -1,6 +1,6 @@
 # totp-rs
 
-This library is a cheap wrapper around otpauth, qrcode and image to seamlessly manage Time-based One-Time Password authentification
+This library permits the creation of authentification tokens per TOTP, the verification of said tokens, with configurable time skew, validity time of each token, algorithm and number of digits!
 
 ## How to use
 
