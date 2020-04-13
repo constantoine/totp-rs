@@ -1,13 +1,13 @@
 //! This library permits the creation of 2FA authentification tokens per TOTP, the verification of said tokens, with configurable time skew, validity time of each token, algorithm and number of digits!
 
 use base32;
+use byteorder::{BigEndian, ReadBytesExt};
 use ring::hmac;
 use std::io::Cursor;
-use byteorder::{BigEndian, ReadBytesExt};
 
-use qrcode::QrCode;
-use image::Luma;
 use base64;
+use image::Luma;
+use qrcode::QrCode;
 
 /// Algorithm enum holds the three standards algorithms for TOTP as per the [reference implementation](https://tools.ietf.org/html/rfc6238#appendix-A)
 #[derive(Debug)]
@@ -48,7 +48,9 @@ impl TOTP {
     pub fn generate(&self, time: u64) -> String {
         let key: hmac::Key;
         match self.algorithm {
-            Algorithm::SHA1 => key = hmac::Key::new(hmac::HMAC_SHA1_FOR_LEGACY_USE_ONLY, &self.secret),
+            Algorithm::SHA1 => {
+                key = hmac::Key::new(hmac::HMAC_SHA1_FOR_LEGACY_USE_ONLY, &self.secret)
+            }
             Algorithm::SHA256 => key = hmac::Key::new(hmac::HMAC_SHA256, &self.secret),
             Algorithm::SHA512 => key = hmac::Key::new(hmac::HMAC_SHA512, &self.secret),
         }
@@ -57,14 +59,20 @@ impl TOTP {
         let offset = (result.as_ref()[19] & 15) as usize;
         let mut rdr = Cursor::new(result.as_ref()[offset..offset + 4].to_vec());
         let result = rdr.read_u32::<BigEndian>().unwrap() & 0x7fff_ffff;
-        format!("{1:00$}", self.digits, result % (10 as u32).pow(self.digits as u32))
+        format!(
+            "{1:00$}",
+            self.digits,
+            result % (10 as u32).pow(self.digits as u32)
+        )
     }
 
     /// Will check if token is valid by current time, accounting [skew](struct.TOTP.html#structfield.skew)
     pub fn check(&self, token: String, time: u64) -> bool {
         let key: hmac::Key;
         match self.algorithm {
-            Algorithm::SHA1 => key = hmac::Key::new(hmac::HMAC_SHA1_FOR_LEGACY_USE_ONLY, &self.secret),
+            Algorithm::SHA1 => {
+                key = hmac::Key::new(hmac::HMAC_SHA1_FOR_LEGACY_USE_ONLY, &self.secret)
+            }
             Algorithm::SHA256 => key = hmac::Key::new(hmac::HMAC_SHA256, &self.secret),
             Algorithm::SHA512 => key = hmac::Key::new(hmac::HMAC_SHA512, &self.secret),
         }
@@ -74,7 +82,12 @@ impl TOTP {
             let offset = (result.as_ref()[19] & 15) as usize;
             let mut rdr = Cursor::new(result.as_ref()[offset..offset + 4].to_vec());
             let result = rdr.read_u32::<BigEndian>().unwrap() & 0x7fffffff;
-            if format!("{1:00$}", self.digits, result % (10 as u32).pow(self.digits as u32)) == token {
+            if format!(
+                "{1:00$}",
+                self.digits,
+                result % (10 as u32).pow(self.digits as u32)
+            ) == token
+            {
                 return true;
             }
         }
@@ -89,9 +102,10 @@ impl TOTP {
             Algorithm::SHA256 => algorithm = "SHA256".to_string(),
             Algorithm::SHA512 => algorithm = "SHA512".to_string(),
         }
-        format!("otpauth://totp/{}?secret={}&issuer={}&digits={}&algorithm={}",
+        format!(
+            "otpauth://totp/{}?secret={}&issuer={}&digits={}&algorithm={}",
             label,
-            base32::encode(base32::Alphabet::RFC4648{padding: false}, &self.secret),
+            base32::encode(base32::Alphabet::RFC4648 { padding: false }, &self.secret),
             issuer,
             self.digits.to_string(),
             algorithm,
@@ -99,13 +113,22 @@ impl TOTP {
     }
 
     /// Will return a qrcode to automatically add a TOTP as a base64 string
-    pub fn get_qr(&self, label: String, issuer: String) -> Result<String, Box<dyn std::error::Error>> {
+    pub fn get_qr(
+        &self,
+        label: String,
+        issuer: String,
+    ) -> Result<String, Box<dyn std::error::Error>> {
         let url = self.get_url(label, issuer);
         let code = QrCode::new(&url)?;
         let mut vec = Vec::new();
         let size: u32 = ((code.width() + 8) * 8) as u32;
         let encoder = image::png::PNGEncoder::new(&mut vec);
-        encoder.encode(&code.render::<Luma<u8>>().build().to_vec(), size, size, image::ColorType::L8)?;
+        encoder.encode(
+            &code.render::<Luma<u8>>().build().to_vec(),
+            size,
+            size,
+            image::ColorType::L8,
+        )?;
         Ok(base64::encode(vec))
     }
 }
