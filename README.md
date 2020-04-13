@@ -7,5 +7,5 @@ This library permits the creation of 2FA authentification tokens per TOTP, the v
 Add it to your `Cargo.toml`:
 ```toml
 [dependencies]
-totp-rs = "0.2.0"
+totp-rs = "~0.2"
 ```
