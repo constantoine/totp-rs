@@ -15,6 +15,8 @@
 //! println!("{}", token);
 //! ```
 
+use serde::{Serialize, Deserialize};
+
 use base32;
 use byteorder::{BigEndian, ReadBytesExt};
 use ring::hmac;
@@ -25,7 +27,7 @@ use image::Luma;
 use qrcode::QrCode;
 
 /// Algorithm enum holds the three standards algorithms for TOTP as per the [reference implementation](https://tools.ietf.org/html/rfc6238#appendix-A)
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, Copy, Clone)]
 pub enum Algorithm {
     SHA1,
     SHA256,
@@ -33,7 +35,7 @@ pub enum Algorithm {
 }
 
 /// TOTP holds informations as to how to generate an auth code and validate it. Its [secret](struct.TOTP.html#structfield.secret) field is sensitive data, treat it accordingly
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TOTP {
     /// SHA-1 is the most widespread algorithm used, and for totp pursposes, SHA-1 hash collisions are [not a problem](https://tools.ietf.org/html/rfc4226#appendix-B.2) as HMAC-SHA-1 is not impacted. It's also the main one cited in [rfc-6238](https://tools.ietf.org/html/rfc6238#section-3) even though the [reference implementation](https://tools.ietf.org/html/rfc6238#appendix-A) permits the use of SHA-1, SHA-256 and SHA-512. Not all clients support other algorithms then SHA-1
     pub algorithm: Algorithm,
