@@ -15,7 +15,7 @@
 //! println!("{}", token);
 //! ```
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 use base32;
 use byteorder::{BigEndian, ReadBytesExt};
