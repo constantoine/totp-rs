@@ -18,13 +18,21 @@
 use serde::{Deserialize, Serialize};
 
 use base32;
+use base64;
+
 use byteorder::{BigEndian, ReadBytesExt};
-use ring::hmac;
 use std::io::Cursor;
 
-use base64;
 use image::Luma;
 use qrcode::QrCode;
+
+use hmac::{Hmac, Mac, NewMac};
+use sha1::Sha1;
+use sha2::{Sha256, Sha512};
+
+type HmacSha1 = Hmac<Sha1>;
+type HmacSha256 = Hmac<Sha256>;
+type HmacSha512 = Hmac<Sha512>;
 
 /// Algorithm enum holds the three standards algorithms for TOTP as per the [reference implementation](https://tools.ietf.org/html/rfc6238#appendix-A)
 #[derive(Debug, Serialize, Deserialize, Copy, Clone)]
@@ -61,18 +69,31 @@ impl TOTP {
         }
     }
 
-    /// Will generate a token according to the provided timestamp in seconds
-    pub fn generate(&self, time: u64) -> String {
-        let key: hmac::Key;
+    /// Will sign the given timestamp
+    pub fn sign(&self, time: u64) -> Vec<u8> {
+        let ctr = (time / self.step).to_be_bytes().to_vec();
         match self.algorithm {
             Algorithm::SHA1 => {
-                key = hmac::Key::new(hmac::HMAC_SHA1_FOR_LEGACY_USE_ONLY, &self.secret)
+                let mut mac = HmacSha1::new_varkey(&self.secret).expect("no key");
+                mac.update(&ctr);
+                mac.finalize().into_bytes().to_vec()
             }
-            Algorithm::SHA256 => key = hmac::Key::new(hmac::HMAC_SHA256, &self.secret),
-            Algorithm::SHA512 => key = hmac::Key::new(hmac::HMAC_SHA512, &self.secret),
+            Algorithm::SHA256 => {
+                let mut mac = HmacSha256::new_varkey(&self.secret).expect("no key");
+                mac.update(&ctr);
+                mac.finalize().into_bytes().to_vec()
+            }
+            Algorithm::SHA512 => {
+                let mut mac = HmacSha512::new_varkey(&self.secret).expect("no key");
+                mac.update(&ctr);
+                mac.finalize().into_bytes().to_vec()
+            }
         }
-        let ctr = (time / self.step).to_be_bytes().to_vec();
-        let result = hmac::sign(&key, &ctr);
+    }
+
+    /// Will generate a token according to the provided timestamp in seconds
+    pub fn generate(&self, time: u64) -> String {
+        let result: &[u8] = &self.sign(time);
         let offset = (result.as_ref()[19] & 15) as usize;
         let mut rdr = Cursor::new(result.as_ref()[offset..offset + 4].to_vec());
         let result = rdr.read_u32::<BigEndian>().unwrap() & 0x7fff_ffff;
@@ -85,26 +106,11 @@ impl TOTP {
 
     /// Will check if token is valid by current time, accounting [skew](struct.TOTP.html#structfield.skew)
     pub fn check(&self, token: String, time: u64) -> bool {
-        let key: hmac::Key;
-        match self.algorithm {
-            Algorithm::SHA1 => {
-                key = hmac::Key::new(hmac::HMAC_SHA1_FOR_LEGACY_USE_ONLY, &self.secret)
-            }
-            Algorithm::SHA256 => key = hmac::Key::new(hmac::HMAC_SHA256, &self.secret),
-            Algorithm::SHA512 => key = hmac::Key::new(hmac::HMAC_SHA512, &self.secret),
-        }
-        let basestep = time / 30 - (self.skew as u64);
-        for _i in 0..self.skew * 2 + 1 {
-            let result = hmac::sign(&key, &basestep.to_be_bytes().to_vec());
-            let offset = (result.as_ref()[19] & 15) as usize;
-            let mut rdr = Cursor::new(result.as_ref()[offset..offset + 4].to_vec());
-            let result = rdr.read_u32::<BigEndian>().unwrap() & 0x7fffffff;
-            if format!(
-                "{1:00$}",
-                self.digits,
-                result % (10 as u32).pow(self.digits as u32)
-            ) == token
-            {
+        let basestep = time / self.step - (self.skew as u64);
+        for i in 0..self.skew * 2 + 1 {
+            let step_time = (basestep + (i as u64)) * (self.step as u64);
+            println!("{}", self.generate(step_time));
+            if self.generate(step_time) == token {
                 return true;
             }
         }
