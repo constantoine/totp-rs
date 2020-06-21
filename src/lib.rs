@@ -6,18 +6,18 @@
 //! use std::time::SystemTime;
 //! use totp_rs::{Algorithm, TOTP};
 //! 
-//! let username = "example".to_string();
+//! let username = "example".to_owned();
 //! let totp = TOTP::new(
 //!     Algorithm::SHA1,
 //!     6,
 //!     1,
 //!     30,
-//!     "supersecret".to_string().into_bytes(),
+//!     "supersecret".to_owned().into_bytes(),
 //! );
 //! let time = SystemTime::now()
 //!     .duration_since(SystemTime::UNIX_EPOCH).unwrap()
 //!     .as_secs();
-//! let url = totp.get_url(format!("account:{}", username), "my-org.com".to_string());
+//! let url = totp.get_url(format!("account:{}", username), "my-org.com".to_owned());
 //! println!("{}", url);
 //! let token = totp.generate(time);
 //! println!("{}", token);
@@ -26,15 +26,15 @@
 //! ```
 //! use totp_rs::{Algorithm, TOTP};
 //!
-//! let username = "example".to_string();
+//! let username = "example".to_owned();
 //! let totp = TOTP::new(
 //!     Algorithm::SHA1,
 //!     6,
 //!     1,
 //!     30,
-//!     "supersecret".to_string().into_bytes(),
+//!     "supersecret".to_owned().into_bytes(),
 //! );
-//! let code = totp.get_qr(format!("account:{}", username), "my-org.com".to_string())?;
+//! let code = totp.get_qr(format!("account:{}", username), "my-org.com".to_owned())?;
 //! println!("{}", code);
 //! ```
 
@@ -143,9 +143,9 @@ impl TOTP {
     pub fn get_url(&self, label: String, issuer: String) -> String {
         let algorithm: String;
         match self.algorithm {
-            Algorithm::SHA1 => algorithm = "SHA1".to_string(),
-            Algorithm::SHA256 => algorithm = "SHA256".to_string(),
-            Algorithm::SHA512 => algorithm = "SHA512".to_string(),
+            Algorithm::SHA1 => algorithm = "SHA1".to_owned(),
+            Algorithm::SHA256 => algorithm = "SHA256".to_owned(),
+            Algorithm::SHA512 => algorithm = "SHA512".to_owned(),
         }
         format!(
             "otpauth://totp/{}?secret={}&issuer={}&digits={}&algorithm={}",
