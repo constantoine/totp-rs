@@ -2,7 +2,7 @@
 //!
 //! # Examples
 //!
-//! ```
+//! ```rust
 //! use std::time::SystemTime;
 //! use totp_rs::{Algorithm, TOTP};
 //! 
@@ -23,7 +23,7 @@
 //! println!("{}", token);
 //! ```
 //!
-//! ```
+//! ```rust
 //! use totp_rs::{Algorithm, TOTP};
 //!
 //! let username = "example".to_owned();
@@ -157,7 +157,7 @@ impl TOTP {
         )
     }
 
-    /// Will return a qrcode to automatically add a TOTP as a base64 string. Needs feature "qr" to be set. It is by default
+    /// Will return a qrcode to automatically add a TOTP as a base64 string. Needs feature `qr` to be enabled!
     ///
     /// # Errors
     ///
