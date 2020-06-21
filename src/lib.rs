@@ -1,30 +1,52 @@
-//! This library permits the creation of 2FA authentification tokens per TOTP, the verification of said tokens, with configurable time skew, validity time of each token, algorithm and number of digits!
+//! This library permits the creation of 2FA authentification tokens per TOTP, the verification of said tokens, with configurable time skew, validity time of each token, algorithm and number of digits! With additional feature "qr", you can use it to generate a base64 png qrcode.
 //!
 //! # Examples
 //!
 //! ```
-//! use totp_rs::{TOTP, Algorithm};
 //! use std::time::SystemTime;
-//!
+//! use totp_rs::{Algorithm, TOTP};
+//! 
 //! let username = "example".to_string();
-//! let totp = TOTP::new(Algorithm::SHA1, 6, 1, 30, "supersecret".to_string().into_bytes());
-//! let time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?.as_secs();
+//! let totp = TOTP::new(
+//!     Algorithm::SHA1,
+//!     6,
+//!     1,
+//!     30,
+//!     "supersecret".to_string().into_bytes(),
+//! );
+//! let time = SystemTime::now()
+//!     .duration_since(SystemTime::UNIX_EPOCH).unwrap()
+//!     .as_secs();
 //! let url = totp.get_url(format!("account:{}", username), "my-org.com".to_string());
 //! println!("{}", url);
 //! let token = totp.generate(time);
 //! println!("{}", token);
 //! ```
+//!
+//! ```
+//! use totp_rs::{Algorithm, TOTP};
+//!
+//! let username = "example".to_string();
+//! let totp = TOTP::new(
+//!     Algorithm::SHA1,
+//!     6,
+//!     1,
+//!     30,
+//!     "supersecret".to_string().into_bytes(),
+//! );
+//! let code = totp.get_qr(format!("account:{}", username), "my-org.com".to_string())?;
+//! println!("{}", code);
+//! ```
 
 use serde::{Deserialize, Serialize};
 
 use base32;
-use base64;
 
 use byteorder::{BigEndian, ReadBytesExt};
 use std::io::Cursor;
 
-use image::Luma;
-use qrcode::QrCode;
+#[cfg(feature = "qr")]
+use {base64, image::Luma, qrcode::QrCode};
 
 use hmac::{Hmac, Mac, NewMac};
 use sha1::Sha1;
@@ -135,13 +157,14 @@ impl TOTP {
         )
     }
 
-    /// Will return a qrcode to automatically add a TOTP as a base64 string
+    /// Will return a qrcode to automatically add a TOTP as a base64 string. Needs feature "qr" to be set. It is by default
     ///
     /// # Errors
     ///
     /// This will return an error in case the URL gets too long to encode into a QR code
     ///
     /// It will also return an error in case it can't encode the qr into a png. This shouldn't happen unless either the qrcode library returns malformed data, or the image library doesn't encode the data correctly
+    #[cfg(feature = "qr")]
     pub fn get_qr(
         &self,
         label: String,
