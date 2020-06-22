@@ -1,4 +1,5 @@
 # totp-rs
+![Build Status](https://github.com/constantoine/totp-rs/workflows/Rust/badge.svg) ![docs](https://docs.rs/totp-rs/badge.svg)
 
 This library permits the creation of 2FA authentification tokens per TOTP, the verification of said tokens, with configurable time skew, validity time of each token, algorithm and number of digits! With additional feature "qr", you can use it to generate a base64 png qrcode.
 
