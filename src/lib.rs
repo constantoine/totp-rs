@@ -6,7 +6,6 @@
 //! use std::time::SystemTime;
 //! use totp_rs::{Algorithm, TOTP};
 //! 
-//! let username = "example";
 //! let totp = TOTP::new(
 //!     Algorithm::SHA1,
 //!     6,
@@ -17,7 +16,7 @@
 //! let time = SystemTime::now()
 //!     .duration_since(SystemTime::UNIX_EPOCH).unwrap()
 //!     .as_secs();
-//! let url = totp.get_url(username, "my-org.com");
+//! let url = totp.get_url("user@example.com", "my-org.com");
 //! println!("{}", url);
 //! let token = totp.generate(time);
 //! println!("{}", token);
@@ -26,7 +25,6 @@
 //! ```rust
 //! use totp_rs::{Algorithm, TOTP};
 //!
-//! let username = "example";
 //! let totp = TOTP::new(
 //!     Algorithm::SHA1,
 //!     6,
@@ -34,7 +32,7 @@
 //!     30,
 //!     "supersecret".to_owned().into_bytes(),
 //! );
-//! let code = totp.get_qr(username, "my-org.com").unwrap();
+//! let code = totp.get_qr("user@example.com", "my-org.com").unwrap();
 //! println!("{}", code);
 //! ```
 

@@ -14,7 +14,6 @@ You can then do something like:
 use std::time::SystemTime;
 use totp_rs::{Algorithm, TOTP};
 
-let username = "example".to_owned();
 let totp = TOTP::new(
     Algorithm::SHA1,
     6,
@@ -25,7 +24,7 @@ let totp = TOTP::new(
 let time = SystemTime::now()
     .duration_since(SystemTime::UNIX_EPOCH).unwrap()
     .as_secs();
-let url = totp.get_url(format!("account:{}", username), "my-org.com".to_owned());
+let url = totp.get_url("user@example.com", "my-org.com");
 println!("{}", url);
 let token = totp.generate(time);
 println!("{}", token);
@@ -43,7 +42,6 @@ You can then do something like:
 ```Rust
 use totp_rs::{Algorithm, TOTP};
 
-let username = "example".to_owned();
 let totp = TOTP::new(
     Algorithm::SHA1,
     6,
@@ -51,6 +49,6 @@ let totp = TOTP::new(
     30,
     "supersecret".to_owned().into_bytes(),
 );
-let code = totp.get_qr(format!("account:{}", username), "my-org.com".to_owned())?;
+let code = totp.get_qr("user@example.com", "my-org.com")?;
 println!("{}", code);
 ```
