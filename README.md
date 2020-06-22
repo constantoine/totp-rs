@@ -7,7 +7,7 @@ This library permits the creation of 2FA authentification tokens per TOTP, the v
 Add it to your `Cargo.toml`:
 ```toml
 [dependencies]
-totp-rs = "~0.3"
+totp-rs = "~0.4"
 ```
 You can then do something like:
 ```Rust
@@ -35,7 +35,7 @@ println!("{}", token);
 Add it to your `Cargo.toml`:
 ```toml
 [dependencies.totp-rs]
-version = "~0.3"
+version = "~0.4"
 features = ["qr"]
 ```
 You can then do something like:
