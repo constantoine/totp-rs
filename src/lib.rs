@@ -6,7 +6,7 @@
 //! use std::time::SystemTime;
 //! use totp_rs::{Algorithm, TOTP};
 //! 
-//! let username = "example".to_owned();
+//! let username = "example";
 //! let totp = TOTP::new(
 //!     Algorithm::SHA1,
 //!     6,
@@ -17,7 +17,7 @@
 //! let time = SystemTime::now()
 //!     .duration_since(SystemTime::UNIX_EPOCH).unwrap()
 //!     .as_secs();
-//! let url = totp.get_url(format!("account:{}", username), "my-org.com".to_owned());
+//! let url = totp.get_url(username, "my-org.com");
 //! println!("{}", url);
 //! let token = totp.generate(time);
 //! println!("{}", token);
@@ -26,7 +26,7 @@
 //! ```rust
 //! use totp_rs::{Algorithm, TOTP};
 //!
-//! let username = "example".to_owned();
+//! let username = "example";
 //! let totp = TOTP::new(
 //!     Algorithm::SHA1,
 //!     6,
@@ -34,7 +34,7 @@
 //!     30,
 //!     "supersecret".to_owned().into_bytes(),
 //! );
-//! let code = totp.get_qr(format!("account:{}", username), "my-org.com".to_owned())?;
+//! let code = totp.get_qr(username, "my-org.com").unwrap();
 //! println!("{}", code);
 //! ```
 
@@ -127,11 +127,10 @@ impl TOTP {
     }
 
     /// Will check if token is valid by current time, accounting [skew](struct.TOTP.html#structfield.skew)
-    pub fn check(&self, token: String, time: u64) -> bool {
+    pub fn check(&self, token: &str, time: u64) -> bool {
         let basestep = time / self.step - (self.skew as u64);
         for i in 0..self.skew * 2 + 1 {
             let step_time = (basestep + (i as u64)) * (self.step as u64);
-            println!("{}", self.generate(step_time));
             if self.generate(step_time) == token {
                 return true;
             }
@@ -139,20 +138,24 @@ impl TOTP {
         false
     }
 
+    /// Will return the base32 representation of the secret, which might be useful when users want to manually add the secret to their authenticator
+    pub fn get_secret_base32(&self) -> String {
+        base32::encode(base32::Alphabet::RFC4648 { padding: false }, &self.secret)
+    }
+
     /// Will generate a standard URL used to automatically add TOTP auths. Usually used with qr codes
-    pub fn get_url(&self, label: String, issuer: String) -> String {
-        let algorithm: String;
-        match self.algorithm {
-            Algorithm::SHA1 => algorithm = "SHA1".to_owned(),
-            Algorithm::SHA256 => algorithm = "SHA256".to_owned(),
-            Algorithm::SHA512 => algorithm = "SHA512".to_owned(),
-        }
+    pub fn get_url(&self, label: &str, issuer: &str) -> String {
+        let algorithm = match self.algorithm {
+            Algorithm::SHA1 => "SHA1",
+            Algorithm::SHA256 => "SHA256",
+            Algorithm::SHA512 => "SHA512",
+        };
         format!(
             "otpauth://totp/{}?secret={}&issuer={}&digits={}&algorithm={}",
             label,
-            base32::encode(base32::Alphabet::RFC4648 { padding: false }, &self.secret),
+            self.get_secret_base32(),
             issuer,
-            self.digits.to_string(),
+            self.digits,
             algorithm,
         )
     }
@@ -167,8 +170,8 @@ impl TOTP {
     #[cfg(feature = "qr")]
     pub fn get_qr(
         &self,
-        label: String,
-        issuer: String,
+        label: &str,
+        issuer: &str,
     ) -> Result<String, Box<dyn std::error::Error>> {
         let url = self.get_url(label, issuer);
         let code = QrCode::new(&url)?;
@@ -182,5 +185,66 @@ impl TOTP {
             image::ColorType::L8,
         )?;
         Ok(base64::encode(vec))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn url_for_secret_matches() {
+        let totp = TOTP::new(Algorithm::SHA1, 6, 1, 1, String::from("TestSecret").into_bytes());
+        let url = totp.get_url("test_url", "totp-rs");
+        assert_eq!(url.as_str(), "otpauth://totp/test_url?secret=KRSXG5CTMVRXEZLU&issuer=totp-rs&digits=6&algorithm=SHA1");
+    }
+
+    #[test]
+    fn returns_base32() {
+        let totp = TOTP::new(Algorithm::SHA1, 6, 1, 1, String::from("TestSecret").into_bytes());
+        assert_eq!(totp.get_secret_base32().as_str(), "KRSXG5CTMVRXEZLU");
+    }
+
+    #[test]
+    fn generates_token() {
+        let totp = TOTP::new(Algorithm::SHA1, 6, 1, 1, String::from("TestSecret").into_bytes());
+        assert_eq!(totp.generate(1000).as_str(), "718996");
+    }
+
+    #[test]
+    fn generates_token_sha256() {
+        let totp = TOTP::new(Algorithm::SHA256, 6, 1, 1, String::from("TestSecret").into_bytes());
+        assert_eq!(totp.generate(1000).as_str(), "423657");
+    }
+
+    #[test]
+    fn generates_token_sha512() {
+        let totp = TOTP::new(Algorithm::SHA512, 6, 1, 1, String::from("TestSecret").into_bytes());
+        assert_eq!(totp.generate(1000).as_str(), "416767");
+    }
+
+    #[test]
+    fn checks_token() {
+        let totp = TOTP::new(Algorithm::SHA1, 6, 1, 1, String::from("TestSecret").into_bytes());
+        assert!(totp.check("718996", 1000));
+    }
+
+    #[test]
+    fn checks_token_with_skew() {
+        let totp = TOTP::new(Algorithm::SHA1, 6, 1, 1, String::from("TestSecret").into_bytes());
+        assert!(totp.check("527544", 2000) && totp.check("712039", 2000) && totp.check("714250", 2000));
+    }
+
+    #[test]
+    #[cfg(feature = "qr")]
+    fn generates_qr() {
+        use sha1::{Sha1, Digest};
+
+        let totp = TOTP::new(Algorithm::SHA1, 6, 1, 1, String::from("TestSecret").into_bytes());
+        let qr = totp.get_qr("test_url", "totp-rs").unwrap();
+
+        // Create hash from image
+        let hash_digest = Sha1::digest(qr.as_bytes());
+        assert_eq!(format!("{:x}", hash_digest).as_str(), "3abc0127e7a2b1013fb25c97ef14422c1fe9e878");
     }
 }
