@@ -1,11 +1,11 @@
-//! This library permits the creation of 2FA authentification tokens per TOTP, the verification of said tokens, with configurable time skew, validity time of each token, algorithm and number of digits! With additional feature "qr", you can use it to generate a base64 png qrcode.
+//! This library permits the creation of 2FA authentification tokens per TOTP, the verification of said tokens, with configurable time skew, validity time of each token, algorithm and number of digits! Default features are kept as low-dependency as possible to ensure small binaries and short compilation time
 //!
 //! # Examples
 //!
 //! ```rust
 //! use std::time::SystemTime;
 //! use totp_rs::{Algorithm, TOTP};
-//! 
+//!
 //! let totp = TOTP::new(
 //!     Algorithm::SHA1,
 //!     6,
@@ -36,6 +36,7 @@
 //! println!("{}", code);
 //! ```
 
+#[cfg(feature = "serde_support")]
 use serde::{Deserialize, Serialize};
 
 use base32;
@@ -55,7 +56,8 @@ type HmacSha256 = Hmac<Sha256>;
 type HmacSha512 = Hmac<Sha512>;
 
 /// Algorithm enum holds the three standards algorithms for TOTP as per the [reference implementation](https://tools.ietf.org/html/rfc6238#appendix-A)
-#[derive(Debug, Serialize, Deserialize, Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
+#[cfg_attr(feature = "serde_support", derive(Serialize, Deserialize))]
 pub enum Algorithm {
     SHA1,
     SHA256,
@@ -63,7 +65,8 @@ pub enum Algorithm {
 }
 
 /// TOTP holds informations as to how to generate an auth code and validate it. Its [secret](struct.TOTP.html#structfield.secret) field is sensitive data, treat it accordingly
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde_support", derive(Serialize, Deserialize))]
 pub struct TOTP {
     /// SHA-1 is the most widespread algorithm used, and for totp pursposes, SHA-1 hash collisions are [not a problem](https://tools.ietf.org/html/rfc4226#appendix-B.2) as HMAC-SHA-1 is not impacted. It's also the main one cited in [rfc-6238](https://tools.ietf.org/html/rfc6238#section-3) even though the [reference implementation](https://tools.ietf.org/html/rfc6238#appendix-A) permits the use of SHA-1, SHA-256 and SHA-512. Not all clients support other algorithms then SHA-1
     pub algorithm: Algorithm,

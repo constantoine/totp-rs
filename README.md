@@ -1,14 +1,21 @@
 # totp-rs
 ![Build Status](https://github.com/constantoine/totp-rs/workflows/Rust/badge.svg) ![docs](https://docs.rs/totp-rs/badge.svg)
 
-This library permits the creation of 2FA authentification tokens per TOTP, the verification of said tokens, with configurable time skew, validity time of each token, algorithm and number of digits! With additional feature "qr", you can use it to generate a base64 png qrcode.
+This library permits the creation of 2FA authentification tokens per TOTP, the verification of said tokens, with configurable time skew, validity time of each token, algorithm and number of digits! Default features are kept as low-dependency as possible to ensure small binaries and short compilation time
+
+## Features
+---
+### qr
+With optionnal feature "qr", you can use it to generate a base64 png qrcode
+### serde_support
+With optionnal feature "serde_support", library-defined types will be Deserialize-able and Serialize-able
 
 ## How to use
-
+---
 Add it to your `Cargo.toml`:
 ```toml
 [dependencies]
-totp-rs = "~0.4"
+totp-rs = "~0.5"
 ```
 You can then do something like:
 ```Rust
@@ -36,7 +43,7 @@ println!("{}", token);
 Add it to your `Cargo.toml`:
 ```toml
 [dependencies.totp-rs]
-version = "~0.4"
+version = "~0.5"
 features = ["qr"]
 ```
 You can then do something like:
@@ -52,4 +59,12 @@ let totp = TOTP::new(
 );
 let code = totp.get_qr("user@example.com", "my-org.com")?;
 println!("{}", code);
+```
+
+### With serde support
+Add it to your `Cargo.toml`:
+```toml
+[dependencies.totp-rs]
+version = "~0.5"
+features = ["serde_support"]
 ```
