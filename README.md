@@ -27,7 +27,7 @@ let totp = TOTP::new(
     6,
     1,
     30,
-    "supersecret".to_owned().into_bytes(),
+    "supersecret",
 );
 let time = SystemTime::now()
     .duration_since(SystemTime::UNIX_EPOCH).unwrap()
@@ -55,7 +55,7 @@ let totp = TOTP::new(
     6,
     1,
     30,
-    "supersecret".to_owned().into_bytes(),
+    "supersecret",
 );
 let code = totp.get_qr("user@example.com", "my-org.com")?;
 println!("{}", code);
