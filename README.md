@@ -1,7 +1,7 @@
 # totp-rs
 ![Build Status](https://github.com/constantoine/totp-rs/workflows/Rust/badge.svg) ![docs](https://docs.rs/totp-rs/badge.svg)
 
-This library permits the creation of 2FA authentification tokens per TOTP, the verification of said tokens, with configurable time skew, validity time of each token, algorithm and number of digits! Default features are kept as low-dependency as possible to ensure small binaries and short compilation time
+This library permits the creation of 2FA authentification tokens per TOTP, the verification of said tokens, with configurable time skew, validity time of each token, algorithm and number of digits! Default features are kept as lightweight as possible to ensure small binaries and short compilation time
 
 ## Features
 ---
