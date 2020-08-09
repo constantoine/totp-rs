@@ -15,7 +15,7 @@ With optionnal feature "serde_support", library-defined types will be Deserializ
 Add it to your `Cargo.toml`:
 ```toml
 [dependencies]
-totp-rs = "~0.5"
+totp-rs = "~0.6"
 ```
 You can then do something like:
 ```Rust
@@ -43,7 +43,7 @@ println!("{}", token);
 Add it to your `Cargo.toml`:
 ```toml
 [dependencies.totp-rs]
-version = "~0.5"
+version = "~0.6"
 features = ["qr"]
 ```
 You can then do something like:
@@ -65,6 +65,6 @@ println!("{}", code);
 Add it to your `Cargo.toml`:
 ```toml
 [dependencies.totp-rs]
-version = "~0.5"
+version = "~0.6"
 features = ["serde_support"]
 ```
