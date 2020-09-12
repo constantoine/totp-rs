@@ -6,9 +6,9 @@ This library permits the creation of 2FA authentification tokens per TOTP, the v
 ## Features
 ---
 ### qr
-With optionnal feature "qr", you can use it to generate a base64 png qrcode
+With optional feature "qr", you can use it to generate a base64 png qrcode
 ### serde_support
-With optionnal feature "serde_support", library-defined types will be Deserialize-able and Serialize-able
+With optional feature "serde_support", library-defined types will be Deserialize-able and Serialize-able
 
 ## How to use
 ---

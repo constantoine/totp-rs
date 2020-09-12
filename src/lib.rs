@@ -92,7 +92,7 @@ impl<T: AsRef<[u8]>> TOTP<T> {
 
     /// Will sign the given timestamp
     pub fn sign(&self, time: u64) -> Vec<u8> {
-        let ctr = (time / self.step).to_be_bytes().to_vec();
+        let ctr = (time / self.step).to_be_bytes();
         match self.algorithm {
             Algorithm::SHA1 => {
                 let mut mac = HmacSha1::new_varkey(self.secret.as_ref()).expect("no key");
@@ -116,7 +116,7 @@ impl<T: AsRef<[u8]>> TOTP<T> {
     pub fn generate(&self, time: u64) -> String {
         let result: &[u8] = &self.sign(time);
         let offset = (result[19] & 15) as usize;
-        let mut rdr = Cursor::new(result[offset..offset + 4].to_vec());
+        let mut rdr = Cursor::new(&result[offset..offset + 4]);
         let result = rdr.read_u32::<BigEndian>().unwrap() & 0x7fff_ffff;
         format!(
             "{1:00$}",
@@ -177,7 +177,7 @@ impl<T: AsRef<[u8]>> TOTP<T> {
         let size: u32 = ((code.width() + 8) * 8) as u32;
         let encoder = image::png::PNGEncoder::new(&mut vec);
         encoder.encode(
-            &code.render::<Luma<u8>>().build().to_vec(),
+            code.render::<Luma<u8>>().build().as_ref(),
             size,
             size,
             image::ColorType::L8,
