@@ -1,6 +1,6 @@
 [package]
 name = "totp-rs"
-version = "0.6.1"
+version = "0.6.2"
 authors = ["Cleo Rebert <cleo.rebert@gmail.com>"]
 edition = "2018"
 readme = "README.md"
