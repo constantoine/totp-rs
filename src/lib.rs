@@ -175,7 +175,7 @@ impl<T: AsRef<[u8]>> TOTP<T> {
         let code = QrCode::new(&url)?;
         let mut vec = Vec::new();
         let size: u32 = ((code.width() + 8) * 8) as u32;
-        let encoder = image::png::PNGEncoder::new(&mut vec);
+        let encoder = image::png::PngEncoder::new(&mut vec);
         encoder.encode(
             code.render::<Luma<u8>>().build().as_ref(),
             size,
