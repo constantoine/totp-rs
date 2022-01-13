@@ -28,8 +28,8 @@ jobs:
     - name: Run cargo-tarpaulin
       uses: actions-rs/tarpaulin@v0.1
       with:
-        version: '0.15.0'
-        args: --all-features --test-threads 1
+        version: '0.19.0'
+        args: --all-features --verbose --out=Xml
 
     - name: Upload to codecov.io
       uses: codecov/codecov-action@v2
