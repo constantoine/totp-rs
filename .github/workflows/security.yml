@@ -1,7 +1,8 @@
-name: Security audit
+name: cargo-audit
 on:
   schedule:
     - cron: '0 0 * * *'
+  workflow_dispatch:
 jobs:
   audit:
     runs-on: ubuntu-latest
