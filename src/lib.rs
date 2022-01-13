@@ -45,7 +45,7 @@ use std::io::Cursor;
 #[cfg(feature = "qr")]
 use {base64, image::Luma, qrcode::QrCode};
 
-use hmac::{Hmac, Mac, NewMac};
+use hmac::{Hmac, Mac};
 use sha1::Sha1;
 use sha2::{Sha256, Sha512};
 
@@ -95,17 +95,17 @@ impl<T: AsRef<[u8]>> TOTP<T> {
         let ctr = (time / self.step).to_be_bytes();
         match self.algorithm {
             Algorithm::SHA1 => {
-                let mut mac = HmacSha1::new_varkey(self.secret.as_ref()).expect("no key");
+                let mut mac = HmacSha1::new_from_slice(self.secret.as_ref()).expect("no key");
                 mac.update(&ctr);
                 mac.finalize().into_bytes().to_vec()
             }
             Algorithm::SHA256 => {
-                let mut mac = HmacSha256::new_varkey(self.secret.as_ref()).expect("no key");
+                let mut mac = HmacSha256::new_from_slice(self.secret.as_ref()).expect("no key");
                 mac.update(&ctr);
                 mac.finalize().into_bytes().to_vec()
             }
             Algorithm::SHA512 => {
-                let mut mac = HmacSha512::new_varkey(self.secret.as_ref()).expect("no key");
+                let mut mac = HmacSha512::new_from_slice(self.secret.as_ref()).expect("no key");
                 mac.update(&ctr);
                 mac.finalize().into_bytes().to_vec()
             }
