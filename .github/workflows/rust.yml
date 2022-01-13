@@ -27,9 +27,9 @@ jobs:
   coverage:
     runs-on: ubuntu-latest
     steps:
-    - name: Run cargo-tarpaulin
     - uses: actions/checkout@v2
-    - uses: actions-rs/tarpaulin@v0.1
+    - name: Run cargo-tarpaulin
+      uses: actions-rs/tarpaulin@v0.1
       with:
         version: '0.19.0'
         args: --all-features --out=Xml
