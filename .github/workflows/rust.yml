@@ -11,25 +11,28 @@ env:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v2
     - name: Build
-      run: cargo build --verbose --all-features
+      run: cargo build --all-features
 
-    - name: Install stable toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        override: true
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Test
+      run: cargo test --all-features
 
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
     - name: Run cargo-tarpaulin
-      uses: actions-rs/tarpaulin@v0.1
+    - uses: actions/checkout@v2
+    - uses: actions-rs/tarpaulin@v0.1
       with:
         version: '0.19.0'
-        args: --all-features --verbose --out=Xml
+        args: --all-features --out=Xml
 
     - name: Upload to codecov.io
       uses: codecov/codecov-action@v2
