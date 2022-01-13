@@ -40,18 +40,17 @@
 use serde::{Deserialize, Serialize};
 
 use byteorder::{BigEndian, ReadBytesExt};
+use core::fmt;
 use std::io::Cursor;
 
 #[cfg(feature = "qr")]
 use {base64, image::Luma, qrcode::QrCode};
 
-use hmac::{Hmac, Mac};
-use sha1::Sha1;
-use sha2::{Sha256, Sha512};
+use hmac::Mac;
 
-type HmacSha1 = Hmac<Sha1>;
-type HmacSha256 = Hmac<Sha256>;
-type HmacSha512 = Hmac<Sha512>;
+type HmacSha1 = hmac::Hmac<sha1::Sha1>;
+type HmacSha256 = hmac::Hmac<sha2::Sha256>;
+type HmacSha512 = hmac::Hmac<sha2::Sha512>;
 
 /// Algorithm enum holds the three standards algorithms for TOTP as per the [reference implementation](https://tools.ietf.org/html/rfc6238#appendix-A)
 #[derive(Debug, Copy, Clone)]
@@ -60,6 +59,40 @@ pub enum Algorithm {
     SHA1,
     SHA256,
     SHA512,
+}
+
+impl fmt::Display for Algorithm {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            Algorithm::SHA1 => {
+                return f.write_str("SHA1");
+            }
+            Algorithm::SHA256 => {
+                return f.write_str("SHA256");
+            }
+            Algorithm::SHA512 => {
+                return f.write_str("SHA512");
+            }
+        }
+    }
+}
+
+impl Algorithm {
+    fn hash<D>(mut digest: D, data: &[u8]) -> Vec<u8>
+    where
+        D: hmac::Mac,
+    {
+        digest.update(data);
+        digest.finalize().into_bytes().to_vec()
+    }
+
+    fn sign(&self, key: &[u8], data: &[u8]) -> Vec<u8> {
+        match *self {
+            Algorithm::SHA1 => Algorithm::hash(HmacSha1::new_from_slice(key).unwrap(), data),
+            Algorithm::SHA256 => Algorithm::hash(HmacSha256::new_from_slice(key).unwrap(), data),
+            Algorithm::SHA512 => Algorithm::hash(HmacSha512::new_from_slice(key).unwrap(), data),
+        }
+    }
 }
 
 /// TOTP holds informations as to how to generate an auth code and validate it. Its [secret](struct.TOTP.html#structfield.secret) field is sensitive data, treat it accordingly
@@ -92,24 +125,10 @@ impl<T: AsRef<[u8]>> TOTP<T> {
 
     /// Will sign the given timestamp
     pub fn sign(&self, time: u64) -> Vec<u8> {
-        let ctr = (time / self.step).to_be_bytes();
-        match self.algorithm {
-            Algorithm::SHA1 => {
-                let mut mac = HmacSha1::new_from_slice(self.secret.as_ref()).expect("no key");
-                mac.update(&ctr);
-                mac.finalize().into_bytes().to_vec()
-            }
-            Algorithm::SHA256 => {
-                let mut mac = HmacSha256::new_from_slice(self.secret.as_ref()).expect("no key");
-                mac.update(&ctr);
-                mac.finalize().into_bytes().to_vec()
-            }
-            Algorithm::SHA512 => {
-                let mut mac = HmacSha512::new_from_slice(self.secret.as_ref()).expect("no key");
-                mac.update(&ctr);
-                mac.finalize().into_bytes().to_vec()
-            }
-        }
+        self.algorithm.sign(
+            self.secret.as_ref(),
+            (time / self.step).to_be_bytes().as_ref(),
+        )
     }
 
     /// Will generate a token according to the provided timestamp in seconds
@@ -147,18 +166,13 @@ impl<T: AsRef<[u8]>> TOTP<T> {
 
     /// Will generate a standard URL used to automatically add TOTP auths. Usually used with qr codes
     pub fn get_url(&self, label: &str, issuer: &str) -> String {
-        let algorithm = match self.algorithm {
-            Algorithm::SHA1 => "SHA1",
-            Algorithm::SHA256 => "SHA256",
-            Algorithm::SHA512 => "SHA512",
-        };
         format!(
             "otpauth://totp/{}?secret={}&issuer={}&digits={}&algorithm={}",
-            label,
+            label.to_string(),
             self.get_secret_base32(),
-            issuer,
-            self.digits,
-            algorithm,
+            issuer.to_string(),
+            self.digits.to_string(),
+            self.algorithm,
         )
     }
 
@@ -174,12 +188,11 @@ impl<T: AsRef<[u8]>> TOTP<T> {
         let url = self.get_url(label, issuer);
         let code = QrCode::new(&url)?;
         let mut vec = Vec::new();
-        let size: u32 = ((code.width() + 8) * 8) as u32;
         let encoder = image::png::PngEncoder::new(&mut vec);
         encoder.encode(
             code.render::<Luma<u8>>().build().as_ref(),
-            size,
-            size,
+            ((code.width() + 8) * 8) as u32,
+            ((code.width() + 8) * 8) as u32,
             image::ColorType::L8,
         )?;
         Ok(base64::encode(vec))
@@ -191,10 +204,24 @@ mod tests {
     use super::*;
 
     #[test]
-    fn url_for_secret_matches() {
+    fn url_for_secret_matches_sha1() {
         let totp = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecret");
         let url = totp.get_url("test_url", "totp-rs");
         assert_eq!(url.as_str(), "otpauth://totp/test_url?secret=KRSXG5CTMVRXEZLU&issuer=totp-rs&digits=6&algorithm=SHA1");
+    }
+
+    #[test]
+    fn url_for_secret_matches_sha256() {
+        let totp = TOTP::new(Algorithm::SHA256, 6, 1, 1, "TestSecret");
+        let url = totp.get_url("test_url", "totp-rs");
+        assert_eq!(url.as_str(), "otpauth://totp/test_url?secret=KRSXG5CTMVRXEZLU&issuer=totp-rs&digits=6&algorithm=SHA256");
+    }
+
+    #[test]
+    fn url_for_secret_matches_sha512() {
+        let totp = TOTP::new(Algorithm::SHA512, 6, 1, 1, "TestSecret");
+        let url = totp.get_url("test_url", "totp-rs");
+        assert_eq!(url.as_str(), "otpauth://totp/test_url?secret=KRSXG5CTMVRXEZLU&issuer=totp-rs&digits=6&algorithm=SHA512");
     }
 
     #[test]
@@ -223,8 +250,11 @@ mod tests {
 
     #[test]
     fn checks_token() {
-        let totp = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecret");
+        let totp = TOTP::new(Algorithm::SHA1, 6, 0, 1, "TestSecret");
         assert!(totp.check("718996", 1000));
+        assert!(totp.check("712039", 2000));
+        assert!(!totp.check("527544", 2000));
+        assert!(!totp.check("714250", 2000));
     }
 
     #[test]
