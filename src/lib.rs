@@ -23,6 +23,7 @@
 //! ```
 //!
 //! ```rust
+//! # #[cfg(feature = "qr")] {
 //! use totp_rs::{Algorithm, TOTP};
 //!
 //! let totp = TOTP::new(
@@ -34,14 +35,13 @@
 //! );
 //! let code = totp.get_qr("user@example.com", "my-org.com").unwrap();
 //! println!("{}", code);
+//! # }
 //! ```
 
 #[cfg(feature = "serde_support")]
 use serde::{Deserialize, Serialize};
 
-use byteorder::{BigEndian, ReadBytesExt};
 use core::fmt;
-use std::io::Cursor;
 
 #[cfg(feature = "qr")]
 use {base64, image::Luma, qrcode::QrCode};
@@ -135,8 +135,7 @@ impl<T: AsRef<[u8]>> TOTP<T> {
     pub fn generate(&self, time: u64) -> String {
         let result: &[u8] = &self.sign(time);
         let offset = (result[19] & 15) as usize;
-        let mut rdr = Cursor::new(&result[offset..offset + 4]);
-        let result = rdr.read_u32::<BigEndian>().unwrap() & 0x7fff_ffff;
+        let result = u32::from_be_bytes(result[offset..offset + 4].try_into().unwrap()) & 0x7fff_ffff;
         format!(
             "{1:00$}",
             self.digits,
