@@ -140,7 +140,7 @@ impl<T: AsRef<[u8]>> TOTP<T> {
     /// Will generate a token according to the provided timestamp in seconds
     pub fn generate(&self, time: u64) -> String {
         let result: &[u8] = &self.sign(time);
-        let offset = (result[19] & 15) as usize;
+        let offset = (result.last().unwrap() & 15) as usize;
         let result = u32::from_be_bytes(result[offset..offset + 4].try_into().unwrap()) & 0x7fff_ffff;
         format!(
             "{1:00$}",
@@ -244,13 +244,13 @@ mod tests {
     #[test]
     fn generates_token_sha256() {
         let totp = TOTP::new(Algorithm::SHA256, 6, 1, 1, "TestSecret");
-        assert_eq!(totp.generate(1000).as_str(), "423657");
+        assert_eq!(totp.generate(1000).as_str(), "480200");
     }
 
     #[test]
     fn generates_token_sha512() {
         let totp = TOTP::new(Algorithm::SHA512, 6, 1, 1, "TestSecret");
-        assert_eq!(totp.generate(1000).as_str(), "416767");
+        assert_eq!(totp.generate(1000).as_str(), "850500");
     }
 
     #[test]
