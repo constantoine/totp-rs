@@ -44,6 +44,8 @@
 //! # }
 //! ```
 
+use constant_time_eq::constant_time_eq;
+
 #[cfg(feature = "serde_support")]
 use serde::{Deserialize, Serialize};
 
@@ -59,7 +61,7 @@ type HmacSha256 = hmac::Hmac<sha2::Sha256>;
 type HmacSha512 = hmac::Hmac<sha2::Sha512>;
 
 /// Algorithm enum holds the three standards algorithms for TOTP as per the [reference implementation](https://tools.ietf.org/html/rfc6238#appendix-A)
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 #[cfg_attr(feature = "serde_support", derive(Serialize, Deserialize))]
 pub enum Algorithm {
     SHA1,
@@ -117,6 +119,24 @@ pub struct TOTP<T = Vec<u8>> {
     pub secret: T,
 }
 
+impl <T: AsRef<[u8]>> PartialEq for TOTP<T> {
+    fn eq(&self, other: &Self) -> bool {
+        if self.algorithm != other.algorithm {
+            return false;
+        }
+        if self.digits != other.digits {
+            return false;
+        }
+        if self.skew != other.skew {
+            return false;
+        }
+        if self.step != other.step {
+            return false;
+        }
+        constant_time_eq(self.secret.as_ref(), other.secret.as_ref())
+    }
+}
+
 impl<T: AsRef<[u8]>> TOTP<T> {
     /// Will create a new instance of TOTP with given parameters. See [the doc](struct.TOTP.html#fields) for reference as to how to choose those values
     pub fn new(algorithm: Algorithm, digits: usize, skew: u8, step: u64, secret: T) -> TOTP<T> {
@@ -154,7 +174,8 @@ impl<T: AsRef<[u8]>> TOTP<T> {
         let basestep = time / self.step - (self.skew as u64);
         for i in 0..self.skew * 2 + 1 {
             let step_time = (basestep + (i as u64)) * (self.step as u64);
-            if self.generate(step_time) == token {
+            
+            if constant_time_eq(self.generate(step_time).as_bytes(), token.as_bytes()) {
                 return true;
             }
         }
@@ -207,6 +228,48 @@ impl<T: AsRef<[u8]>> TOTP<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn comparison_ok() {
+        let reference = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecret");
+        let test = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecret");
+        assert_eq!(reference, test);
+    }
+
+    #[test]
+    fn comparison_different_algo() {
+        let reference = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecret");
+        let test = TOTP::new(Algorithm::SHA256, 6, 1, 1, "TestSecret");
+        assert_ne!(reference, test);
+    }
+
+    #[test]
+    fn comparison_different_digits() {
+        let reference = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecret");
+        let test = TOTP::new(Algorithm::SHA1, 8, 1, 1, "TestSecret");
+        assert_ne!(reference, test);
+    }
+
+    #[test]
+    fn comparison_different_skew() {
+        let reference = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecret");
+        let test = TOTP::new(Algorithm::SHA1, 6, 0, 1, "TestSecret");
+        assert_ne!(reference, test);
+    }
+
+    #[test]
+    fn comparison_different_step() {
+        let reference = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecret");
+        let test = TOTP::new(Algorithm::SHA1, 6, 1, 30, "TestSecret");
+        assert_ne!(reference, test);
+    }
+
+    #[test]
+    fn comparison_different_secret() {
+        let reference = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecret");
+        let test = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretL");
+        assert_ne!(reference, test);
+    }
 
     #[test]
     fn url_for_secret_matches_sha1() {
