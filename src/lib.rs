@@ -52,7 +52,7 @@ use serde::{Deserialize, Serialize};
 use core::fmt;
 
 #[cfg(feature = "qr")]
-use {base64, image::Luma, qrcode::QrCode};
+use {base64, image::Luma, qrcodegen};
 
 use hmac::Mac;
 
@@ -206,19 +206,78 @@ impl<T: AsRef<[u8]>> TOTP<T> {
     ///
     /// # Errors
     ///
-    /// This will return an error in case the URL gets too long to encode into a QR code
+    /// This will return an error in case the URL gets too long to encode into a QR code.
+    /// This would require the get_url method to generate an url bigger than 2000 characters,
+    /// Which would be too long for some browsers anyway.
     ///
     /// It will also return an error in case it can't encode the qr into a png. This shouldn't happen unless either the qrcode library returns malformed data, or the image library doesn't encode the data correctly
     #[cfg(feature = "qr")]
     pub fn get_qr(&self, label: &str, issuer: &str) -> Result<String, Box<dyn std::error::Error>> {
+        use image::ImageEncoder;
+
         let url = self.get_url(label, issuer);
-        let code = QrCode::new(&url)?;
         let mut vec = Vec::new();
-        let encoder = image::png::PngEncoder::new(&mut vec);
-        encoder.encode(
-            code.render::<Luma<u8>>().build().as_ref(),
-            ((code.width() + 8) * 8) as u32,
-            ((code.width() + 8) * 8) as u32,
+        let qr = qrcodegen::QrCode::encode_text(&url, qrcodegen::QrCodeEcc::Medium)?;
+        let size = qr.size() as u32;
+        
+        // "+ 8 * 8" is here to add padding (the white border around the QRCode)
+        // As some QRCode readers don't work without padding 
+        let image_size = size * 8 + 8 * 8;
+        let mut canvas = image::GrayImage::new(image_size, image_size);
+        
+        // Draw the border
+        for x in 0..image_size {
+            for y in 0..image_size {
+                if y < 8*4 || y >= image_size - 8*4 {
+                    canvas.put_pixel(
+                        x,
+                        y,
+                        Luma([255]),
+                    );
+                    continue;
+                }
+                if x < 8*4 || x >= image_size - 8*4 {
+                    canvas.put_pixel(
+                        x,
+                        y,
+                        Luma([255]),
+                    );
+                }
+            }
+        }
+
+        // The QR inside the white border
+        for x_qr in 0..size {
+            for y_qr in 0..size {
+                // The canvas is a grayscale image without alpha. Hence it's only one 8-bits byte longs
+                // This clever trick to one-line the value was achieved with advanced mathematics
+                // And deep understanding of Boolean algebra.
+                let val = !qr.get_module(x_qr as i32, y_qr as i32) as u8 * 255;
+                
+                // Multiply coordinates by width of pixels
+                // And take into account the 8*4 padding on top and left side
+                let x_start = x_qr * 8 + 8*4;
+                let y_start = y_qr * 8 + 8*4;
+                
+                // Draw a 8-pixels-wide square
+                for x_img in x_start..x_start + 8 {
+                    for y_img in y_start..y_start + 8 {
+                        canvas.put_pixel(
+                            x_img,
+                            y_img,
+                            Luma([val]),
+                        );
+                    }
+                }
+            }
+        }
+
+        // Encode the canvas into a PNG
+        let encoder = image::codecs::png::PngEncoder::new(&mut vec);
+        encoder.write_image(
+            &image::ImageBuffer::from(canvas).into_raw(),
+            image_size,
+            image_size,
             image::ColorType::L8,
         )?;
         Ok(base64::encode(vec))
@@ -345,7 +404,7 @@ mod tests {
         let hash_digest = Sha1::digest(qr.as_bytes());
         assert_eq!(
             format!("{:x}", hash_digest).as_str(),
-            "3abc0127e7a2b1013fb25c97ef14422c1fe9e878"
+            "f671a5a553227a9565c6132024808123f2c9e5e3"
         );
     }
 }
