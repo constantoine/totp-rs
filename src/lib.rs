@@ -55,6 +55,7 @@ use core::fmt;
 use {base64, image::Luma, qrcodegen};
 
 use hmac::Mac;
+use std::time::{SystemTime, SystemTimeError, UNIX_EPOCH};
 
 type HmacSha1 = hmac::Hmac<sha1::Sha1>;
 type HmacSha256 = hmac::Hmac<sha2::Sha256>;
@@ -167,6 +168,14 @@ impl<T: AsRef<[u8]>> TOTP<T> {
             self.digits,
             result % (10 as u32).pow(self.digits as u32)
         )
+    }
+
+    /// Generate a token from the current system time
+    pub fn generate_current(&self) -> Result<String, SystemTimeError> {
+        let time = SystemTime::now()
+            .duration_since(UNIX_EPOCH)?
+            .as_secs();
+        Ok(self.generate(time))
     }
 
     /// Will check if token is valid by current time, accounting [skew](struct.TOTP.html#structfield.skew)
