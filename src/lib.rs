@@ -55,6 +55,7 @@ use core::fmt;
 use {base64, image::Luma, qrcodegen};
 
 use hmac::Mac;
+use std::time::{SystemTime, SystemTimeError, UNIX_EPOCH};
 
 type HmacSha1 = hmac::Hmac<sha1::Sha1>;
 type HmacSha256 = hmac::Hmac<sha2::Sha256>;
@@ -101,6 +102,13 @@ impl Algorithm {
             Algorithm::SHA512 => Algorithm::hash(HmacSha512::new_from_slice(key).unwrap(), data),
         }
     }
+}
+
+fn system_time() -> Result<u64, SystemTimeError> {
+    let t = SystemTime::now()
+        .duration_since(UNIX_EPOCH)?
+        .as_secs();
+    Ok(t)
 }
 
 /// TOTP holds informations as to how to generate an auth code and validate it. Its [secret](struct.TOTP.html#structfield.secret) field is sensitive data, treat it accordingly
@@ -169,6 +177,12 @@ impl<T: AsRef<[u8]>> TOTP<T> {
         )
     }
 
+    /// Generate a token from the current system time
+    pub fn generate_current(&self) -> Result<String, SystemTimeError> {
+        let t = system_time()?;
+        Ok(self.generate(t))
+    }
+
     /// Will check if token is valid by current time, accounting [skew](struct.TOTP.html#structfield.skew)
     pub fn check(&self, token: &str, time: u64) -> bool {
         let basestep = time / self.step - (self.skew as u64);
@@ -180,6 +194,12 @@ impl<T: AsRef<[u8]>> TOTP<T> {
             }
         }
         false
+    }
+
+    /// Will check if token is valid by current system time, accounting [skew](struct.TOTP.html#structfield.skew)
+    pub fn check_current(&self, token: &str) -> Result<bool, SystemTimeError> {
+        let t = system_time()?;
+        Ok(self.check(token, t))
     }
 
     /// Will return the base32 representation of the secret, which might be useful when users want to manually add the secret to their authenticator
