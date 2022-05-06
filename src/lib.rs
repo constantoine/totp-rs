@@ -19,12 +19,9 @@
 //!     30,
 //!     "supersecret",
 //! );
-//! let time = SystemTime::now()
-//!     .duration_since(SystemTime::UNIX_EPOCH).unwrap()
-//!     .as_secs();
 //! let url = totp.get_url("user@example.com", "my-org.com");
 //! println!("{}", url);
-//! let token = totp.generate(time);
+//! let token = totp.generate_current().unwrap();
 //! println!("{}", token);
 //! ```
 //!
@@ -165,7 +162,7 @@ impl<T: AsRef<[u8]>> TOTP<T> {
         )
     }
 
-    /// Will generate a token according to the provided timestamp in seconds
+    /// Will generate a token given the provided timestamp in seconds
     pub fn generate(&self, time: u64) -> String {
         let result: &[u8] = &self.sign(time);
         let offset = (result.last().unwrap() & 15) as usize;
@@ -183,7 +180,7 @@ impl<T: AsRef<[u8]>> TOTP<T> {
         Ok(self.generate(t))
     }
 
-    /// Will check if token is valid by current time, accounting [skew](struct.TOTP.html#structfield.skew)
+    /// Will check if token is valid given the provided timestamp in seconds, accounting [skew](struct.TOTP.html#structfield.skew)
     pub fn check(&self, token: &str, time: u64) -> bool {
         let basestep = time / self.step - (self.skew as u64);
         for i in 0..self.skew * 2 + 1 {
@@ -223,6 +220,8 @@ impl<T: AsRef<[u8]>> TOTP<T> {
     }
 
     /// Will return a qrcode to automatically add a TOTP as a base64 string. Needs feature `qr` to be enabled!
+    /// Result will be in the form of a string containing a base64-encoded png, which you can embed in HTML without needing
+    /// To store the png as a file.
     ///
     /// # Errors
     ///
@@ -248,20 +247,8 @@ impl<T: AsRef<[u8]>> TOTP<T> {
         // Draw the border
         for x in 0..image_size {
             for y in 0..image_size {
-                if y < 8*4 || y >= image_size - 8*4 {
-                    canvas.put_pixel(
-                        x,
-                        y,
-                        Luma([255]),
-                    );
-                    continue;
-                }
-                if x < 8*4 || x >= image_size - 8*4 {
-                    canvas.put_pixel(
-                        x,
-                        y,
-                        Luma([255]),
-                    );
+                if (y < 8*4 || y >= image_size - 8*4) || (x < 8*4 || x >= image_size - 8*4) {
+                    canvas.put_pixel(x, y, Luma([255]));
                 }
             }
         }
@@ -378,9 +365,18 @@ mod tests {
     }
 
     #[test]
-    fn generates_token() {
+    fn generate_token() {
         let totp = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecret");
         assert_eq!(totp.generate(1000).as_str(), "718996");
+    }
+
+    #[test]
+    fn generate_token_current() {
+        let totp = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecret");
+        let time = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH).unwrap()
+            .as_secs();
+        assert_eq!(totp.generate(time).as_str(), totp.generate_current().unwrap());
     }
 
     #[test]
@@ -402,6 +398,13 @@ mod tests {
         assert!(totp.check("712039", 2000));
         assert!(!totp.check("527544", 2000));
         assert!(!totp.check("714250", 2000));
+    }
+
+    #[test]
+    fn checks_token_current() {
+        let totp = TOTP::new(Algorithm::SHA1, 6, 0, 1, "TestSecret");
+        assert!(totp.check_current(&totp.generate_current().unwrap()).unwrap());
+        assert!(!totp.check_current("bogus").unwrap());
     }
 
     #[test]
