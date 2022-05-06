@@ -104,6 +104,13 @@ impl Algorithm {
     }
 }
 
+fn system_time() -> Result<u64, SystemTimeError> {
+    let t = SystemTime::now()
+        .duration_since(UNIX_EPOCH)?
+        .as_secs();
+    Ok(t)
+}
+
 /// TOTP holds informations as to how to generate an auth code and validate it. Its [secret](struct.TOTP.html#structfield.secret) field is sensitive data, treat it accordingly
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde_support", derive(Serialize, Deserialize))]
@@ -172,10 +179,8 @@ impl<T: AsRef<[u8]>> TOTP<T> {
 
     /// Generate a token from the current system time
     pub fn generate_current(&self) -> Result<String, SystemTimeError> {
-        let time = SystemTime::now()
-            .duration_since(UNIX_EPOCH)?
-            .as_secs();
-        Ok(self.generate(time))
+        let t = system_time()?;
+        Ok(self.generate(t))
     }
 
     /// Will check if token is valid by current time, accounting [skew](struct.TOTP.html#structfield.skew)
@@ -189,6 +194,12 @@ impl<T: AsRef<[u8]>> TOTP<T> {
             }
         }
         false
+    }
+
+    /// Will check if token is valid by current system time, accounting [skew](struct.TOTP.html#structfield.skew)
+    pub fn check_current(&self, token: &str) -> Result<bool, SystemTimeError> {
+        let t = system_time()?;
+        Ok(self.check(token, t))
     }
 
     /// Will return the base32 representation of the secret, which might be useful when users want to manually add the secret to their authenticator
