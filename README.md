@@ -12,6 +12,10 @@ With optional feature "qr", you can use it to generate a base64 png qrcode
 ### serde_support
 With optional feature "serde_support", library-defined types will be Deserialize-able and Serialize-able
 
+### otpauth
+
+With optional feature "otpauth", Support to parse the TOTP parameter from `otpauth` URL
+
 ## How to use
 ---
 Add it to your `Cargo.toml`:
@@ -66,4 +70,21 @@ Add it to your `Cargo.toml`:
 [dependencies.totp-rs]
 version = "~1.3"
 features = ["serde_support"]
+```
+
+### With otpauth url support
+
+Add it to your `Cargo.toml`:
+```toml
+[dependencies.totp-rs]
+version = "~1.3"
+features = ["otpauth"]
+```
+
+```Rust
+use totp_rs::TOTP;
+
+let otpauth = "otpauth://totp/GitHub:test?secret=ABC&issuer=GitHub";
+let totp = TOTP::from_url(otpauth).unwrap();
+println!("{}", totp.generate_current().unwrap());
 ```

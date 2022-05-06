@@ -51,6 +51,9 @@ use core::fmt;
 #[cfg(feature = "qr")]
 use {base64, image::Luma, qrcodegen};
 
+#[cfg(feature = "otpauth")]
+use url::{Host, ParseError, Url};
+
 use hmac::Mac;
 use std::time::{SystemTime, SystemTimeError, UNIX_EPOCH};
 
@@ -106,6 +109,18 @@ fn system_time() -> Result<u64, SystemTimeError> {
         .duration_since(UNIX_EPOCH)?
         .as_secs();
     Ok(t)
+}
+
+#[cfg(feature = "otpauth")]
+#[derive(Debug)]
+pub enum TotpUrlError {
+    Url(ParseError),
+    Scheme,
+    Host,
+    Secret,
+    Algorithm,
+    Digits,
+    Step,
 }
 
 /// TOTP holds informations as to how to generate an auth code and validate it. Its [secret](struct.TOTP.html#structfield.secret) field is sensitive data, treat it accordingly
@@ -205,6 +220,54 @@ impl<T: AsRef<[u8]>> TOTP<T> {
             base32::Alphabet::RFC4648 { padding: false },
             self.secret.as_ref(),
         )
+    }
+    
+    /// Generate a TOTP from the standard otpauth URL
+    #[cfg(feature = "otpauth")]
+    pub fn from_url<S: AsRef<str>>(url: S) -> Result<TOTP<Vec<u8>>, TotpUrlError> {
+        let url = Url::parse(url.as_ref()).map_err(|err| TotpUrlError::Url(err))?;
+        if url.scheme() != "otpauth" {
+            return Err(TotpUrlError::Scheme);
+        }
+        if url.host() != Some(Host::Domain("totp")) {
+            return Err(TotpUrlError::Host);
+        }
+        
+        let mut algorithm = Algorithm::SHA1;
+        let mut digits = 6;
+        let mut step = 30;
+        let mut secret = Vec::new();
+
+        for (key, value) in url.query_pairs() {
+            match key.as_ref() {
+                "algorithm" => {
+                    algorithm = match value.as_ref() {
+                        "SHA1" => Algorithm::SHA1,
+                        "SHA256" => Algorithm::SHA256,
+                        "SHA512" => Algorithm::SHA512,
+                        _ => return Err(TotpUrlError::Algorithm),
+                    }
+                }
+                "digits" => {
+                    digits = value.parse::<usize>().map_err(|_| TotpUrlError::Digits)?;
+                }
+                "period" => {
+                    step = value.parse::<u64>().map_err(|_| TotpUrlError::Step)?;
+                }
+                "secret" => {
+                    secret =
+                        base32::decode(base32::Alphabet::RFC4648 { padding: false }, value.as_ref())
+                            .ok_or(TotpUrlError::Secret)?;
+                }
+                _ => {}
+            }
+        }
+
+        if secret.is_empty() {
+            return Err(TotpUrlError::Secret);
+        }
+
+        Ok(TOTP::new(algorithm, digits, 1, step, secret))
     }
 
     /// Will generate a standard URL used to automatically add TOTP auths. Usually used with qr codes
@@ -413,6 +476,35 @@ mod tests {
         assert!(
             totp.check("527544", 2000) && totp.check("712039", 2000) && totp.check("714250", 2000)
         );
+    }
+
+    #[test]
+    #[cfg(feature = "otpauth")]
+    fn from_url_err() {
+        assert!(TOTP::<Vec<u8>>::from_url("otpauth://hotp/123").is_err());
+        assert!(TOTP::<Vec<u8>>::from_url("otpauth://totp/GitHub:test").is_err());
+    }
+
+    #[test]
+    #[cfg(feature = "otpauth")]
+    fn from_url_default() {
+        let totp = TOTP::<Vec<u8>>::from_url("otpauth://totp/GitHub:test?secret=ABC").unwrap();
+        assert_eq!(totp.secret, base32::decode(base32::Alphabet::RFC4648 { padding: false }, "ABC").unwrap());
+        assert_eq!(totp.algorithm, Algorithm::SHA1);
+        assert_eq!(totp.digits, 6);
+        assert_eq!(totp.skew, 1);
+        assert_eq!(totp.step, 30);
+    }
+
+    #[test]
+    #[cfg(feature = "otpauth")]
+    fn from_url_query() {
+        let totp = TOTP::<Vec<u8>>::from_url("otpauth://totp/GitHub:test?secret=ABC&digits=8&period=60&algorithm=SHA256").unwrap();
+        assert_eq!(totp.secret, base32::decode(base32::Alphabet::RFC4648 { padding: false }, "ABC").unwrap());
+        assert_eq!(totp.algorithm, Algorithm::SHA256);
+        assert_eq!(totp.digits, 8);
+        assert_eq!(totp.skew, 1);
+        assert_eq!(totp.step, 60);
     }
 
     #[test]
