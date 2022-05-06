@@ -21,7 +21,7 @@ With optional feature "otpauth", Support to parse the TOTP parameter from `otpau
 Add it to your `Cargo.toml`:
 ```toml
 [dependencies]
-totp-rs = "~1.3"
+totp-rs = "~1.4"
 ```
 You can then do something like:
 ```Rust
@@ -46,7 +46,7 @@ println!("{}", token);
 Add it to your `Cargo.toml`:
 ```toml
 [dependencies.totp-rs]
-version = "~1.3"
+version = "~1.4"
 features = ["qr"]
 ```
 You can then do something like:
@@ -68,7 +68,7 @@ println!("{}", code);
 Add it to your `Cargo.toml`:
 ```toml
 [dependencies.totp-rs]
-version = "~1.3"
+version = "~1.4"
 features = ["serde_support"]
 ```
 
@@ -77,10 +77,10 @@ features = ["serde_support"]
 Add it to your `Cargo.toml`:
 ```toml
 [dependencies.totp-rs]
-version = "~1.3"
+version = "~1.4"
 features = ["otpauth"]
 ```
-
+You can then do something like:
 ```Rust
 use totp_rs::TOTP;
 
