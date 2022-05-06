@@ -17,7 +17,7 @@ With optional feature "serde_support", library-defined types will be Deserialize
 Add it to your `Cargo.toml`:
 ```toml
 [dependencies]
-totp-rs = "~1.2"
+totp-rs = "~1.3"
 ```
 You can then do something like:
 ```Rust
@@ -31,12 +31,9 @@ let totp = TOTP::new(
     30,
     "supersecret",
 );
-let time = SystemTime::now()
-    .duration_since(SystemTime::UNIX_EPOCH).unwrap()
-    .as_secs();
 let url = totp.get_url("user@example.com", "my-org.com");
 println!("{}", url);
-let token = totp.generate(time);
+let token = totp.generate_current().unwrap();
 println!("{}", token);
 ```
 
@@ -45,7 +42,7 @@ println!("{}", token);
 Add it to your `Cargo.toml`:
 ```toml
 [dependencies.totp-rs]
-version = "~1.2"
+version = "~1.3"
 features = ["qr"]
 ```
 You can then do something like:
@@ -67,6 +64,6 @@ println!("{}", code);
 Add it to your `Cargo.toml`:
 ```toml
 [dependencies.totp-rs]
-version = "~1.2"
+version = "~1.3"
 features = ["serde_support"]
 ```
