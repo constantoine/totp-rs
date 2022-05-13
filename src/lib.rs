@@ -111,7 +111,6 @@ fn system_time() -> Result<u64, SystemTimeError> {
     Ok(t)
 }
 
-#[cfg(feature = "otpauth")]
 #[derive(Debug)]
 pub enum TotpUrlError {
     Url(ParseError),
@@ -121,6 +120,8 @@ pub enum TotpUrlError {
     Algorithm,
     Digits,
     Step,
+    Issuer,
+    Label,
 }
 
 /// TOTP holds informations as to how to generate an auth code and validate it. Its [secret](struct.TOTP.html#structfield.secret) field is sensitive data, treat it accordingly
@@ -137,6 +138,12 @@ pub struct TOTP<T = Vec<u8>> {
     pub step: u64,
     /// As per [rfc-4226](https://tools.ietf.org/html/rfc4226#section-4) the secret should come from a strong source, most likely a CSPRNG. It should be at least 128 bits, but 160 are recommended
     pub secret: T,
+    /// The "Github" part of "Github:constantoine". Must not contain a color `:`
+    /// For example, the name of your service/website.
+    pub issuer: String,
+    /// The "alice@google.com" part of "Github:constantoine". Must not contain a color `:`
+    /// For example, the name of your user's account.
+    pub label: String
 }
 
 impl <T: AsRef<[u8]>> PartialEq for TOTP<T> {
@@ -159,14 +166,26 @@ impl <T: AsRef<[u8]>> PartialEq for TOTP<T> {
 
 impl<T: AsRef<[u8]>> TOTP<T> {
     /// Will create a new instance of TOTP with given parameters. See [the doc](struct.TOTP.html#fields) for reference as to how to choose those values
-    pub fn new(algorithm: Algorithm, digits: usize, skew: u8, step: u64, secret: T) -> TOTP<T> {
-        TOTP {
+    ///
+    /// # Errors
+    /// 
+    /// Will return an error in case issuer or label contain the character ':'
+    pub fn new(algorithm: Algorithm, digits: usize, skew: u8, step: u64, secret: T, issuer: String, label: String) -> Result<TOTP<T>, TotpUrlError> {
+        if issuer.contains(':') {
+            return Err(TotpUrlError::Issuer);
+        }
+        if label.contains(':') {
+            return Err(TotpUrlError::Label);
+        }
+        Ok(TOTP {
             algorithm,
             digits,
             skew,
             step,
             secret,
-        }
+            issuer,
+            label,
+        })
     }
 
     /// Will sign the given timestamp
@@ -223,7 +242,6 @@ impl<T: AsRef<[u8]>> TOTP<T> {
     }
     
     /// Generate a TOTP from the standard otpauth URL
-    #[cfg(feature = "otpauth")]
     pub fn from_url<S: AsRef<str>>(url: S) -> Result<TOTP<Vec<u8>>, TotpUrlError> {
         let url = Url::parse(url.as_ref()).map_err(|err| TotpUrlError::Url(err))?;
         if url.scheme() != "otpauth" {
@@ -237,6 +255,10 @@ impl<T: AsRef<[u8]>> TOTP<T> {
         let mut digits = 6;
         let mut step = 30;
         let mut secret = Vec::new();
+        let issuer: String;
+        let label: String;
+
+        
 
         for (key, value) in url.query_pairs() {
             match key.as_ref() {
@@ -259,10 +281,19 @@ impl<T: AsRef<[u8]>> TOTP<T> {
                         base32::decode(base32::Alphabet::RFC4648 { padding: false }, value.as_ref())
                             .ok_or(TotpUrlError::Secret)?;
                 }
+                "issuer" => {
+                    issuer = value.parse::<String>().map_err(|_| TotpUrlError::Issuer)?;
+                }
                 _ => {}
             }
         }
 
+        if issuer.contains(':') {
+            return Err(TotpUrlError::Issuer);
+        }
+        if label.contains(':') {
+            return Err(TotpUrlError::Label);
+        }
         if secret.is_empty() {
             return Err(TotpUrlError::Secret);
         }
@@ -271,12 +302,17 @@ impl<T: AsRef<[u8]>> TOTP<T> {
     }
 
     /// Will generate a standard URL used to automatically add TOTP auths. Usually used with qr codes
-    pub fn get_url(&self, label: &str, issuer: &str) -> String {
+    /// 
+    /// Label and issuer will be URL-encoded if needed be
+    /// Secret will be base 32'd without padding, as per RFC.
+    pub fn get_url(&self) -> String {
+        let label: String = url::form_urlencoded::byte_serialize(self.label.as_bytes()).collect();
+        let issuer: String = url::form_urlencoded::byte_serialize(self.issuer.as_bytes()).collect();
         format!(
             "otpauth://totp/{}?secret={}&issuer={}&digits={}&algorithm={}",
-            label.to_string(),
+            label,
             self.get_secret_base32(),
-            issuer.to_string(),
+            issuer,
             self.digits.to_string(),
             self.algorithm,
         )

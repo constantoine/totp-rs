@@ -15,7 +15,7 @@ categories = ["authentication", "web-programming"]
 features = [ "qr", "serde_support", "otpauth" ]
 
 [features]
-default = []
+default = ["otpauth"]
 qr = ["qrcodegen", "image", "base64"]
 serde_support = ["serde"]
 otpauth = ["url"]
