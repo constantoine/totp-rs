@@ -216,6 +216,21 @@ impl<T: AsRef<[u8]>> TOTP<T> {
         )
     }
 
+    /// Returns the timestamp of the first second for the next step
+    /// given the provided timestamp in seconds
+    pub fn next_step(&self, time: u64) -> u64 {
+        let step = time / self.step;
+
+        (step + 1) * self.step
+    }
+
+    /// Returns the timestamp of the first second of the next step
+    /// According to system time
+    pub fn next_step_current(&self)-> Result<u64, SystemTimeError> {
+        let t = system_time()?;
+        Ok(self.next_step(t))
+    }
+
     /// Generate a token from the current system time
     pub fn generate_current(&self) -> Result<String, SystemTimeError> {
         let t = system_time()?;
@@ -571,6 +586,21 @@ mod tests {
         assert!(
             totp.check("527544", 2000) && totp.check("712039", 2000) && totp.check("714250", 2000)
         );
+    }
+
+    #[test]
+    fn next_step() {
+        let totp = TOTP::new(Algorithm::SHA1, 6, 1, 30, "TestSecret", Some("Github".to_string()), "constantoine@github.com".to_string()).unwrap();
+        assert!(totp.next_step(0) == 30);
+        assert!(totp.next_step(29) == 30);
+        assert!(totp.next_step(30) == 60);
+    }
+
+    #[test]
+    fn next_step_current() {
+        let totp = TOTP::new(Algorithm::SHA1, 6, 1, 30, "TestSecret", Some("Github".to_string()), "constantoine@github.com".to_string()).unwrap();
+        let t = system_time().unwrap();
+        assert!(totp.next_step_current().unwrap() == totp.next_step(t));
     }
 
     #[test]
