@@ -10,9 +10,11 @@ Be aware that some authenticator apps will accept the `SHA256` and `SHA512` algo
 ## Features
 ---
 ### qr
-With optional feature "qr", you can use it to generate a base64 png qrcode
+With optional feature "qr", you can use it to generate a base64 png qrcode. This will enable feature `otpauth`
+### otpauth
+With optional feature "otpauth", support parsing the TOTP parameters from an `otpauth` URL, and generating an `otpauth` URL
 ### serde_support
-With optional feature "serde_support", library-defined types will be Deserialize-able and Serialize-able
+With optional feature "serde_support", library-defined types `TOTP` and `Algorithm` and will be Deserialize-able and Serialize-able
 
 ## How to use
 ---
@@ -36,8 +38,6 @@ fn main() {
         Some("Github".to_string()),
         "constantoine@github.com".to_string(),
     ).unwrap();
-    let url = totp.get_url();
-    println!("{}", url);
     let token = totp.generate_current().unwrap();
     println!("{}", token);   
 }
@@ -82,8 +82,9 @@ features = ["serde_support"]
 
 Add it to your `Cargo.toml`:
 ```toml
-[dependencies]
-totp-rs = "^2.0"
+[dependencies.totp-rs]
+version = "^2.0"
+features = ["otpauth"]
 ```
 You can then do something like:
 ```Rust

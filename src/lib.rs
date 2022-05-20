@@ -21,8 +21,6 @@
 //!     Some("Github".to_string()),
 //!     "constantoine@github.com".to_string(),
 //! ).unwrap();
-//! let url = totp.get_url();
-//! println!("{}", url);
 //! let token = totp.generate_current().unwrap();
 //! println!("{}", token);
 //! ```
@@ -40,6 +38,8 @@
 //!     Some("Github".to_string()),
 //!     "constantoine@github.com".to_string(),
 //! ).unwrap();
+//! let url = totp.get_url();
+//! println!("{}", url);
 //! let code = totp.get_qr().unwrap();
 //! println!("{}", code);
 //! # }
@@ -55,6 +55,7 @@ use core::fmt;
 #[cfg(feature = "qr")]
 use {base64, image::Luma, qrcodegen};
 
+#[cfg(feature = "otpauth")]
 use url::{Host, ParseError, Url};
 
 use hmac::Mac;
@@ -116,6 +117,7 @@ fn system_time() -> Result<u64, SystemTimeError> {
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum TotpUrlError {
+    #[cfg(feature = "otpauth")]
     Url(ParseError),
     Scheme,
     Host,
@@ -248,6 +250,7 @@ impl<T: AsRef<[u8]>> TOTP<T> {
     }
     
     /// Generate a TOTP from the standard otpauth URL
+    #[cfg(feature = "otpauth")]
     pub fn from_url<S: AsRef<str>>(url: S) -> Result<TOTP<Vec<u8>>, TotpUrlError> {
         let url = Url::parse(url.as_ref()).map_err(|err| TotpUrlError::Url(err))?;
         if url.scheme() != "otpauth" {
@@ -322,6 +325,7 @@ impl<T: AsRef<[u8]>> TOTP<T> {
     /// 
     /// Label and issuer will be URL-encoded if needed be
     /// Secret will be base 32'd without padding, as per RFC.
+    #[cfg(feature = "otpauth")]
     pub fn get_url(&self) -> String {
         let label: String;
         let account_name: String = url::form_urlencoded::byte_serialize(self.account_name.as_bytes()).collect();
@@ -481,6 +485,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "otpauth")]
     fn url_for_secret_matches_sha1_without_issuer() {
         let totp = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecret", None, "constantoine@github.com".to_string()).unwrap();
         let url = totp.get_url();
@@ -488,6 +493,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "otpauth")]
     fn url_for_secret_matches_sha1() {
         let totp = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecret", Some("Github".to_string()), "constantoine@github.com".to_string()).unwrap();
         let url = totp.get_url();
@@ -495,6 +501,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "otpauth")]
     fn url_for_secret_matches_sha256() {
         let totp = TOTP::new(Algorithm::SHA256, 6, 1, 1, "TestSecret", Some("Github".to_string()), "constantoine@github.com".to_string()).unwrap();
         let url = totp.get_url();
@@ -502,6 +509,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "otpauth")]
     fn url_for_secret_matches_sha512() {
         let totp = TOTP::new(Algorithm::SHA512, 6, 1, 1, "TestSecret", Some("Github".to_string()), "constantoine@github.com".to_string()).unwrap();
         let url = totp.get_url();
@@ -566,6 +574,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "otpauth")]
     fn from_url_err() {
         assert!(TOTP::<Vec<u8>>::from_url("otpauth://hotp/123").is_err());
         assert!(TOTP::<Vec<u8>>::from_url("otpauth://totp/GitHub:test").is_err());
@@ -573,6 +582,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "otpauth")]
     fn from_url_default() {
         let totp = TOTP::<Vec<u8>>::from_url("otpauth://totp/GitHub:test?secret=ABC").unwrap();
         assert_eq!(totp.secret, base32::decode(base32::Alphabet::RFC4648 { padding: false }, "ABC").unwrap());
@@ -583,6 +593,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "otpauth")]
     fn from_url_query() {
         let totp = TOTP::<Vec<u8>>::from_url("otpauth://totp/GitHub:test?secret=ABC&digits=8&period=60&algorithm=SHA256").unwrap();
         assert_eq!(totp.secret, base32::decode(base32::Alphabet::RFC4648 { padding: false }, "ABC").unwrap());
@@ -593,6 +604,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "otpauth")]
     fn from_url_query_different_issuers() {
         let totp = TOTP::<Vec<u8>>::from_url("otpauth://totp/GitHub:test?issuer=Gitlab&secret=ABC&digits=8&period=60&algorithm=SHA256");
         assert_eq!(totp.is_err(), true);
