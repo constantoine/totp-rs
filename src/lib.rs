@@ -57,6 +57,8 @@ use {base64, image::Luma, qrcodegen};
 
 #[cfg(feature = "otpauth")]
 use url::{Host, ParseError, Url};
+#[cfg(feature = "otpauth")]
+use urlencoding;
 
 use hmac::Mac;
 use std::time::{SystemTime, SystemTimeError, UNIX_EPOCH};
@@ -280,16 +282,18 @@ impl<T: AsRef<[u8]>> TOTP<T> {
         let mut step = 30;
         let mut secret = Vec::new();
         let mut issuer: Option<String> = None;
-        let account_name: String;
+        let mut account_name: String;
 
-        let path = url.path();
+        let path = url.path().trim_start_matches('/');
         if path.contains(':') {
             let parts = path.split_once(':').unwrap();
-            issuer = Some(parts.0.to_owned());
+            issuer = Some(urlencoding::decode(parts.0.to_owned().as_str()).map_err(|_| TotpUrlError::Issuer)?.to_string());
             account_name = parts.1.trim_start_matches(':').to_owned();
         } else {
             account_name = path.to_owned();
         }
+        
+        account_name = urlencoding::decode(account_name.as_str()).map_err(|_| TotpUrlError::AccountName)?.to_string();
 
         for (key, value) in url.query_pairs() {
             match key.as_ref() {
@@ -343,9 +347,9 @@ impl<T: AsRef<[u8]>> TOTP<T> {
     #[cfg(feature = "otpauth")]
     pub fn get_url(&self) -> String {
         let label: String;
-        let account_name: String = url::form_urlencoded::byte_serialize(self.account_name.as_bytes()).collect();
+        let account_name: String = urlencoding::encode(self.account_name.as_str()).to_string();
         if self.issuer.is_some() {
-            let issuer: String = url::form_urlencoded::byte_serialize(self.issuer.as_ref().unwrap().as_bytes()).collect();
+            let issuer: String = urlencoding::encode(self.issuer.as_ref().unwrap().as_str()).to_string();
             label = format!("{0}:{1}?issuer={0}&", issuer, account_name);
         } else {
             label = format!("{}?", account_name);
@@ -626,6 +630,33 @@ mod tests {
     #[cfg(feature = "otpauth")]
     fn from_url_query() {
         let totp = TOTP::<Vec<u8>>::from_url("otpauth://totp/GitHub:test?secret=ABC&digits=8&period=60&algorithm=SHA256").unwrap();
+        assert_eq!(totp.secret, base32::decode(base32::Alphabet::RFC4648 { padding: false }, "ABC").unwrap());
+        assert_eq!(totp.algorithm, Algorithm::SHA256);
+        assert_eq!(totp.digits, 8);
+        assert_eq!(totp.skew, 1);
+        assert_eq!(totp.step, 60);
+    }
+
+    #[test]
+    #[cfg(feature = "otpauth")]
+    fn from_url_to_url() {
+        let totp = TOTP::<Vec<u8>>::from_url("otpauth://totp/Github:constantoine%40github.com?issuer=Github&secret=KRSXG5CTMVRXEZLU&digits=6&algorithm=SHA1").unwrap();
+        let totp_bis = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecret", Some("Github".to_string()), "constantoine@github.com".to_string()).unwrap();
+        assert_eq!(totp.get_url(), totp_bis.get_url());
+    }
+
+    #[test]
+    #[cfg(feature = "otpauth")]
+    fn from_url_issuer_special() {
+        let totp = TOTP::<Vec<u8>>::from_url("otpauth://totp/Github%40:constantoine%40github.com?issuer=Github%40&secret=KRSXG5CTMVRXEZLU&digits=6&algorithm=SHA1").unwrap();
+        let totp_bis = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecret", Some("Github@".to_string()), "constantoine@github.com".to_string()).unwrap();
+        assert_eq!(totp.get_url(), totp_bis.get_url());
+    }
+
+    #[test]
+    #[cfg(feature = "otpauth")]
+    fn from_url_query_issuer() {
+        let totp = TOTP::<Vec<u8>>::from_url("otpauth://totp/GitHub:test?issuer=GitHub&secret=ABC&digits=8&period=60&algorithm=SHA256").unwrap();
         assert_eq!(totp.secret, base32::decode(base32::Alphabet::RFC4648 { padding: false }, "ABC").unwrap());
         assert_eq!(totp.algorithm, Algorithm::SHA256);
         assert_eq!(totp.digits, 8);
