@@ -1,6 +1,6 @@
 [package]
 name = "totp-rs"
-version = "2.0.0"
+version = "2.0.1"
 authors = ["Cleo Rebert <cleo.rebert@gmail.com>"]
 edition = "2021"
 readme = "README.md"
@@ -12,11 +12,11 @@ keywords = ["authentication", "2fa", "totp", "hmac", "otp"]
 categories = ["authentication", "web-programming"]
 
 [package.metadata.docs.rs]
-features = [ "qr", "serde_support" ]
+features = [ "qr", "serde_support", "otpauth" ]
 
 [features]
 default = []
-otpauth = ["url"]
+otpauth = ["url", "urlencoding"]
 qr = ["qrcodegen", "image", "base64", "otpauth"]
 serde_support = ["serde"]
 
@@ -26,7 +26,8 @@ sha2 = "~0.10.2"
 sha-1 = "~0.10.0"
 hmac = "~0.12.1"
 base32 = "~0.4"
-url = { version = "2.2.2", optional = true } 
+urlencoding = { version = "^2.1.0", optional = true}
+url = { version = "^2.2.2", optional = true } 
 constant_time_eq = "~0.2.1"
 qrcodegen = { version = "~1.8", optional = true }
 image = { version = "~0.24.2", features = ["png"], optional = true, default-features = false}
