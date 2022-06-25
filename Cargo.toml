@@ -32,3 +32,4 @@ constant_time_eq = "~0.2.1"
 qrcodegen = { version = "~1.8", optional = true }
 image = { version = "~0.24.2", features = ["png"], optional = true, default-features = false}
 base64 = { version = "~0.13", optional = true }
+thiserror = "~1.0"
