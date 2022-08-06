@@ -1,7 +1,7 @@
 //! This library permits the creation of 2FA authentification tokens per TOTP, the verification of said tokens, with configurable time skew, validity time of each token, algorithm and number of digits! Default features are kept as low-dependency as possible to ensure small binaries and short compilation time
 //!
-//! Be aware that some authenticator apps will accept the `SHA256` 
-//! and `SHA512` algorithms but silently fallback to `SHA1` which will 
+//! Be aware that some authenticator apps will accept the `SHA256`
+//! and `SHA512` algorithms but silently fallback to `SHA1` which will
 //! make the `check()` function fail due to mismatched algorithms.
 //!
 //! Use the `SHA1` algorithm to avoid this problem.
@@ -178,7 +178,7 @@ impl<T: AsRef<[u8]>> TOTP<T> {
     /// Will create a new instance of TOTP with given parameters. See [the doc](struct.TOTP.html#fields) for reference as to how to choose those values
     ///
     /// # Errors
-    /// 
+    ///
     /// Will return an error in case issuer or label contain the character ':'
     pub fn new(algorithm: Algorithm, digits: usize, skew: u8, step: u64, secret: T, issuer: Option<String>, account_name: String) -> Result<TOTP<T>, TotpUrlError> {
         if issuer.is_some() && issuer.as_ref().unwrap().contains(':') {
@@ -233,6 +233,12 @@ impl<T: AsRef<[u8]>> TOTP<T> {
         Ok(self.next_step(t))
     }
 
+    /// Give the ttl (in seconds) of the current token
+    pub fn ttl(&self) -> Result<u64, SystemTimeError> {
+        let t = system_time()?;
+        Ok(self.step - (t % self.step))
+    }
+
     /// Generate a token from the current system time
     pub fn generate_current(&self) -> Result<String, SystemTimeError> {
         let t = system_time()?;
@@ -244,7 +250,7 @@ impl<T: AsRef<[u8]>> TOTP<T> {
         let basestep = time / self.step - (self.skew as u64);
         for i in 0..self.skew * 2 + 1 {
             let step_time = (basestep + (i as u64)) * (self.step as u64);
-            
+
             if constant_time_eq(self.generate(step_time).as_bytes(), token.as_bytes()) {
                 return true;
             }
@@ -265,7 +271,7 @@ impl<T: AsRef<[u8]>> TOTP<T> {
             self.secret.as_ref(),
         )
     }
-    
+
     /// Generate a TOTP from the standard otpauth URL
     #[cfg(feature = "otpauth")]
     pub fn from_url<S: AsRef<str>>(url: S) -> Result<TOTP<Vec<u8>>, TotpUrlError> {
@@ -276,7 +282,7 @@ impl<T: AsRef<[u8]>> TOTP<T> {
         if url.host() != Some(Host::Domain("totp")) {
             return Err(TotpUrlError::Host);
         }
-        
+
         let mut algorithm = Algorithm::SHA1;
         let mut digits = 6;
         let mut step = 30;
@@ -292,7 +298,7 @@ impl<T: AsRef<[u8]>> TOTP<T> {
         } else {
             account_name = path.to_owned();
         }
-        
+
         account_name = urlencoding::decode(account_name.as_str()).map_err(|_| TotpUrlError::AccountName)?.to_string();
 
         for (key, value) in url.query_pairs() {
@@ -341,7 +347,7 @@ impl<T: AsRef<[u8]>> TOTP<T> {
     }
 
     /// Will generate a standard URL used to automatically add TOTP auths. Usually used with qr codes
-    /// 
+    ///
     /// Label and issuer will be URL-encoded if needed be
     /// Secret will be base 32'd without padding, as per RFC.
     #[cfg(feature = "otpauth")]
@@ -383,12 +389,12 @@ impl<T: AsRef<[u8]>> TOTP<T> {
         let mut vec = Vec::new();
         let qr = qrcodegen::QrCode::encode_text(&url, qrcodegen::QrCodeEcc::Medium)?;
         let size = qr.size() as u32;
-        
+
         // "+ 8 * 8" is here to add padding (the white border around the QRCode)
-        // As some QRCode readers don't work without padding 
+        // As some QRCode readers don't work without padding
         let image_size = size * 8 + 8 * 8;
         let mut canvas = image::GrayImage::new(image_size, image_size);
-        
+
         // Draw the border
         for x in 0..image_size {
             for y in 0..image_size {
@@ -405,12 +411,12 @@ impl<T: AsRef<[u8]>> TOTP<T> {
                 // This clever trick to one-line the value was achieved with advanced mathematics
                 // And deep understanding of Boolean algebra.
                 let val = !qr.get_module(x_qr as i32, y_qr as i32) as u8 * 255;
-                
+
                 // Multiply coordinates by width of pixels
                 // And take into account the 8*4 padding on top and left side
                 let x_start = x_qr * 8 + 8*4;
                 let y_start = y_qr * 8 + 8*4;
-                
+
                 // Draw a 8-pixels-wide square
                 for x_img in x_start..x_start + 8 {
                     for y_img in y_start..y_start + 8 {
