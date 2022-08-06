@@ -45,6 +45,8 @@
 //! # }
 //! ```
 
+mod secret;
+pub use secret::{Secret, SecretParseError};
 pub use base32;
 
 use constant_time_eq::constant_time_eq;
