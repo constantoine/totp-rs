@@ -29,7 +29,7 @@ impl std::fmt::Display for Rfc6238Error {
     }
 }
 
-fn assert_digits(digits: &usize) -> Result<(), Rfc6238Error> {
+pub fn assert_digits(digits: &usize) -> Result<(), Rfc6238Error> {
     if !(&6..=&8).contains(&digits) {
         Err(Rfc6238Error::InvalidDigits)
     } else {
