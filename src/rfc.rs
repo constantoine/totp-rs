@@ -9,21 +9,23 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Eq, PartialEq)]
 pub enum Rfc6238Error {
     /// Implementations MUST extract a 6-digit code at a minimum and possibly 7 and 8-digit code
-    InvalidDigits,
+    InvalidDigits(usize),
     /// The length of the shared secret MUST be at least 128 bits
-    SecretTooSmall,
+    SecretTooSmall(usize),
 }
 
 impl std::fmt::Display for Rfc6238Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Rfc6238Error::InvalidDigits => write!(
+            Rfc6238Error::InvalidDigits(digits) => write!(
                 f,
-                "Implementations MUST extract a 6-digit code at a minimum and possibly 7 and 8-digit code"
+                "Implementations MUST extract a 6-digit code at a minimum and possibly 7 and 8-digit code. {} digits is not allowed",
+                digits,
             ),
-            Rfc6238Error::SecretTooSmall => write!(
+            Rfc6238Error::SecretTooSmall(bits) => write!(
                 f,
-                "The length of the shared secret MUST be at least 128 bits"
+                "The length of the shared secret MUST be at least 128 bits. {} bits is not enough",
+                bits,
             ),
         }
     }
@@ -31,7 +33,15 @@ impl std::fmt::Display for Rfc6238Error {
 
 pub fn assert_digits(digits: &usize) -> Result<(), Rfc6238Error> {
     if !(&6..=&8).contains(&digits) {
-        Err(Rfc6238Error::InvalidDigits)
+        Err(Rfc6238Error::InvalidDigits(*digits))
+    } else {
+        Ok(())
+    }
+}
+
+pub fn assert_secret_length(secret: &[u8]) -> Result<(), Rfc6238Error> {
+    if secret.as_ref().len() < 16 {
+        Err(Rfc6238Error::SecretTooSmall(secret.as_ref().len() * 8))
     } else {
         Ok(())
     }
@@ -91,19 +101,17 @@ impl<T: AsRef<[u8]>> Rfc6238<T> {
         account_name: String,
     ) -> Result<Rfc6238<T>, Rfc6238Error> {
         assert_digits(&digits)?;
-        if secret.as_ref().len() < 16 {
-            Err(Rfc6238Error::SecretTooSmall)
-        } else {
-            Ok(Rfc6238 {
-                algorithm: Algorithm::SHA1,
-                digits,
-                skew: 1,
-                step: 30,
-                secret,
-                issuer,
-                account_name,
-            })
-        }
+        assert_secret_length(secret.as_ref())?;
+        
+        Ok(Rfc6238 {
+            algorithm: Algorithm::SHA1,
+            digits,
+            skew: 1,
+            step: 30,
+            secret,
+            issuer,
+            account_name,
+        })
     }
 
     /// Create an [rfc-6238](https://tools.ietf.org/html/rfc6238) compliant set of options that can be turned into a [TOTP](struct.TOTP.html),
@@ -173,9 +181,9 @@ mod tests {
                 ISSUER.map(str::to_string),
                 ACCOUNT.to_string(),
             );
-            if x < 6 || x > 8 {
+            if !(6..=8).contains(&x) {
                 assert!(rfc.is_err());
-                assert_eq!(rfc.unwrap_err(), Rfc6238Error::InvalidDigits)
+                assert!(matches!(rfc.unwrap_err(), Rfc6238Error::InvalidDigits(_)));
             } else {
                 assert!(rfc.is_ok());
             }
@@ -196,9 +204,9 @@ mod tests {
             let rfc_default = Rfc6238::with_defaults(secret.clone());
             if secret.len() < 16 {
                 assert!(rfc.is_err());
-                assert_eq!(rfc.unwrap_err(), Rfc6238Error::SecretTooSmall);
+                assert!(matches!(rfc.unwrap_err(), Rfc6238Error::SecretTooSmall(_)));
                 assert!(rfc_default.is_err());
-                assert_eq!(rfc_default.unwrap_err(), Rfc6238Error::SecretTooSmall);
+                assert!(matches!(rfc_default.unwrap_err(), Rfc6238Error::SecretTooSmall(_)));
             } else {
                 assert!(rfc.is_ok());
                 assert!(rfc_default.is_ok());
@@ -238,7 +246,7 @@ mod tests {
         .unwrap();
         let totp = TOTP::try_from(rfc);
         assert!(totp.is_err());
-        assert_eq!(totp.unwrap_err(), TotpUrlError::AccountName)
+        assert!(matches!(totp.unwrap_err(), TotpUrlError::AccountName(_)))
     }
 
     #[test]
@@ -252,7 +260,7 @@ mod tests {
         assert_eq!(rfc.account_name, new_account.to_string());
         let fail = rfc.digits(4);
         assert!(fail.is_err());
-        assert_eq!(fail.unwrap_err(), Rfc6238Error::InvalidDigits);
+        assert!(matches!(fail.unwrap_err(), Rfc6238Error::InvalidDigits(_)));
         assert_eq!(rfc.digits, 6);
         let ok = rfc.digits(8);
         assert!(ok.is_ok());
