@@ -2,6 +2,9 @@ use crate::Algorithm;
 use crate::TotpUrlError;
 use crate::TOTP;
 
+#[cfg(feature = "serde_support")]
+use serde::{Deserialize, Serialize};
+
 /// Data is not compliant to [rfc-6238](https://tools.ietf.org/html/rfc6238)
 #[derive(Debug, Eq, PartialEq)]
 pub enum Rfc6238Error {
