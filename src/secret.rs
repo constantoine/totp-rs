@@ -1,5 +1,4 @@
 use std::string::FromUtf8Error;
-
 use base32::{self, Alphabet};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -8,126 +7,123 @@ pub enum SecretParseError {
     Utf8Error(FromUtf8Error),
 }
 
-/// Representation of a secret either in "plain text" or "base 32" encoded
+/// Representation of a secret either a "raw" \[u8\] or "base 32" encoded String
 ///
 /// # Examples
 ///
-/// - Create a TOTP from a "plain text" secret
+/// - Create a TOTP from a "raw" secret
 /// ```
 /// use totp_rs::{Secret, TOTP, Algorithm};
 ///
-/// let secret = Secret::Plain(String::from("my-secret"));
-/// let totp_plain = TOTP::new(
+/// let secret = [
+///     0x70, 0x6c, 0x61, 0x69, 0x6e, 0x2d, 0x73, 0x74, 0x72, 0x69, 0x6e, 0x67, 0x2d, 0x73, 0x65,
+///     0x63, 0x72, 0x65, 0x74, 0x2d, 0x31, 0x32, 0x33,
+/// ];
+/// let secret_raw = Secret::Raw(secret.to_vec());
+/// let totp_raw = TOTP::new(
 ///     Algorithm::SHA1,
 ///     6,
 ///     1,
 ///     30,
-///     secret.as_bytes().unwrap(),
+///     secret_raw.to_bytes().unwrap(),
 ///     None,
 ///     "account".to_string(),
 /// ).unwrap();
 ///
-/// println!("code from plain text:\t{}", totp_plain.generate_current().unwrap());
+/// println!("code from raw secret:\t{}", totp_raw.generate_current().unwrap());
 /// ```
 ///
 /// - Create a TOTP from a base32 encoded secret
 /// ```
 /// use totp_rs::{Secret, TOTP, Algorithm};
 ///
-/// let secret = Secret::Base32(String::from("NV4S243FMNZGK5A"));
-/// let totp_base32 = TOTP::new(
+/// let secret_b32 = Secret::Encoded(String::from("OBWGC2LOFVZXI4TJNZTS243FMNZGK5BNGEZDG"));
+/// let totp_b32 = TOTP::new(
 ///     Algorithm::SHA1,
 ///     6,
 ///     1,
 ///     30,
-///     secret.as_bytes().unwrap(),
+///     secret_b32.to_bytes().unwrap(),
 ///     None,
 ///     "account".to_string(),
 /// ).unwrap();
 ///
-/// println!("code from base32:\t{}", totp_base32.generate_current().unwrap());
-///
+/// println!("code from base32:\t{}", totp_b32.generate_current().unwrap());
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Secret {
-    /// represent a non-encoded "plain text" secret
-    Plain(String),
+    /// represent a non-encoded "raw" secret
+    Raw(Vec<u8>),
     /// represent a base32 encoded secret
-    Base32(String),
+    Encoded(String),
 }
 
 impl Secret {
-    /// Get the inner String value of the enum variant
-    pub fn inner(&self) -> &String {
-        match self {
-            Secret::Plain(s) => s,
-            Secret::Base32(s) => s,
-        }
-    }
 
     /// Get the inner String value as a Vec of bytes
-    pub fn as_bytes(&self) -> Result<Vec<u8>, SecretParseError> {
+    pub fn to_bytes(&self) -> Result<Vec<u8>, SecretParseError> {
         match self {
-            Secret::Plain(s) => Ok(s.as_bytes().to_vec()),
-            Secret::Base32(s) => match base32::decode(Alphabet::RFC4648 { padding: false }, s) {
+            Secret::Raw(s) => Ok(s.to_vec()),
+            Secret::Encoded(s) => match base32::decode(Alphabet::RFC4648 { padding: false }, s) {
                 Some(bytes) => Ok(bytes),
                 None => Err(SecretParseError::ParseBase32),
             },
         }
     }
 
-    /// Transforms a `Secret::Base32` into a `Secret::Plain`
-    pub fn as_plain(&self) -> Result<Self, SecretParseError> {
+    /// Try to transform a `Secret::Encoded` into a `Secret::Raw`
+    pub fn to_raw(&self) -> Result<Self, SecretParseError> {
         match self {
-            Secret::Plain(_) => Ok(self.clone()),
-            Secret::Base32(s) => match base32::decode(Alphabet::RFC4648 { padding: false }, s) {
-                Some(buf) => match String::from_utf8(buf) {
-                    Ok(str) => Ok(Secret::Plain(str)),
-                    Err(e) => Err(SecretParseError::Utf8Error(e)),
-                },
+            Secret::Raw(_) => Ok(self.clone()),
+            Secret::Encoded(s) => match base32::decode(Alphabet::RFC4648 { padding: false }, s) {
+                Some(buf) => Ok(Secret::Raw(buf)),
                 None => Err(SecretParseError::ParseBase32),
             },
         }
     }
 
-    /// Transforms a `Secret::Plain` into a `Secret::Base32`
-    pub fn as_base32(&self) -> Self {
+    /// Try to transforms a `Secret::Raw` into a `Secret::Encoded`
+    pub fn to_encoded(&self) -> Self {
         match self {
-            Secret::Plain(s) => Secret::Base32(base32::encode(
+            Secret::Raw(s) => Secret::Encoded(base32::encode(
                 Alphabet::RFC4648 { padding: false },
-                s.as_ref(),
+                &s,
             )),
-            Secret::Base32(_) => self.clone(),
+            Secret::Encoded(_) => self.clone(),
         }
     }
 
     /// ⚠️ requires feature `gen_secret`
     ///
-    /// Generate a CSPRNG alpha-numeric string of length `size`
-    #[cfg(feature = "gen_secret")]
-    pub fn generate_secret(size: usize) -> Secret {
-        use rand::distributions::{Alphanumeric, DistString};
-        Secret::Plain(Alphanumeric.sample_string(&mut rand::thread_rng(), size))
-    }
-
-    /// ⚠️ requires feature `gen_secret`
-    ///
-    /// Generate a CSPRNG alpha-numeric string of length 20,
-    /// the recomended size from [rfc-4226](https://tools.ietf.org/html/rfc4226)
+    /// Generate a CSPRNG binary value of 160 bits,
+    /// the recomended size from [rfc-4226](https://www.rfc-editor.org/rfc/rfc4226#section-4)
     ///
     /// > The length of the shared secret MUST be at least 128 bits.
     /// > This document RECOMMENDs a shared secret length of 160 bits.
+    ///
+    /// ⚠️ The generated secret is not guaranteed to be a valid UTF-8 sequence
     #[cfg(feature = "gen_secret")]
-    pub fn generate_rfc_secret() -> Secret {
-        Secret::generate_secret(20)
+    pub fn generate_secret() -> Secret {
+        use rand::Rng;
+
+        let mut rng = rand::thread_rng();
+        let mut secret: [u8; 20] = Default::default();
+        rng.fill(&mut secret);
+        Secret::Raw(secret.to_vec())
     }
 }
 
 impl std::fmt::Display for Secret {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Secret::Plain(s) => write!(f, "{}", s),
-            Secret::Base32(s) => write!(f, "{}", s),
+            Secret::Raw(bytes) => {
+                let mut s: String = String::new();
+                for b in bytes {
+                    s = format!("{}{:02x}", &s, &b);
+                }
+                write!(f, "{}", s)
+            },
+            Secret::Encoded(s) => write!(f, "{}", s),
         }
     }
 }
@@ -136,50 +132,49 @@ impl std::fmt::Display for Secret {
 mod tests {
     use super::Secret;
 
-    const PLAIN: &str = "plain-string-secret-123";
     const BASE32: &str = "OBWGC2LOFVZXI4TJNZTS243FMNZGK5BNGEZDG";
     const BYTES: [u8; 23] = [
         0x70, 0x6c, 0x61, 0x69, 0x6e, 0x2d, 0x73, 0x74, 0x72, 0x69, 0x6e, 0x67, 0x2d, 0x73, 0x65,
         0x63, 0x72, 0x65, 0x74, 0x2d, 0x31, 0x32, 0x33,
     ];
+    const BYTES_DISPLAY: &str = "706c61696e2d737472696e672d7365637265742d313233";
 
     #[test]
-    fn secret_convert_base32_plain() {
-        let plain_str = String::from(PLAIN);
+    fn secret_display() {
         let base32_str = String::from(BASE32);
-        let secret_plain = Secret::Plain(plain_str.clone());
-        let secret_base32 = Secret::Base32(base32_str.clone());
+        let secret_raw = Secret::Raw(BYTES.to_vec());
+        let secret_base32 = Secret::Encoded(base32_str.clone());
+        println!("{}", secret_raw);
+        assert_eq!(secret_raw.to_string(), BYTES_DISPLAY.to_string());
+        assert_eq!(secret_base32.to_string(), BASE32.to_string());
+    }
 
-        assert_eq!(&secret_plain.as_base32(), &secret_base32);
-        assert_eq!(&secret_plain.as_plain().unwrap(), &secret_plain);
+    #[test]
+    fn secret_convert_base32_raw() {
+        let base32_str = String::from(BASE32);
+        let secret_raw = Secret::Raw(BYTES.to_vec());
+        let secret_base32 = Secret::Encoded(base32_str.clone());
 
-        assert_eq!(&secret_base32.as_plain().unwrap(), &secret_plain);
-        assert_eq!(&secret_base32.as_base32(), &secret_base32);
+        assert_eq!(&secret_raw.to_encoded(), &secret_base32);
+        assert_eq!(&secret_raw.to_raw().unwrap(), &secret_raw);
+
+        assert_eq!(&secret_base32.to_raw().unwrap(), &secret_raw);
+        assert_eq!(&secret_base32.to_encoded(), &secret_base32);
     }
 
     #[test]
     fn secret_as_bytes() {
-        let plain_str = String::from(PLAIN);
         let base32_str = String::from(BASE32);
-        assert_eq!(Secret::Plain(plain_str).as_bytes().unwrap(), BYTES.to_vec());
-        assert_eq!(Secret::Base32(base32_str).as_bytes().unwrap(), BYTES.to_vec());
+        assert_eq!(Secret::Raw(BYTES.to_vec()).to_bytes().unwrap(), BYTES.to_vec());
+        assert_eq!(Secret::Encoded(base32_str).to_bytes().unwrap(), BYTES.to_vec());
     }
 
     #[test]
     #[cfg(feature = "gen_secret")]
     fn secret_gen_secret() {
-        match Secret::generate_secret(10) {
-            Secret::Plain(secret) => assert_eq!(secret.len(), 10),
-            Secret::Base32(_) => panic!("should be plain"),
-        }
-    }
-
-    #[test]
-    #[cfg(feature = "gen_secret")]
-    fn secret_gen_rfc_secret() {
-        match Secret::generate_rfc_secret() {
-            Secret::Plain(secret) => assert_eq!(secret.len(), 20),
-            Secret::Base32(_) => panic!("should be plain"),
+        match Secret::generate_secret() {
+            Secret::Raw(secret) => assert_eq!(secret.len(), 20),
+            Secret::Encoded(_) => panic!("should be raw"),
         }
     }
 }
