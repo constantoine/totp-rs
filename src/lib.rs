@@ -175,12 +175,12 @@ impl<T: AsRef<[u8]>> TOTP<T> {
     /// Will create a new instance of TOTP with given parameters. See [the doc](struct.TOTP.html#fields) for reference as to how to choose those values
     ///
     /// # Description
-    /// * `secret`: expect a non-encoded value, base32 encoded values should be decoded beforehand
-    /// ```
-    /// use totp_rs::{base32, TOTP, Algorithm};
-    /// let secret = String::from("NV4S243FMNZGK5A");
-    /// let decoded = base32::decode(base32::Alphabet::RFC4648 { padding: false }, &secret).unwrap();
-    /// let totp = TOTP::new(Algorithm::SHA1, 6, 1, 30, decoded, None, "".to_string()).unwrap();
+    /// * `secret`: expect a non-encoded value, to pass in base32 string use `Secret::Encoded(String)`
+    ///
+    /// ```rust
+    /// use totp_rs::{Secret, TOTP, Algorithm};
+    /// let secret = Secret::Encoded("OBWGC2LOFVZXI4TJNZTS243FMNZGK5BNGEZDG".to_string());
+    /// let totp = TOTP::new(Algorithm::SHA1, 6, 1, 30, secret.to_bytes().unwrap(), None, "".to_string()).unwrap();
     /// ```
     /// * `digits`: MUST be between 6 & 8
     /// * `secret`: Must have bitsize of at least 128
@@ -632,7 +632,7 @@ mod tests {
         assert!(TOTP::<Vec<u8>>::from_url("otpauth://totp/GitHub:test").is_err());
         assert!(TOTP::<Vec<u8>>::from_url("otpauth://totp/GitHub:test:?secret=ABC&digits=8&period=60&algorithm=SHA256").is_err());
         assert!(TOTP::<Vec<u8>>::from_url("otpauth://totp/Github:constantoine%40github.com?issuer=GitHub&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA1").is_err())
-        
+
     }
 
     #[test]
