@@ -46,7 +46,10 @@
 //! ```
 
 mod secret;
+mod rfc;
+
 pub use secret::{Secret, SecretParseError};
+pub use rfc::{Rfc6238, Rfc6238Error};
 pub use base32;
 
 use constant_time_eq::constant_time_eq;
@@ -135,6 +138,15 @@ pub enum TotpUrlError {
     AccountName,
 }
 
+impl From<Rfc6238Error> for TotpUrlError {
+    fn from(e: Rfc6238Error) -> Self {
+        match e {
+            Rfc6238Error::InvalidDigits => TotpUrlError::Digits,
+            Rfc6238Error::SecretTooSmall => TotpUrlError::Secret,
+        }
+    }
+}
+
 /// TOTP holds informations as to how to generate an auth code and validate it. Its [secret](struct.TOTP.html#structfield.secret) field is sensitive data, treat it accordingly
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde_support", derive(Serialize, Deserialize))]
@@ -191,11 +203,13 @@ impl<T: AsRef<[u8]>> TOTP<T> {
     /// let decoded = base32::decode(base32::Alphabet::RFC4648 { padding: false }, &secret).unwrap();
     /// let totp = TOTP::new(Algorithm::SHA1, 6, 1, 30, decoded, None, "".to_string()).unwrap();
     /// ```
+    /// * `digits`: MUST be between 6 & 8
     ///
     /// # Errors
     ///
     /// Will return an error in case issuer or label contain the character ':'
     pub fn new(algorithm: Algorithm, digits: usize, skew: u8, step: u64, secret: T, issuer: Option<String>, account_name: String) -> Result<TOTP<T>, TotpUrlError> {
+        crate::rfc::assert_digits(&digits)?;
         if issuer.is_some() && issuer.as_ref().unwrap().contains(':') {
             return Err(TotpUrlError::Issuer);
         }
@@ -211,6 +225,15 @@ impl<T: AsRef<[u8]>> TOTP<T> {
             issuer,
             account_name,
         })
+    }
+
+    /// Will create a new instance of TOTP from the given [Rfc6238](struct.Rfc6238.html) struct
+    ///
+    /// # Errors
+    ///
+    /// Will return an error in case issuer or label contain the character ':'
+    pub fn from_rfc6238(rfc: Rfc6238<T>) -> Result<TOTP<T>, TotpUrlError> {
+        TOTP::try_from(rfc)
     }
 
     /// Will sign the given timestamp
@@ -246,6 +269,12 @@ impl<T: AsRef<[u8]>> TOTP<T> {
     pub fn next_step_current(&self)-> Result<u64, SystemTimeError> {
         let t = system_time()?;
         Ok(self.next_step(t))
+    }
+
+    /// Give the ttl (in seconds) of the current token
+    pub fn ttl(&self) -> Result<u64, SystemTimeError> {
+        let t = system_time()?;
+        Ok(self.step - (t % self.step))
     }
 
     /// Generate a token from the current system time
@@ -342,12 +371,6 @@ impl<T: AsRef<[u8]>> TOTP<T> {
             }
         }
 
-        if issuer.is_some() && issuer.as_ref().unwrap().contains(':') {
-            return Err(TotpUrlError::Issuer);
-        }
-        if account_name.contains(':') {
-            return Err(TotpUrlError::AccountName);
-        }
         if secret.is_empty() {
             return Err(TotpUrlError::Secret);
         }
