@@ -19,6 +19,7 @@ default = []
 otpauth = ["url", "urlencoding"]
 qr = ["qrcodegen", "image", "base64", "otpauth"]
 serde_support = ["serde"]
+gen_secret = ["rand"]
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"], optional = true }
@@ -27,8 +28,9 @@ sha-1 = "~0.10.0"
 hmac = "~0.12.1"
 base32 = "~0.4"
 urlencoding = { version = "^2.1.0", optional = true}
-url = { version = "^2.2.2", optional = true } 
+url = { version = "^2.2.2", optional = true }
 constant_time_eq = "~0.2.1"
 qrcodegen = { version = "~1.8", optional = true }
 image = { version = "~0.24.2", features = ["png"], optional = true, default-features = false}
 base64 = { version = "~0.13", optional = true }
+rand = { version = "~0.8.5", optional = true }

@@ -45,12 +45,14 @@
 //! # }
 //! ```
 
+mod secret;
 mod rfc;
-
 mod url_error;
-use url_error::TotpUrlError;
 
+pub use secret::{Secret, SecretParseError};
+use url_error::TotpUrlError;
 pub use rfc::{Rfc6238, Rfc6238Error};
+pub use base32;
 
 use constant_time_eq::constant_time_eq;
 
@@ -137,6 +139,8 @@ pub struct TOTP<T = Vec<u8>> {
     /// Duration in seconds of a step. The recommended value per [rfc-6238](https://tools.ietf.org/html/rfc6238#section-5.2) is 30 seconds
     pub step: u64,
     /// As per [rfc-4226](https://tools.ietf.org/html/rfc4226#section-4) the secret should come from a strong source, most likely a CSPRNG. It should be at least 128 bits, but 160 are recommended
+    ///
+    /// non-encoded value
     pub secret: T,
     /// The "Github" part of "Github:constantoine@github.com". Must not contain a colon `:`
     /// For example, the name of your service/website.
@@ -171,6 +175,13 @@ impl<T: AsRef<[u8]>> TOTP<T> {
     /// Will create a new instance of TOTP with given parameters. See [the doc](struct.TOTP.html#fields) for reference as to how to choose those values
     ///
     /// # Description
+    /// * `secret`: expect a non-encoded value, to pass in base32 string use `Secret::Encoded(String)`
+    ///
+    /// ```rust
+    /// use totp_rs::{Secret, TOTP, Algorithm};
+    /// let secret = Secret::Encoded("OBWGC2LOFVZXI4TJNZTS243FMNZGK5BNGEZDG".to_string());
+    /// let totp = TOTP::new(Algorithm::SHA1, 6, 1, 30, secret.to_bytes().unwrap(), None, "".to_string()).unwrap();
+    /// ```
     /// * `digits`: MUST be between 6 & 8
     /// * `secret`: Must have bitsize of at least 128
     /// * `account_name`: Must not contain `:`
@@ -621,7 +632,7 @@ mod tests {
         assert!(TOTP::<Vec<u8>>::from_url("otpauth://totp/GitHub:test").is_err());
         assert!(TOTP::<Vec<u8>>::from_url("otpauth://totp/GitHub:test:?secret=ABC&digits=8&period=60&algorithm=SHA256").is_err());
         assert!(TOTP::<Vec<u8>>::from_url("otpauth://totp/Github:constantoine%40github.com?issuer=GitHub&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA1").is_err())
-        
+
     }
 
     #[test]
