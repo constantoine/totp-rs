@@ -1,8 +1,7 @@
-#[cfg(not(feature = "gen_secret"))]
-compile_error!("requires feature gen_secret");
-
+#[cfg(all(feature = "gen_secret", feature = "otpauth"))]
 use totp_rs::{Secret, TOTP, Algorithm};
 
+#[cfg(all(feature = "gen_secret", feature = "otpauth"))]
 fn main () {
 
     let secret = Secret::generate_secret();
@@ -24,3 +23,6 @@ fn main () {
         totp.generate_current().unwrap()
     )
 }
+
+#[cfg(not(all(feature = "gen_secret", feature = "otpauth")))]
+fn main () {}
