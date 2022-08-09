@@ -44,7 +44,7 @@
 //! ```
 //! - Create a TOTP from a Generated Secret
 //! ```
-//! # #[cfg(feature = "gen_secret")] {
+//! # #[cfg(all(feature = "gen_secret", not(feature = "otpauth")))] {
 //! use totp_rs::{Secret, TOTP, Algorithm};
 //!
 //! let secret_b32 = Secret::default();
@@ -61,7 +61,7 @@
 //! ```
 //! - Create a TOTP from a Generated Secret 2
 //! ```
-//! # #[cfg(feature = "gen_secret")] {
+//! # #[cfg(all(feature = "gen_secret", not(feature = "otpauth")))] {
 //! use totp_rs::{Secret, TOTP, Algorithm};
 //!
 //! let secret_b32 = Secret::generate_secret();
