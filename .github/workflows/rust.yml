@@ -20,9 +20,21 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - name: Test
+    - name: All features
+      uses: actions/checkout@v2
       run: cargo test --all-features
+    - name: No feature
+      uses: actions/checkout@v2
+      run: cargo test
+    - name: otpauth feature
+      uses: actions/checkout@v2
+      run: cargo test --features=otpauth
+    - name: gen_secret feature
+      uses: actions/checkout@v2
+      run: cargo test --features=gen_secret
+    - name: otpauth+gensecret feature
+      uses: actions/checkout@v2
+      run: cargo test --features=gen_secret,otpauth
 
   coverage:
     runs-on: ubuntu-latest
