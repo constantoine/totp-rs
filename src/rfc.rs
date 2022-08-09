@@ -59,8 +59,6 @@ pub fn assert_secret_length(secret: &[u8]) -> Result<(), Rfc6238Error> {
 ///
 /// // optional, set digits, issuer, account_name
 /// rfc.digits(8).unwrap();
-/// rfc.issuer("issuer".to_string());
-/// rfc.account_name("user-account".to_string());
 ///
 /// let totp = TOTP::from_rfc6238(rfc).unwrap();
 /// ```
@@ -77,10 +75,12 @@ pub struct Rfc6238<T = Vec<u8>> {
     step: u64,
     /// As per [rfc-4226](https://tools.ietf.org/html/rfc4226#section-4) the secret should come from a strong source, most likely a CSPRNG. It should be at least 128 bits, but 160 are recommended
     secret: T,
+    #[cfg(feature = "otpauth")]
     /// The "Github" part of "Github:constantoine@github.com". Must not contain a colon `:`
     /// For example, the name of your service/website.
     /// Not mandatory, but strongly recommended!
     issuer: Option<String>,
+    #[cfg(feature = "otpauth")]
     /// The "constantoine@github.com" part of "Github:constantoine@github.com". Must not contain a colon `:`
     /// For example, the name of your user's account.
     account_name: String,
@@ -94,6 +94,7 @@ impl<T: AsRef<[u8]>> Rfc6238<T> {
     /// will return a [Rfc6238Error](enum.Rfc6238Error.html) when
     /// - `digits` is lower than 6 or higher than 8
     /// - `secret` is smaller than 128 bits (16 characters)
+    #[cfg(feature = "otpauth")]
     pub fn new(
         digits: usize,
         secret: T,
@@ -113,6 +114,22 @@ impl<T: AsRef<[u8]>> Rfc6238<T> {
             account_name,
         })
     }
+    #[cfg(not(feature = "otpauth"))]
+    pub fn new(
+        digits: usize,
+        secret: T,
+    ) -> Result<Rfc6238<T>, Rfc6238Error> {
+        assert_digits(&digits)?;
+        assert_secret_length(secret.as_ref())?;
+        
+        Ok(Rfc6238 {
+            algorithm: Algorithm::SHA1,
+            digits,
+            skew: 1,
+            step: 30,
+            secret,
+        })
+    }
 
     /// Create an [rfc-6238](https://tools.ietf.org/html/rfc6238) compliant set of options that can be turned into a [TOTP](struct.TOTP.html),
     /// with a default value of 6 for `digits`, None `issuer` and an empty account
@@ -122,8 +139,14 @@ impl<T: AsRef<[u8]>> Rfc6238<T> {
     /// will return a [Rfc6238Error](enum.Rfc6238Error.html) when
     /// - `digits` is lower than 6 or higher than 8
     /// - `secret` is smaller than 128 bits (16 characters)
+    #[cfg(feature = "otpauth")]
     pub fn with_defaults(secret: T) -> Result<Rfc6238<T>, Rfc6238Error> {
-        Rfc6238::new(6, secret, None, "".to_string())
+        Rfc6238::new(6, secret, Some("".to_string()), "".to_string())
+    }
+
+    #[cfg(not(feature = "otpauth"))]
+    pub fn with_defaults(secret: T) -> Result<Rfc6238<T>, Rfc6238Error> {
+        Rfc6238::new(6, secret)
     }
 
     /// Set the `digits`
@@ -133,17 +156,36 @@ impl<T: AsRef<[u8]>> Rfc6238<T> {
         Ok(())
     }
 
+    #[cfg(feature = "otpauth")]
     /// Set the `issuer`
     pub fn issuer(&mut self, value: String) {
         self.issuer = Some(value);
     }
 
-    /// Seet the `account_name`
+    #[cfg(feature = "otpauth")]
+    /// Set the `account_name`
     pub fn account_name(&mut self, value: String) {
         self.account_name = value;
     }
 }
 
+#[cfg(not(feature = "otpauth"))]
+impl<T: AsRef<[u8]>> TryFrom<Rfc6238<T>> for TOTP<T> {
+    type Error = TotpUrlError;
+
+    /// Try to create a [TOTP](struct.TOTP.html) from a [Rfc6238](struct.Rfc6238.html) config
+    fn try_from(rfc: Rfc6238<T>) -> Result<Self, Self::Error> {
+        TOTP::new(
+            rfc.algorithm,
+            rfc.digits,
+            rfc.skew,
+            rfc.step,
+            rfc.secret,
+        )
+    }
+}
+
+#[cfg(feature = "otpauth")]
 impl<T: AsRef<[u8]>> TryFrom<Rfc6238<T>> for TOTP<T> {
     type Error = TotpUrlError;
 
@@ -156,30 +198,39 @@ impl<T: AsRef<[u8]>> TryFrom<Rfc6238<T>> for TOTP<T> {
             rfc.step,
             rfc.secret,
             rfc.issuer,
-            rfc.account_name,
+            rfc.account_name
         )
     }
 }
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "otpauth")]
     use crate::TotpUrlError;
 
-    use super::{Rfc6238, Rfc6238Error, TOTP};
+    use super::{Rfc6238, TOTP};
+
+    #[cfg(not(feature = "otpauth"))]
+    use super::Rfc6238Error;
+
+    #[cfg(not(feature = "otpauth"))]
+    use crate::Secret;
 
     const GOOD_SECRET: &str = "01234567890123456789";
+    #[cfg(feature = "otpauth")]
     const ISSUER: Option<&str> = None;
+    #[cfg(feature = "otpauth")]
     const ACCOUNT: &str = "valid-account";
+    #[cfg(feature = "otpauth")]
     const INVALID_ACCOUNT: &str = ":invalid-account";
 
     #[test]
+    #[cfg(not(feature = "otpauth"))]
     fn new_rfc_digits() {
         for x in 0..=20 {
             let rfc = Rfc6238::new(
                 x,
                 GOOD_SECRET.to_string(),
-                ISSUER.map(str::to_string),
-                ACCOUNT.to_string(),
             );
             if !(6..=8).contains(&x) {
                 assert!(rfc.is_err());
@@ -191,6 +242,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(feature = "otpauth"))]
     fn new_rfc_secret() {
         let mut secret = String::from("");
         for _ in 0..=20 {
@@ -198,8 +250,6 @@ mod tests {
             let rfc = Rfc6238::new(
                 6,
                 secret.clone(),
-                ISSUER.map(str::to_string),
-                ACCOUNT.to_string(),
             );
             let rfc_default = Rfc6238::with_defaults(secret.clone());
             if secret.len() < 16 {
@@ -215,12 +265,11 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(feature = "otpauth"))]
     fn rfc_to_totp_ok() {
         let rfc = Rfc6238::new(
             8,
             GOOD_SECRET.to_string(),
-            ISSUER.map(str::to_string),
-            ACCOUNT.to_string(),
         )
         .unwrap();
         let totp = TOTP::try_from(rfc);
@@ -228,14 +277,29 @@ mod tests {
         let otp = totp.unwrap();
         assert_eq!(&otp.secret, GOOD_SECRET);
         assert_eq!(otp.algorithm, crate::Algorithm::SHA1);
-        assert_eq!(&otp.account_name, ACCOUNT);
         assert_eq!(otp.digits, 8);
-        assert_eq!(otp.issuer, ISSUER.map(str::to_string));
         assert_eq!(otp.skew, 1);
         assert_eq!(otp.step, 30)
     }
 
     #[test]
+    #[cfg(not(feature = "otpauth"))]
+    fn rfc_to_totp_ok_2() {
+        let rfc = Rfc6238::with_defaults(
+            Secret::Encoded("KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ".to_string()).to_bytes().unwrap(),
+        )
+        .unwrap();
+        let totp = TOTP::try_from(rfc);
+        assert!(totp.is_ok());
+        let otp = totp.unwrap();
+        assert_eq!(otp.algorithm, crate::Algorithm::SHA1);
+        assert_eq!(otp.digits, 6);
+        assert_eq!(otp.skew, 1);
+        assert_eq!(otp.step, 30)
+    }
+
+    #[test]
+    #[cfg(feature = "otpauth")]
     fn rfc_to_totp_fail() {
         let rfc = Rfc6238::new(
             8,
@@ -250,14 +314,23 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "otpauth")]
+    fn rfc_to_totp_ok() {
+        let rfc = Rfc6238::new(
+            8,
+            GOOD_SECRET.to_string(),
+            ISSUER.map(str::to_string),
+            ACCOUNT.to_string(),
+        )
+        .unwrap();
+        let totp = TOTP::try_from(rfc);
+        assert!(!totp.is_err());
+    }
+
+    #[test]
+    #[cfg(not(feature = "otpauth"))]
     fn rfc_with_default_set_values() {
-        let new_account = "new-account";
-        let new_issuer = String::from("new-issuer");
         let mut rfc = Rfc6238::with_defaults(GOOD_SECRET.to_string()).unwrap();
-        rfc.issuer(new_issuer.clone());
-        assert_eq!(rfc.issuer, Some(new_issuer));
-        rfc.account_name(new_account.to_string());
-        assert_eq!(rfc.account_name, new_account.to_string());
         let fail = rfc.digits(4);
         assert!(fail.is_err());
         assert!(matches!(fail.unwrap_err(), Rfc6238Error::InvalidDigits(_)));

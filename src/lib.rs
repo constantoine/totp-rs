@@ -9,20 +9,22 @@
 //! # Examples
 //!
 //! ```rust
+//! # #[cfg(feature = "otpauth")] {
 //! use std::time::SystemTime;
-//! use totp_rs::{Algorithm, TOTP};
+//! use totp_rs::{Algorithm, TOTP, Secret};
 //!
 //! let totp = TOTP::new(
 //!     Algorithm::SHA1,
 //!     6,
 //!     1,
 //!     30,
-//!     "supersecret_topsecret",
+//!     Secret::Raw("TestSecretSuperSecret".as_bytes().to_vec()).to_bytes().unwrap(),
 //!     Some("Github".to_string()),
 //!     "constantoine@github.com".to_string(),
 //! ).unwrap();
 //! let token = totp.generate_current().unwrap();
 //! println!("{}", token);
+//! # }
 //! ```
 //!
 //! ```rust
@@ -142,10 +144,12 @@ pub struct TOTP<T = Vec<u8>> {
     ///
     /// non-encoded value
     pub secret: T,
+    #[cfg(feature = "otpauth")]
     /// The "Github" part of "Github:constantoine@github.com". Must not contain a colon `:`
     /// For example, the name of your service/website.
     /// Not mandatory, but strongly recommended!
     pub issuer: Option<String>,
+    #[cfg(feature = "otpauth")]
     /// The "constantoine@github.com" part of "Github:constantoine@github.com". Must not contain a colon `:`
     /// For example, the name of your user's account.
     pub account_name: String
@@ -171,7 +175,23 @@ impl <T: AsRef<[u8]>> PartialEq for TOTP<T> {
     }
 }
 
+#[cfg(all(feature = "gen_secret", not(feature = "otpauth")))]
+impl Default for TOTP {
+    fn default() -> Self {
+        return TOTP::new(Algorithm::SHA1, 6, 1, 30, Secret::generate_secret().to_bytes().unwrap()).unwrap()
+    }
+}
+
+#[cfg(all(feature = "gen_secret", feature = "otpauth"))]
+impl Default for TOTP {
+    fn default() -> Self {
+        return TOTP::new(Algorithm::SHA1, 6, 1, 30, Secret::generate_secret().to_bytes().unwrap(), None, "".to_string()).unwrap()
+    }
+}
+
 impl<T: AsRef<[u8]>> TOTP<T> {
+
+    #[cfg(feature = "otpauth")]
     /// Will create a new instance of TOTP with given parameters. See [the doc](struct.TOTP.html#fields) for reference as to how to choose those values
     ///
     /// # Description
@@ -207,6 +227,35 @@ impl<T: AsRef<[u8]>> TOTP<T> {
             secret,
             issuer,
             account_name,
+        })
+    }
+
+    #[cfg(not(feature = "otpauth"))]
+    /// Will create a new instance of TOTP with given parameters. See [the doc](struct.TOTP.html#fields) for reference as to how to choose those values
+    ///
+    /// # Description
+    /// * `secret`: expect a non-encoded value, to pass in base32 string use `Secret::Encoded(String)`
+    ///
+    /// ```rust
+    /// use totp_rs::{Secret, TOTP, Algorithm};
+    /// let secret = Secret::Encoded("OBWGC2LOFVZXI4TJNZTS243FMNZGK5BNGEZDG".to_string());
+    /// let totp = TOTP::new(Algorithm::SHA1, 6, 1, 30, secret.to_bytes().unwrap()).unwrap();
+    /// ```
+    /// * `digits`: MUST be between 6 & 8
+    /// * `secret`: Must have bitsize of at least 128
+    ///
+    /// # Errors
+    ///
+    /// Will return an error in case issuer or label contain the character ':'
+    pub fn new(algorithm: Algorithm, digits: usize,skew: u8, step: u64, secret: T) -> Result<TOTP<T>, TotpUrlError> {
+        crate::rfc::assert_digits(&digits)?;
+        crate::rfc::assert_secret_length(secret.as_ref())?;
+        Ok(TOTP {
+            algorithm,
+            digits,
+            skew,
+            step,
+            secret,
         })
     }
 
@@ -462,6 +511,17 @@ mod tests {
     use super::*;
 
     #[test]
+    #[cfg(feature = "gen_secret")]
+    fn default_values() {
+        let totp = TOTP::default();
+        assert_eq!(totp.algorithm, Algorithm::SHA1);
+        assert_eq!(totp.digits, 6);
+        assert_eq!(totp.skew, 1);
+        assert_eq!(totp.step, 30)
+    }
+
+    #[test]
+    #[cfg(feature = "otpauth")]
     fn new_wrong_issuer() {
         let totp = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret", Some("Github:".to_string()), "constantoine@github.com".to_string());
         assert!(totp.is_err());
@@ -469,6 +529,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "otpauth")]
     fn new_wrong_account_name() {
         let totp = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret", Some("Github".to_string()), "constantoine:github.com".to_string());
         assert!(totp.is_err());
@@ -476,6 +537,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "otpauth")]
     fn new_wrong_account_name_no_issuer() {
         let totp = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret", None, "constantoine:github.com".to_string());
         assert!(totp.is_err());
@@ -483,6 +545,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "otpauth")]
     fn comparison_ok() {
         let reference = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret", Some("Github".to_string()), "constantoine@github.com".to_string()).unwrap();
         let test = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret", Some("Github".to_string()), "constantoine@github.com".to_string()).unwrap();
@@ -490,37 +553,42 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(feature = "otpauth"))]
     fn comparison_different_algo() {
-        let reference = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret", Some("Github".to_string()), "constantoine@github.com".to_string()).unwrap();
-        let test = TOTP::new(Algorithm::SHA256, 6, 1, 1, "TestSecretSuperSecret", Some("Github".to_string()), "constantoine@github.com".to_string()).unwrap();
+        let reference = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret").unwrap();
+        let test = TOTP::new(Algorithm::SHA256, 6, 1, 1, "TestSecretSuperSecret").unwrap();
         assert_ne!(reference, test);
     }
 
     #[test]
+    #[cfg(not(feature = "otpauth"))]
     fn comparison_different_digits() {
-        let reference = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret", Some("Github".to_string()), "constantoine@github.com".to_string()).unwrap();
-        let test = TOTP::new(Algorithm::SHA1, 8, 1, 1, "TestSecretSuperSecret", Some("Github".to_string()), "constantoine@github.com".to_string()).unwrap();
+        let reference = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret").unwrap();
+        let test = TOTP::new(Algorithm::SHA1, 8, 1, 1, "TestSecretSuperSecret").unwrap();
         assert_ne!(reference, test);
     }
 
     #[test]
+    #[cfg(not(feature = "otpauth"))]
     fn comparison_different_skew() {
-        let reference = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret", Some("Github".to_string()), "constantoine@github.com".to_string()).unwrap();
-        let test = TOTP::new(Algorithm::SHA1, 6, 0, 1, "TestSecretSuperSecret", Some("Github".to_string()), "constantoine@github.com".to_string()).unwrap();
+        let reference = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret").unwrap();
+        let test = TOTP::new(Algorithm::SHA1, 6, 0, 1, "TestSecretSuperSecret").unwrap();
         assert_ne!(reference, test);
     }
 
     #[test]
+    #[cfg(not(feature = "otpauth"))]
     fn comparison_different_step() {
-        let reference = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret", Some("Github".to_string()), "constantoine@github.com".to_string()).unwrap();
-        let test = TOTP::new(Algorithm::SHA1, 6, 1, 30, "TestSecretSuperSecret", Some("Github".to_string()), "constantoine@github.com".to_string()).unwrap();
+        let reference = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret").unwrap();
+        let test = TOTP::new(Algorithm::SHA1, 6, 1, 30, "TestSecretSuperSecret").unwrap();
         assert_ne!(reference, test);
     }
 
     #[test]
+    #[cfg(not(feature = "otpauth"))]
     fn comparison_different_secret() {
-        let reference = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret", Some("Github".to_string()), "constantoine@github.com".to_string()).unwrap();
-        let test = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretDifferentSecret", Some("Github".to_string()), "constantoine@github.com".to_string()).unwrap();
+        let reference = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret").unwrap();
+        let test = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretDifferentSecret").unwrap();
         assert_ne!(reference, test);
     }
 
@@ -557,20 +625,23 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(feature = "otpauth"))]
     fn returns_base32() {
-        let totp = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret", Some("Github".to_string()), "constantoine@github.com".to_string()).unwrap();
+        let totp = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret").unwrap();
         assert_eq!(totp.get_secret_base32().as_str(), "KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ");
     }
 
     #[test]
+    #[cfg(not(feature = "otpauth"))]
     fn generate_token() {
-        let totp = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret", Some("Github".to_string()), "constantoine@github.com".to_string()).unwrap();
+        let totp = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret").unwrap();
         assert_eq!(totp.generate(1000).as_str(), "659761");
     }
 
     #[test]
+    #[cfg(not(feature = "otpauth"))]
     fn generate_token_current() {
-        let totp = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret", Some("Github".to_string()), "constantoine@github.com".to_string()).unwrap();
+        let totp = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret").unwrap();
         let time = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH).unwrap()
             .as_secs();
@@ -578,49 +649,56 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(feature = "otpauth"))]
     fn generates_token_sha256() {
-        let totp = TOTP::new(Algorithm::SHA256, 6, 1, 1, "TestSecretSuperSecret", Some("Github".to_string()), "constantoine@github.com".to_string()).unwrap();
+        let totp = TOTP::new(Algorithm::SHA256, 6, 1, 1, "TestSecretSuperSecret").unwrap();
         assert_eq!(totp.generate(1000).as_str(), "076417");
     }
 
     #[test]
+    #[cfg(not(feature = "otpauth"))]
     fn generates_token_sha512() {
-        let totp = TOTP::new(Algorithm::SHA512, 6, 1, 1, "TestSecretSuperSecret", Some("Github".to_string()), "constantoine@github.com".to_string()).unwrap();
+        let totp = TOTP::new(Algorithm::SHA512, 6, 1, 1, "TestSecretSuperSecret").unwrap();
         assert_eq!(totp.generate(1000).as_str(), "473536");
     }
 
     #[test]
+    #[cfg(not(feature = "otpauth"))]
     fn checks_token() {
-        let totp = TOTP::new(Algorithm::SHA1, 6, 0, 1, "TestSecretSuperSecret", Some("Github".to_string()), "constantoine@github.com".to_string()).unwrap();
+        let totp = TOTP::new(Algorithm::SHA1, 6, 0, 1, "TestSecretSuperSecret").unwrap();
         assert!(totp.check("659761", 1000));
     }
 
     #[test]
+    #[cfg(not(feature = "otpauth"))]
     fn checks_token_current() {
-        let totp = TOTP::new(Algorithm::SHA1, 6, 0, 1, "TestSecretSuperSecret", Some("Github".to_string()), "constantoine@github.com".to_string()).unwrap();
+        let totp = TOTP::new(Algorithm::SHA1, 6, 0, 1, "TestSecretSuperSecret").unwrap();
         assert!(totp.check_current(&totp.generate_current().unwrap()).unwrap());
         assert!(!totp.check_current("bogus").unwrap());
     }
 
     #[test]
+    #[cfg(not(feature = "otpauth"))]
     fn checks_token_with_skew() {
-        let totp = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret", Some("Github".to_string()), "constantoine@github.com".to_string()).unwrap();
+        let totp = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret").unwrap();
         assert!(
             totp.check("174269", 1000) && totp.check("659761", 1000) && totp.check("260393", 1000)
         );
     }
 
     #[test]
+    #[cfg(not(feature = "otpauth"))]
     fn next_step() {
-        let totp = TOTP::new(Algorithm::SHA1, 6, 1, 30, "TestSecretSuperSecret", Some("Github".to_string()), "constantoine@github.com".to_string()).unwrap();
+        let totp = TOTP::new(Algorithm::SHA1, 6, 1, 30, "TestSecretSuperSecret").unwrap();
         assert!(totp.next_step(0) == 30);
         assert!(totp.next_step(29) == 30);
         assert!(totp.next_step(30) == 60);
     }
 
     #[test]
+    #[cfg(not(feature = "otpauth"))]
     fn next_step_current() {
-        let totp = TOTP::new(Algorithm::SHA1, 6, 1, 30, "TestSecretSuperSecret", Some("Github".to_string()), "constantoine@github.com".to_string()).unwrap();
+        let totp = TOTP::new(Algorithm::SHA1, 6, 1, 30, "TestSecretSuperSecret").unwrap();
         let t = system_time().unwrap();
         assert!(totp.next_step_current().unwrap() == totp.next_step(t));
     }
@@ -689,7 +767,7 @@ mod tests {
     #[test]
     #[cfg(feature = "otpauth")]
     fn from_url_query_different_issuers() {
-        let totp = TOTP::<Vec<u8>>::from_url("otpauth://totp/GitHub:test?issuer=Gitlab&secret=TestSecretSuperSecret&digits=8&period=60&algorithm=SHA256");
+        let totp = TOTP::<Vec<u8>>::from_url("otpauth://totp/GitHub:test?issuer=Gitlab&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA256");
         assert!(totp.is_err());
         assert!(matches!(totp.unwrap_err(), TotpUrlError::IssuerMistmatch(_, _)));
     }

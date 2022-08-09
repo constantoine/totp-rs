@@ -10,23 +10,48 @@ Be aware that some authenticator apps will accept the `SHA256` and `SHA512` algo
 ## Features
 ---
 ### qr
-With optional feature "qr", you can use it to generate a base64 png qrcode. This will enable feature `otpauth`
+With optional feature "qr", you can use it to generate a base64 png qrcode. This will enable feature `otpauth`.
 ### otpauth
-With optional feature "otpauth", support parsing the TOTP parameters from an `otpauth` URL, and generating an `otpauth` URL
+With optional feature "otpauth", support parsing the TOTP parameters from an `otpauth` URL, and generating an `otpauth` URL. It adds 2 fields to `TOTP`.
 ### serde_support
-With optional feature "serde_support", library-defined types `TOTP` and `Algorithm` and will be Deserialize-able and Serialize-able
+With optional feature "serde_support", library-defined types `TOTP` and `Algorithm` and will be Deserialize-able and Serialize-able.
+### gen_secret
+With optional feature "gen_secret", a secret will be generated for you to store in database.
 
-## How to use
+
+# Examples
+
+## Summarry
+
+0. [Understanding Secret](#understanding-secret)
+1. [Generate a token](#generate-a-token)
+2. [Enable qrcode generation](#with-qrcode-generation)
+3. [Enable serde support](#with-serde-support)
+4. [Enable otpauth url support](#with-otpauth-url-support)
+5. [Enable gen_secret support](#with-gensecret)
+6. [With RFC-6238 compliant default](#with-rfc-6238-compliant-default)
+
+### Understanding Secret
+---
+This new type was added as a disambiguation between Raw and already base32 encoded secrets.
+```Rust
+    Secret::Raw("TestSecretSuperSecret".as_bytes().to_vec())
+```
+Is equivalent to
+```Rust
+    Secret::Encoded("KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ".to_string())
+```
+### Generate a token
 ---
 Add it to your `Cargo.toml`:
 ```toml
 [dependencies]
-totp-rs = "^2.0"
+totp-rs = "^3.0"
 ```
 You can then do something like:
 ```Rust
 use std::time::SystemTime;
-use totp_rs::{Algorithm, TOTP};
+use totp_rs::{Algorithm, TOTP, Secret};
 
 fn main() {
     let totp = TOTP::new(
@@ -34,26 +59,16 @@ fn main() {
         6,
         1,
         30,
-        "supersecret",
-        Some("Github".to_string()),
-        "constantoine@github.com".to_string(),
+        Secret::Raw("TestSecretSuperSecret".as_bytes().to_vec()).to_bytes().unwrap(),
     ).unwrap();
     let token = totp.generate_current().unwrap();
     println!("{}", token);   
 }
 ```
-
-### With qrcode generation
-
-Add it to your `Cargo.toml`:
-```toml
-[dependencies.totp-rs]
-version = "^2.0"
-features = ["qr"]
-```
-You can then do something like:
+Which is equivalent to:
 ```Rust
-use totp_rs::{Algorithm, TOTP};
+use std::time::SystemTime;
+use totp_rs::{Algorithm, TOTP, Secret};
 
 fn main() {
     let totp = TOTP::new(
@@ -61,29 +76,54 @@ fn main() {
         6,
         1,
         30,
-        "supersecret",
+        Secret::Encoded("KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ".to_string()).to_bytes().unwrap(),
+    ).unwrap();
+    let token = totp.generate_current().unwrap();
+    println!("{}", token);   
+}
+```
+### With qrcode generation
+---
+Add it to your `Cargo.toml`:
+```toml
+[dependencies.totp-rs]
+version = "^3.0"
+features = ["qr"]
+```
+You can then do something like:
+```Rust
+use totp_rs::{Algorithm, TOTP, Secret};
+
+fn main() {
+    let totp = TOTP::new(
+        Algorithm::SHA1,
+        6,
+        1,
+        30,
+        Secret::Encoded("KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ".to_string()).to_bytes().unwrap(),
         Some("Github".to_string()),
         "constantoine@github.com".to_string(),
     ).unwrap();
-    let code = totp.get_qr("user@example.com", "my-org.com")?;
+    let code = totp.get_qr()?;
     println!("{}", code);   
 }
 ```
 
 ### With serde support
+---
 Add it to your `Cargo.toml`:
 ```toml
 [dependencies.totp-rs]
-version = "^2.0"
+version = "^3.0"
 features = ["serde_support"]
 ```
 
 ### With otpauth url support
-
+---
 Add it to your `Cargo.toml`:
 ```toml
 [dependencies.totp-rs]
-version = "^2.0"
+version = "^3.0"
 features = ["otpauth"]
 ```
 You can then do something like:
@@ -91,8 +131,84 @@ You can then do something like:
 use totp_rs::TOTP;
 
 fn main() {
-    let otpauth = "otpauth://totp/GitHub:constantoine@github.com?secret=ABC&issuer=GitHub";
+    let otpauth = "otpauth://totp/GitHub:constantoine@github.com?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&issuer=GitHub";
     let totp = TOTP::from_url(otpauth).unwrap();
     println!("{}", totp.generate_current().unwrap());
+}
+```
+
+### With gen_secret
+---
+Add it to your `Cargo.toml`:
+```toml
+[dependencies.totp-rs]
+version = "^3.0"
+features = ["gen_secret"]
+```
+You can then do something like:
+```Rust
+use totp_rs::{Algorithm, TOTP, Secret};
+
+fn main() {
+    let totp = TOTP::new(
+        Algorithm::SHA1,
+        6,
+        1,
+        30,
+        Secret::default().to_bytes().unwrap(),
+        Some("Github".to_string()),
+        "constantoine@github.com".to_string(),
+    ).unwrap();
+    let code = totp.get_qr()?;
+    println!("{}", code);   
+}
+```
+Which is equivalent to
+```Rust
+use totp_rs::{Algorithm, TOTP, Secret};
+
+fn main() {
+    let totp = TOTP::new(
+        Algorithm::SHA1,
+        6,
+        1,
+        30,
+        Secret::generate_secret().to_bytes().unwrap(),
+        Some("Github".to_string()),
+        "constantoine@github.com".to_string(),
+    ).unwrap();
+    let code = totp.get_qr()?;
+    println!("{}", code);   
+}
+```
+
+### With RFC-6238 compliant default
+---
+You can do something like this
+```Rust
+use totp_rs::{Algorithm, TOTP, Secret, Rfc6238};
+
+fn main () {
+    let mut rfc = Rfc6238::with_defaults(
+            Secret::Encoded("KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ".to_string()).to_bytes().unwrap(),
+        )
+        .unwrap();
+
+    // optional, set digits
+    rfc.digits(8).unwrap();
+
+    // create a TOTP from rfc
+    let totp = TOTP::from_rfc6238(rfc).unwrap();
+    let code = totp.generate_current().unwrap();
+    println!("code: {}", code);
+}
+```
+With `gen_secret` feature, you can go even further and have all values by default and a secure secret.
+
+Note: With `otpauth` feature, `TOTP.issuer` will be `None`, and `TOTP.account_name` will be `""`. Be sure to set those fields before generating an URL/QRCode
+```Rust
+fn main() {
+    let totp = TOTP::default();
+    println!("code: {}", code);
 }
 ```
