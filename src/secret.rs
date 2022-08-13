@@ -80,18 +80,28 @@
 use std::string::FromUtf8Error;
 use base32::{self, Alphabet};
 
+use constant_time_eq::constant_time_eq;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SecretParseError {
     ParseBase32,
     Utf8Error(FromUtf8Error),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Eq)]
 pub enum Secret {
     /// represent a non-encoded "raw" secret
     Raw(Vec<u8>),
     /// represent a base32 encoded secret
     Encoded(String),
+}
+
+impl PartialEq for Secret {
+    /// Will check that to_bytes() returns the same
+    /// One secret can be Raw, and the other Encoded
+    fn eq(&self, other: &Self) -> bool {
+        constant_time_eq(&self.to_bytes().unwrap(), &other.to_bytes().unwrap())
+    }
 }
 
 #[cfg(feature = "gen_secret")]

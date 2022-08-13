@@ -52,9 +52,9 @@ mod rfc;
 mod url_error;
 
 pub use secret::{Secret, SecretParseError};
-use url_error::TotpUrlError;
+pub use url_error::TotpUrlError;
 pub use rfc::{Rfc6238, Rfc6238Error};
-pub use base32;
+use base32;
 
 use constant_time_eq::constant_time_eq;
 
