@@ -21,7 +21,7 @@ With optional feature "gen_secret", a secret will be generated for you to store 
 
 # Examples
 
-## Summarry
+## Summary
 
 0. [Understanding Secret](#understanding-secret)
 1. [Generate a token](#generate-a-token)
