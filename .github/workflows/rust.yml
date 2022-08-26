@@ -21,12 +21,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - name: Install lcov_cobertura
-      run: curl -O https://raw.githubusercontent.com/eriwen/lcov-to-cobertura-xml/master/lcov_cobertura/lcov_cobertura.py && chmod +x lcov_cobertura.py
     - name: Install llvm-tools-preview
       run: rustup component add llvm-tools-preview
-    - name: Install grcov
-      run: cargo install grcov
+    - name: Download grcov
+      run: wget https://github.com/mozilla/grcov/releases/download/v0.8.11/grcov-x86_64-unknown-linux-gnu.tar.bz2
+    - name: Decompress grcov
+      run: tar xvf grcov-x86_64-unknown-linux-gnu.tar.bz2
     - name: Create coverage output dir
       run: mkdir -p target/coverage
     - name: All features
@@ -40,9 +40,7 @@ jobs:
     - name: otpauth+gensecret feature
       run: CARGO_INCREMENTAL=0 RUSTFLAGS='-Cinstrument-coverage' LLVM_PROFILE_FILE='cargo-test-%p-%m.profraw' cargo test --features=gen_secret,otpauth
     - name: Create coverage file
-      run: grcov . --binary-path ./target/debug/deps/ -s . -t lcov --branch --ignore-not-existing --ignore '../*' --ignore "/*" -o target/coverage/tests.lcov
-    - name: Convert coverage file to cobertura
-      run: python3 lcov_cobertura.py target/coverage/tests.lcov -o cobertura.xml
+      run: grcov . --binary-path ./target/debug/deps/ -s . -t cobertura --branch --ignore-not-existing --ignore '../*' --ignore "/*" -o target/coverage/cobertura.xml
     - name: Upload to codecov.io
       uses: codecov/codecov-action@v2
       with:
@@ -52,4 +50,4 @@ jobs:
       uses: actions/upload-artifact@v1
       with:
         name: code-coverage-report
-        path: cobertura.xml
+        path: target/coverage/cobertura.xml
