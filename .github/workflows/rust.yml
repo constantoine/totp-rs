@@ -39,7 +39,7 @@ jobs:
     - name: Run cargo-tarpaulin
       uses: actions-rs/tarpaulin@v0.1
       with:
-        version: '0.19.0'
+        version: '0.20.1'
         args: --all-features --out=Xml
 
     - name: Upload to codecov.io
