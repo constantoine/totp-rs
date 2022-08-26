@@ -40,7 +40,7 @@ jobs:
     - name: otpauth+gensecret feature
       run: CARGO_INCREMENTAL=0 RUSTFLAGS='-Cinstrument-coverage' LLVM_PROFILE_FILE='cargo-test-%p-%m.profraw' cargo test --features=gen_secret,otpauth
     - name: Create coverage file
-      run: grcov . --binary-path ./target/debug/deps/ -s . -t cobertura --branch --ignore-not-existing --ignore '../*' --ignore "/*" -o target/coverage/cobertura.xml
+      run: ./grcov . --binary-path ./target/debug/deps/ -s . -t cobertura --branch --ignore-not-existing --ignore '../*' --ignore "/*" -o target/coverage/cobertura.xml
     - name: Upload to codecov.io
       uses: codecov/codecov-action@v2
       with:
