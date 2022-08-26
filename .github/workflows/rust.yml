@@ -21,27 +21,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
+    - name: Install llvm-tools-preview
+      run: rustup component add llvm-tools-preview
+    - name: Download grcov
+      run: wget https://github.com/mozilla/grcov/releases/download/v0.8.11/grcov-x86_64-unknown-linux-gnu.tar.bz2
+    - name: Decompress grcov
+      run: tar xvf grcov-x86_64-unknown-linux-gnu.tar.bz2
+    - name: Create coverage output dir
+      run: mkdir -p target/coverage
     - name: All features
-      run: cargo test --all-features
+      run: CARGO_INCREMENTAL=0 RUSTFLAGS='-Cinstrument-coverage' LLVM_PROFILE_FILE='cargo-test-%p-%m.profraw' cargo test --all-features
     - name: No feature
-      run: cargo test
+      run: CARGO_INCREMENTAL=0 RUSTFLAGS='-Cinstrument-coverage' LLVM_PROFILE_FILE='cargo-test-%p-%m.profraw' cargo test
     - name: otpauth feature
-      run: cargo test --features=otpauth
+      run: CARGO_INCREMENTAL=0 RUSTFLAGS='-Cinstrument-coverage' LLVM_PROFILE_FILE='cargo-test-%p-%m.profraw' cargo test --features=otpauth
     - name: gen_secret feature
-      run: cargo test --features=gen_secret
+      run: CARGO_INCREMENTAL=0 RUSTFLAGS='-Cinstrument-coverage' LLVM_PROFILE_FILE='cargo-test-%p-%m.profraw' cargo test --features=gen_secret
     - name: otpauth+gensecret feature
-      run: cargo test --features=gen_secret,otpauth
-
-  coverage:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - name: Run cargo-tarpaulin
-      uses: actions-rs/tarpaulin@v0.1
-      with:
-        version: '0.20.1'
-        args: --all-features --out=Xml
-
+      run: CARGO_INCREMENTAL=0 RUSTFLAGS='-Cinstrument-coverage' LLVM_PROFILE_FILE='cargo-test-%p-%m.profraw' cargo test --features=gen_secret,otpauth
+    - name: Create coverage file
+      run: ./grcov . --binary-path ./target/debug/deps/ -s . -t cobertura --branch --ignore-not-existing --ignore '../*' --ignore "/*" -o target/coverage/cobertura.xml
     - name: Upload to codecov.io
       uses: codecov/codecov-action@v2
       with:
@@ -51,4 +50,4 @@ jobs:
       uses: actions/upload-artifact@v1
       with:
         name: code-coverage-report
-        path: cobertura.xml
+        path: target/coverage/cobertura.xml
