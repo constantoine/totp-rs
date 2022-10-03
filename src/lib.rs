@@ -508,6 +508,9 @@ impl<T: AsRef<[u8]>> TOTP<T> {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "otpauth")]
+    use sha2::{Digest, Sha512};
+
     use super::*;
 
     #[test]
@@ -772,19 +775,44 @@ mod tests {
         assert!(matches!(totp.unwrap_err(), TotpUrlError::IssuerMistmatch(_, _)));
     }
 
+    // This function parses a PNG chunk's length.
+    #[cfg(feature = "qr")]
+    fn png_chunk_len(data: &[u8]) -> usize {
+        let mut len = u32::from_be_bytes(data.try_into().unwrap());
+        len += 12;
+        len.try_into().unwrap()
+    }
+
+    // This function parses a PNG file as PNG chunks. It will return only the data contained in IDAT chunks, which is where the raw image data is.
+    #[cfg(feature = "qr")]
+    fn png_image_data(data: &[u8]) -> Vec<u8> {
+        let mut index = 8;
+
+        let mut idat: Vec<u8> = std::vec::Vec::new();
+
+        while index < data.len() - 1 {
+            let name = std::str::from_utf8(&data[index+4..index+8]).unwrap();
+            let len = png_chunk_len(&data[index..index+4]);
+            if name == "IDAT" {
+                idat.extend(&data[index + 8 .. index+len]);
+            }
+            index += len;
+        }
+
+        idat
+    }
+
     #[test]
     #[cfg(feature = "qr")]
     fn generates_qr() {
-        use sha1::{Digest, Sha1};
-
         let totp = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret", Some("Github".to_string()), "constantoine@github.com".to_string()).unwrap();
         let qr = totp.get_qr().unwrap();
 
-        // Create hash from image
-        let hash_digest = Sha1::digest(qr.as_bytes());
+        let data = base64::decode(qr).unwrap();
+        let digest = Sha512::digest(png_image_data(&data));
         assert_eq!(
-            format!("{:x}", hash_digest).as_str(),
-            "3028f00bf1bd2898ce4d73b234ba087d3c5172f9"
+            format!("{:x}", digest).as_str(),
+            "951bac5acbff6f65439f17e5c4b0d363d170e019f71d1becc8486e6101189f537d752fafd0b0012651fd1dda89c603070fc4b358df358546a37fcdffe658b0c5"
         );
     }
 }
