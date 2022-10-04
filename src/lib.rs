@@ -434,26 +434,9 @@ impl<T: AsRef<[u8]>> TOTP<T> {
         )
     }
 
-    /// Will return a qrcode to automatically add a TOTP as a base64 string. Needs feature `qr` to be enabled!
-    /// Result will be in the form of a string containing a base64-encoded png, which you can embed in HTML without needing
-    /// To store the png as a file.
-    ///
-    /// # Errors
-    ///
-    /// This will return an error in case the URL gets too long to encode into a QR code.
-    /// This would require the get_url method to generate an url bigger than 2000 characters,
-    /// Which would be too long for some browsers anyway.
-    ///
-    /// It will also return an error in case it can't encode the qr into a png. This shouldn't happen unless either the qrcode library returns malformed data, or the image library doesn't encode the data correctly
     #[cfg(feature = "qr")]
-    pub fn get_qr(&self) -> Result<String, Box<dyn std::error::Error>> {
-        use image::ImageEncoder;
-
-        let url = self.get_url();
-        let mut vec = Vec::new();
-        let qr = qrcodegen::QrCode::encode_text(&url, qrcodegen::QrCodeEcc::Medium)?;
+    fn get_qr_draw_canvas(&self, qr: qrcodegen::QrCode) -> image::ImageBuffer<Luma<u8>, Vec<u8>> {
         let size = qr.size() as u32;
-
         // "+ 8 * 8" is here to add padding (the white border around the QRCode)
         // As some QRCode readers don't work without padding
         let image_size = size * 8 + 8 * 8;
@@ -493,11 +476,38 @@ impl<T: AsRef<[u8]>> TOTP<T> {
                 }
             }
         }
+        canvas
+    }
+
+    /// Will return a qrcode to automatically add a TOTP as a base64 string. Needs feature `qr` to be enabled!
+    /// Result will be in the form of a string containing a base64-encoded png, which you can embed in HTML without needing
+    /// To store the png as a file.
+    ///
+    /// # Errors
+    ///
+    /// This will return an error in case the URL gets too long to encode into a QR code.
+    /// This would require the get_url method to generate an url bigger than 2000 characters,
+    /// Which would be too long for some browsers anyway.
+    ///
+    /// It will also return an error in case it can't encode the qr into a png. This shouldn't happen unless either the qrcode library returns malformed data, or the image library doesn't encode the data correctly
+    #[cfg(feature = "qr")]
+    pub fn get_qr(&self) -> Result<String, Box<dyn std::error::Error>> {
+        use image::ImageEncoder;
+
+        let url = self.get_url();
+        let mut vec = Vec::new();
+        let qr = qrcodegen::QrCode::encode_text(&url, qrcodegen::QrCodeEcc::Medium)?;
+
+        // "+ 8 * 8" is here to add padding (the white border around the QRCode)
+        // As some QRCode readers don't work without padding
+        let image_size = (qr.size() as u32) * 8 + 8 * 8;
+
+        let canvas = self.get_qr_draw_canvas(qr);
 
         // Encode the canvas into a PNG
         let encoder = image::codecs::png::PngEncoder::new(&mut vec);
         encoder.write_image(
-            &image::ImageBuffer::from(canvas).into_raw(),
+            &canvas.into_raw(),
             image_size,
             image_size,
             image::ColorType::L8,
@@ -775,16 +785,18 @@ mod tests {
     #[test]
     #[cfg(feature = "qr")]
     fn generates_qr() {
-        use sha1::{Digest, Sha1};
+        use sha2::{Digest, Sha512};
 
         let totp = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret", Some("Github".to_string()), "constantoine@github.com".to_string()).unwrap();
-        let qr = totp.get_qr().unwrap();
+        let url = totp.get_url();
+        let qr = qrcodegen::QrCode::encode_text(&url, qrcodegen::QrCodeEcc::Medium).expect("could not generate qr");
+        let data = totp.get_qr_draw_canvas(qr).into_raw();
 
         // Create hash from image
-        let hash_digest = Sha1::digest(qr.as_bytes());
+        let hash_digest = Sha512::digest(data);
         assert_eq!(
             format!("{:x}", hash_digest).as_str(),
-            "3028f00bf1bd2898ce4d73b234ba087d3c5172f9"
+            "025809c9db9c2c918930e018549c90929a083ee757156737812bad40ded64312c1526c73d8f2f59d5c203b97141ddfc331b1192e234f4f43257f50a6d05e382f"
         );
     }
 }
