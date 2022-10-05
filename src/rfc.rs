@@ -103,7 +103,7 @@ impl<T: AsRef<[u8]>> Rfc6238<T> {
     ) -> Result<Rfc6238<T>, Rfc6238Error> {
         assert_digits(&digits)?;
         assert_secret_length(secret.as_ref())?;
-        
+
         Ok(Rfc6238 {
             algorithm: Algorithm::SHA1,
             digits,
@@ -115,13 +115,10 @@ impl<T: AsRef<[u8]>> Rfc6238<T> {
         })
     }
     #[cfg(not(feature = "otpauth"))]
-    pub fn new(
-        digits: usize,
-        secret: T,
-    ) -> Result<Rfc6238<T>, Rfc6238Error> {
+    pub fn new(digits: usize, secret: T) -> Result<Rfc6238<T>, Rfc6238Error> {
         assert_digits(&digits)?;
         assert_secret_length(secret.as_ref())?;
-        
+
         Ok(Rfc6238 {
             algorithm: Algorithm::SHA1,
             digits,
@@ -150,7 +147,7 @@ impl<T: AsRef<[u8]>> Rfc6238<T> {
     }
 
     /// Set the `digits`
-    pub fn digits(&mut self, value:usize) -> Result<(), Rfc6238Error> {
+    pub fn digits(&mut self, value: usize) -> Result<(), Rfc6238Error> {
         assert_digits(&value)?;
         self.digits = value;
         Ok(())
@@ -175,13 +172,7 @@ impl<T: AsRef<[u8]>> TryFrom<Rfc6238<T>> for TOTP<T> {
 
     /// Try to create a [TOTP](struct.TOTP.html) from a [Rfc6238](struct.Rfc6238.html) config
     fn try_from(rfc: Rfc6238<T>) -> Result<Self, Self::Error> {
-        TOTP::new(
-            rfc.algorithm,
-            rfc.digits,
-            rfc.skew,
-            rfc.step,
-            rfc.secret,
-        )
+        TOTP::new(rfc.algorithm, rfc.digits, rfc.skew, rfc.step, rfc.secret)
     }
 }
 
@@ -198,7 +189,7 @@ impl<T: AsRef<[u8]>> TryFrom<Rfc6238<T>> for TOTP<T> {
             rfc.step,
             rfc.secret,
             rfc.issuer,
-            rfc.account_name
+            rfc.account_name,
         )
     }
 }
@@ -228,10 +219,7 @@ mod tests {
     #[cfg(not(feature = "otpauth"))]
     fn new_rfc_digits() {
         for x in 0..=20 {
-            let rfc = Rfc6238::new(
-                x,
-                GOOD_SECRET.to_string(),
-            );
+            let rfc = Rfc6238::new(x, GOOD_SECRET.to_string());
             if !(6..=8).contains(&x) {
                 assert!(rfc.is_err());
                 assert!(matches!(rfc.unwrap_err(), Rfc6238Error::InvalidDigits(_)));
@@ -247,16 +235,16 @@ mod tests {
         let mut secret = String::from("");
         for _ in 0..=20 {
             secret = format!("{}{}", secret, "0");
-            let rfc = Rfc6238::new(
-                6,
-                secret.clone(),
-            );
+            let rfc = Rfc6238::new(6, secret.clone());
             let rfc_default = Rfc6238::with_defaults(secret.clone());
             if secret.len() < 16 {
                 assert!(rfc.is_err());
                 assert!(matches!(rfc.unwrap_err(), Rfc6238Error::SecretTooSmall(_)));
                 assert!(rfc_default.is_err());
-                assert!(matches!(rfc_default.unwrap_err(), Rfc6238Error::SecretTooSmall(_)));
+                assert!(matches!(
+                    rfc_default.unwrap_err(),
+                    Rfc6238Error::SecretTooSmall(_)
+                ));
             } else {
                 assert!(rfc.is_ok());
                 assert!(rfc_default.is_ok());
@@ -267,11 +255,7 @@ mod tests {
     #[test]
     #[cfg(not(feature = "otpauth"))]
     fn rfc_to_totp_ok() {
-        let rfc = Rfc6238::new(
-            8,
-            GOOD_SECRET.to_string(),
-        )
-        .unwrap();
+        let rfc = Rfc6238::new(8, GOOD_SECRET.to_string()).unwrap();
         let totp = TOTP::try_from(rfc);
         assert!(totp.is_ok());
         let otp = totp.unwrap();
@@ -286,7 +270,9 @@ mod tests {
     #[cfg(not(feature = "otpauth"))]
     fn rfc_to_totp_ok_2() {
         let rfc = Rfc6238::with_defaults(
-            Secret::Encoded("KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ".to_string()).to_bytes().unwrap(),
+            Secret::Encoded("KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ".to_string())
+                .to_bytes()
+                .unwrap(),
         )
         .unwrap();
         let totp = TOTP::try_from(rfc);

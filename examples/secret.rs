@@ -1,7 +1,7 @@
-use totp_rs::{Secret, TOTP, Algorithm};
+use totp_rs::{Algorithm, Secret, TOTP};
 
 #[cfg(feature = "otpauth")]
-fn main () {
+fn main() {
     // create TOTP from base32 secret
     let secret_b32 = Secret::Encoded(String::from("OBWGC2LOFVZXI4TJNZTS243FMNZGK5BNGEZDG"));
     let totp_b32 = TOTP::new(
@@ -12,10 +12,18 @@ fn main () {
         secret_b32.to_bytes().unwrap(),
         Some("issuer".to_string()),
         "user-account".to_string(),
-    ).unwrap();
+    )
+    .unwrap();
 
-    println!("base32 {} ; raw {}", secret_b32, secret_b32.to_raw().unwrap());
-    println!("code from base32:\t{}", totp_b32.generate_current().unwrap());
+    println!(
+        "base32 {} ; raw {}",
+        secret_b32,
+        secret_b32.to_raw().unwrap()
+    );
+    println!(
+        "code from base32:\t{}",
+        totp_b32.generate_current().unwrap()
+    );
 
     // create TOTP from raw binary value
     let secret = [
@@ -31,26 +39,31 @@ fn main () {
         secret_raw.to_bytes().unwrap(),
         Some("issuer".to_string()),
         "user-account".to_string(),
-    ).unwrap();
+    )
+    .unwrap();
 
     println!("raw {} ; base32 {}", secret_raw, secret_raw.to_encoded());
-    println!("code from raw secret:\t{}", totp_raw.generate_current().unwrap());
+    println!(
+        "code from raw secret:\t{}",
+        totp_raw.generate_current().unwrap()
+    );
 }
 
 #[cfg(not(feature = "otpauth"))]
-fn main () {
+fn main() {
     // create TOTP from base32 secret
     let secret_b32 = Secret::Encoded(String::from("OBWGC2LOFVZXI4TJNZTS243FMNZGK5BNGEZDG"));
-    let totp_b32 = TOTP::new(
-        Algorithm::SHA1,
-        6,
-        1,
-        30,
-        secret_b32.to_bytes().unwrap(),
-    ).unwrap();
+    let totp_b32 = TOTP::new(Algorithm::SHA1, 6, 1, 30, secret_b32.to_bytes().unwrap()).unwrap();
 
-    println!("base32 {} ; raw {}", secret_b32, secret_b32.to_raw().unwrap());
-    println!("code from base32:\t{}", totp_b32.generate_current().unwrap());
+    println!(
+        "base32 {} ; raw {}",
+        secret_b32,
+        secret_b32.to_raw().unwrap()
+    );
+    println!(
+        "code from base32:\t{}",
+        totp_b32.generate_current().unwrap()
+    );
 
     // create TOTP from raw binary value
     let secret = [
@@ -58,14 +71,11 @@ fn main () {
         0x63, 0x72, 0x65, 0x74, 0x2d, 0x31, 0x32, 0x33,
     ];
     let secret_raw = Secret::Raw(secret.to_vec());
-    let totp_raw = TOTP::new(
-        Algorithm::SHA1,
-        6,
-        1,
-        30,
-        secret_raw.to_bytes().unwrap(),
-    ).unwrap();
+    let totp_raw = TOTP::new(Algorithm::SHA1, 6, 1, 30, secret_raw.to_bytes().unwrap()).unwrap();
 
     println!("raw {} ; base32 {}", secret_raw, secret_raw.to_encoded());
-    println!("code from raw secret:\t{}", totp_raw.generate_current().unwrap());
+    println!(
+        "code from raw secret:\t{}",
+        totp_raw.generate_current().unwrap()
+    );
 }

@@ -40,7 +40,7 @@
 //!
 //! println!("code from base32:\t{}", totp_b32.generate_current().unwrap());
 //! # }
-//! 
+//!
 //! ```
 //! - Create a TOTP from a Generated Secret
 //! ```
@@ -77,8 +77,8 @@
 //! # }
 //! ```
 
-use std::string::FromUtf8Error;
 use base32::{self, Alphabet};
+use std::string::FromUtf8Error;
 
 use constant_time_eq::constant_time_eq;
 
@@ -112,7 +112,6 @@ impl Default for Secret {
 }
 
 impl Secret {
-
     /// Get the inner String value as a Vec of bytes
     pub fn to_bytes(&self) -> Result<Vec<u8>, SecretParseError> {
         match self {
@@ -138,10 +137,9 @@ impl Secret {
     /// Try to transforms a `Secret::Raw` into a `Secret::Encoded`
     pub fn to_encoded(&self) -> Self {
         match self {
-            Secret::Raw(s) => Secret::Encoded(base32::encode(
-                Alphabet::RFC4648 { padding: false },
-                s,
-            )),
+            Secret::Raw(s) => {
+                Secret::Encoded(base32::encode(Alphabet::RFC4648 { padding: false }, s))
+            }
             Secret::Encoded(_) => self.clone(),
         }
     }
@@ -175,7 +173,7 @@ impl std::fmt::Display for Secret {
                     s = format!("{}{:02x}", &s, &b);
                 }
                 write!(f, "{}", s)
-            },
+            }
             Secret::Encoded(s) => write!(f, "{}", s),
         }
     }
@@ -218,8 +216,14 @@ mod tests {
     #[test]
     fn secret_as_bytes() {
         let base32_str = String::from(BASE32);
-        assert_eq!(Secret::Raw(BYTES.to_vec()).to_bytes().unwrap(), BYTES.to_vec());
-        assert_eq!(Secret::Encoded(base32_str).to_bytes().unwrap(), BYTES.to_vec());
+        assert_eq!(
+            Secret::Raw(BYTES.to_vec()).to_bytes().unwrap(),
+            BYTES.to_vec()
+        );
+        assert_eq!(
+            Secret::Encoded(base32_str).to_bytes().unwrap(),
+            BYTES.to_vec()
+        );
     }
 
     #[test]
