@@ -314,6 +314,21 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "otpauth")]
+    fn rfc_with_default_set_values() {
+        let mut rfc = Rfc6238::with_defaults(GOOD_SECRET.to_string()).unwrap();
+        let ok = rfc.digits(8);
+        assert!(ok.is_ok());
+        assert_eq!(rfc.account_name, "");
+        assert_eq!(rfc.issuer, Some("".to_string()));
+        rfc.issuer("Github".to_string());
+        rfc.account_name("constantoine".to_string());
+        assert_eq!(rfc.account_name, "constantoine");
+        assert_eq!(rfc.issuer, Some("Github".to_string()));
+        assert_eq!(rfc.digits, 8)
+    }
+
+    #[test]
     #[cfg(not(feature = "otpauth"))]
     fn rfc_with_default_set_values() {
         let mut rfc = Rfc6238::with_defaults(GOOD_SECRET.to_string()).unwrap();
@@ -324,5 +339,25 @@ mod tests {
         let ok = rfc.digits(8);
         assert!(ok.is_ok());
         assert_eq!(rfc.digits, 8)
+    }
+
+    #[test]
+    #[cfg(not(feature = "otpauth"))]
+    fn digits_error() {
+        let error = crate::Rfc6238Error::InvalidDigits(9);
+        assert_eq!(
+            error.to_string(),
+            "Implementations MUST extract a 6-digit code at a minimum and possibly 7 and 8-digit code. 9 digits is not allowed".to_string()
+        )
+    }
+
+    #[test]
+    #[cfg(not(feature = "otpauth"))]
+    fn secret_length_error() {
+        let error = Rfc6238Error::SecretTooSmall(120);
+        assert_eq!(
+            error.to_string(),
+            "The length of the shared secret MUST be at least 128 bits. 120 bits is not enough".to_string()
+        )
     }
 }
