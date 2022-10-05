@@ -117,25 +117,37 @@ mod tests {
     #[test]
     fn account_name() {
         let error = TotpUrlError::AccountName("Laziz:".to_string());
-        assert_eq!(error.to_string(), "Account Name can't contain a colon. \"Laziz:\" contains a colon")
+        assert_eq!(
+            error.to_string(),
+            "Account Name can't contain a colon. \"Laziz:\" contains a colon"
+        )
     }
 
     #[test]
     fn account_name_decoding() {
         let error = TotpUrlError::AccountNameDecoding("Laz&iz".to_string());
-        assert_eq!(error.to_string(), "Couldn't URL decode \"Laz&iz\"".to_string())
+        assert_eq!(
+            error.to_string(),
+            "Couldn't URL decode \"Laz&iz\"".to_string()
+        )
     }
 
     #[test]
     fn algorithm() {
         let error = TotpUrlError::Algorithm("SIKE".to_string());
-        assert_eq!(error.to_string(), "Algorithm can only be SHA1, SHA256 or SHA512, not \"SIKE\"".to_string())
+        assert_eq!(
+            error.to_string(),
+            "Algorithm can only be SHA1, SHA256 or SHA512, not \"SIKE\"".to_string()
+        )
     }
 
     #[test]
     fn digits() {
         let error = TotpUrlError::Digits("six".to_string());
-        assert_eq!(error.to_string(), "Could not parse \"six\" as a number.".to_string())
+        assert_eq!(
+            error.to_string(),
+            "Could not parse \"six\" as a number.".to_string()
+        )
     }
 
     #[test]
@@ -147,19 +159,28 @@ mod tests {
     #[test]
     fn host() {
         let error = TotpUrlError::Host("hotp".to_string());
-        assert_eq!(error.to_string(), "Host should be totp, not \"hotp\"".to_string())
+        assert_eq!(
+            error.to_string(),
+            "Host should be totp, not \"hotp\"".to_string()
+        )
     }
 
     #[test]
     fn issuer() {
         let error = TotpUrlError::Issuer("Iss:uer".to_string());
-        assert_eq!(error.to_string(), "Issuer can't contain a colon. \"Iss:uer\" contains a colon".to_string())
+        assert_eq!(
+            error.to_string(),
+            "Issuer can't contain a colon. \"Iss:uer\" contains a colon".to_string()
+        )
     }
 
     #[test]
     fn issuer_decoding() {
         let error = TotpUrlError::IssuerDecoding("iss&uer".to_string());
-        assert_eq!(error.to_string(), "Couldn't URL decode \"iss&uer\"".to_string())
+        assert_eq!(
+            error.to_string(),
+            "Couldn't URL decode \"iss&uer\"".to_string()
+        )
     }
 
     #[test]
@@ -171,25 +192,38 @@ mod tests {
     #[test]
     fn scheme() {
         let error = TotpUrlError::Scheme("https".to_string());
-        assert_eq!(error.to_string(), "Scheme should be otpauth, not \"https\"".to_string())
+        assert_eq!(
+            error.to_string(),
+            "Scheme should be otpauth, not \"https\"".to_string()
+        )
     }
 
     #[test]
     fn secret() {
         let error = TotpUrlError::Secret("YoLo".to_string());
-        assert_eq!(error.to_string(), "Secret \"YoLo\" is not a valid non-padded base32 string".to_string())
+        assert_eq!(
+            error.to_string(),
+            "Secret \"YoLo\" is not a valid non-padded base32 string".to_string()
+        )
     }
 
     #[test]
     fn secret_size() {
         let error = TotpUrlError::SecretSize(112);
-        assert_eq!(error.to_string(), "The length of the shared secret MUST be at least 128 bits. 112 bits is not enough".to_string())
+        assert_eq!(
+            error.to_string(),
+            "The length of the shared secret MUST be at least 128 bits. 112 bits is not enough"
+                .to_string()
+        )
     }
 
     #[test]
     #[cfg(feature = "otpauth")]
     fn step() {
         let error = TotpUrlError::Url(url::ParseError::EmptyHost);
-        assert_eq!(error.to_string(), "Error parsing URL: empty host".to_string())
+        assert_eq!(
+            error.to_string(),
+            "Error parsing URL: empty host".to_string()
+        )
     }
 }

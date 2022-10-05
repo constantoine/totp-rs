@@ -1,9 +1,8 @@
 #[cfg(all(feature = "gen_secret", feature = "otpauth"))]
-use totp_rs::{Secret, TOTP, Algorithm};
+use totp_rs::{Algorithm, Secret, TOTP};
 
 #[cfg(all(feature = "gen_secret", feature = "otpauth"))]
-fn main () {
-
+fn main() {
     let secret = Secret::generate_secret();
 
     let totp = TOTP::new(
@@ -14,7 +13,8 @@ fn main () {
         secret.to_bytes().unwrap(),
         None,
         "account".to_string(),
-    ).unwrap();
+    )
+    .unwrap();
 
     println!(
         "secret raw: {} ; secret base32 {} ; code: {}",
@@ -25,4 +25,4 @@ fn main () {
 }
 
 #[cfg(not(all(feature = "gen_secret", feature = "otpauth")))]
-fn main () {}
+fn main() {}

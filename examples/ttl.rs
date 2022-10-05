@@ -2,13 +2,7 @@ use totp_rs::{Algorithm, TOTP};
 
 #[cfg(not(feature = "otpauth"))]
 fn main() {
-    let totp = TOTP::new(
-        Algorithm::SHA1,
-        6,
-        1,
-        30,
-        "my-secret".to_string(),
-    ).unwrap();
+    let totp = TOTP::new(Algorithm::SHA1, 6, 1, 30, "my-secret".to_string()).unwrap();
 
     loop {
         println!(
@@ -21,7 +15,6 @@ fn main() {
     }
 }
 
-
 #[cfg(feature = "otpauth")]
 fn main() {
     let totp = TOTP::new(
@@ -31,8 +24,9 @@ fn main() {
         30,
         "my-secret".to_string(),
         Some("Github".to_string()),
-        "constantoine@github.com".to_string()
-    ).unwrap();
+        "constantoine@github.com".to_string(),
+    )
+    .unwrap();
 
     loop {
         println!(
