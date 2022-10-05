@@ -54,7 +54,6 @@ mod url_error;
 pub use secret::{Secret, SecretParseError};
 pub use url_error::TotpUrlError;
 pub use rfc::{Rfc6238, Rfc6238Error};
-use base32;
 
 use constant_time_eq::constant_time_eq;
 
@@ -64,12 +63,10 @@ use serde::{Deserialize, Serialize};
 use core::fmt;
 
 #[cfg(feature = "qr")]
-use {base64, image::Luma, qrcodegen};
+use image::Luma;
 
 #[cfg(feature = "otpauth")]
 use url::{Host, Url};
-#[cfg(feature = "otpauth")]
-use urlencoding;
 
 use hmac::Mac;
 use std::time::{SystemTime, SystemTimeError, UNIX_EPOCH};
@@ -185,7 +182,7 @@ impl Default for TOTP {
 #[cfg(all(feature = "gen_secret", feature = "otpauth"))]
 impl Default for TOTP {
     fn default() -> Self {
-        return TOTP::new(Algorithm::SHA1, 6, 1, 30, Secret::generate_secret().to_bytes().unwrap(), None, "".to_string()).unwrap()
+        TOTP::new(Algorithm::SHA1, 6, 1, 30, Secret::generate_secret().to_bytes().unwrap(), None, "".to_string()).unwrap()
     }
 }
 
@@ -345,7 +342,7 @@ impl<T: AsRef<[u8]>> TOTP<T> {
     /// Generate a TOTP from the standard otpauth URL
     #[cfg(feature = "otpauth")]
     pub fn from_url<S: AsRef<str>>(url: S) -> Result<TOTP<Vec<u8>>, TotpUrlError> {
-        let url = Url::parse(url.as_ref()).map_err(|err| TotpUrlError::Url(err))?;
+        let url = Url::parse(url.as_ref()).map_err(TotpUrlError::Url)?;
         if url.scheme() != "otpauth" {
             return Err(TotpUrlError::Scheme(url.scheme().to_string()));
         }
@@ -363,7 +360,7 @@ impl<T: AsRef<[u8]>> TOTP<T> {
         let path = url.path().trim_start_matches('/');
         if path.contains(':') {
             let parts = path.split_once(':').unwrap();
-            issuer = Some(urlencoding::decode(parts.0.to_owned().as_str()).map_err(|_| TotpUrlError::IssuerDecoding(parts.0.to_owned().to_string()))?.to_string());
+            issuer = Some(urlencoding::decode(parts.0.to_owned().as_str()).map_err(|_| TotpUrlError::IssuerDecoding(parts.0.to_owned()))?.to_string());
             account_name = parts.1.trim_start_matches(':').to_owned();
         } else {
             account_name = path.to_owned();
@@ -390,7 +387,7 @@ impl<T: AsRef<[u8]>> TOTP<T> {
                 "secret" => {
                     secret =
                         base32::decode(base32::Alphabet::RFC4648 { padding: false }, value.as_ref())
-                            .ok_or(TotpUrlError::Secret(value.to_string()))?;
+                            .ok_or_else(|| TotpUrlError::Secret(value.to_string()))?;
                 }
                 "issuer" => {
                     let param_issuer = value.parse::<String>().map_err(|_| TotpUrlError::Issuer(value.to_string()))?;
@@ -416,20 +413,19 @@ impl<T: AsRef<[u8]>> TOTP<T> {
     /// Secret will be base 32'd without padding, as per RFC.
     #[cfg(feature = "otpauth")]
     pub fn get_url(&self) -> String {
-        let label: String;
+        
         let account_name: String = urlencoding::encode(self.account_name.as_str()).to_string();
+        let mut label: String = format!("{}?", account_name);
         if self.issuer.is_some() {
             let issuer: String = urlencoding::encode(self.issuer.as_ref().unwrap().as_str()).to_string();
             label = format!("{0}:{1}?issuer={0}&", issuer, account_name);
-        } else {
-            label = format!("{}?", account_name);
         }
 
         format!(
             "otpauth://totp/{}secret={}&digits={}&algorithm={}",
             label,
             self.get_secret_base32(),
-            self.digits.to_string(),
+            self.digits,
             self.algorithm,
         )
     }

@@ -324,7 +324,7 @@ mod tests {
         )
         .unwrap();
         let totp = TOTP::try_from(rfc);
-        assert!(!totp.is_err());
+        assert!(totp.is_ok());
     }
 
     #[test]

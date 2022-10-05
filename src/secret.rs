@@ -107,7 +107,7 @@ impl PartialEq for Secret {
 #[cfg(feature = "gen_secret")]
 impl Default for Secret {
     fn default() -> Self {
-        return Secret::generate_secret()
+        Secret::generate_secret()
     }
 }
 
