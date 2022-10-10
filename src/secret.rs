@@ -237,19 +237,19 @@ mod tests {
     #[test]
     #[cfg(feature = "gen_secret")]
     fn secret_gen_secret() {
-        match Secret::generate_secret() {
-            Secret::Raw(secret) => assert_eq!(secret.len(), 20),
-            Secret::Encoded(_) => panic!("should be raw"),
-        }
+        let sec = Secret::generate_secret();
+
+        assert!(matches!(sec, Secret::Raw(_)));
+        assert_eq!(sec.to_bytes().unwrap().len(), 20);
     }
 
     #[test]
     #[cfg(feature = "gen_secret")]
     fn secret_gen_default() {
-        match Secret::default() {
-            Secret::Raw(secret) => assert_eq!(secret.len(), 20),
-            Secret::Encoded(_) => panic!("should be raw"),
-        }
+        let sec = Secret::default();
+
+        assert!(matches!(sec, Secret::Raw(_)));
+        assert_eq!(sec.to_bytes().unwrap().len(), 20);
     }
 
     #[test]
