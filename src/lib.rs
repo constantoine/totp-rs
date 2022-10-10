@@ -751,6 +751,31 @@ mod tests {
     }
 
     #[test]
+    #[cfg(all(feature = "otpauth", feature = "gen_secret"))]
+    fn ttl() {
+        let secret = Secret::default();
+        let totp_rfc = Rfc6238::with_defaults(secret.to_bytes().unwrap()).unwrap();
+        let totp = TOTP::from_rfc6238(totp_rfc);
+        assert!(totp.is_ok());
+    }
+
+    #[test]
+    #[cfg(feature = "otpauth")]
+    fn ttl_ok() {
+        let totp = TOTP::new(
+            Algorithm::SHA512,
+            6,
+            1,
+            1,
+            "TestSecretSuperSecret",
+            Some("Github".to_string()),
+            "constantoine@github.com".to_string(),
+        )
+        .unwrap();
+        assert!(totp.ttl().is_ok());
+    }
+
+    #[test]
     #[cfg(not(feature = "otpauth"))]
     fn returns_base32() {
         let totp = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret").unwrap();
@@ -891,6 +916,24 @@ mod tests {
 
     #[test]
     #[cfg(feature = "otpauth")]
+    fn from_url_query_sha512() {
+        let totp = TOTP::<Vec<u8>>::from_url("otpauth://totp/GitHub:test?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA512").unwrap();
+        assert_eq!(
+            totp.secret,
+            base32::decode(
+                base32::Alphabet::RFC4648 { padding: false },
+                "KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ"
+            )
+            .unwrap()
+        );
+        assert_eq!(totp.algorithm, Algorithm::SHA512);
+        assert_eq!(totp.digits, 8);
+        assert_eq!(totp.skew, 1);
+        assert_eq!(totp.step, 60);
+    }
+
+    #[test]
+    #[cfg(feature = "otpauth")]
     fn from_url_to_url() {
         let totp = TOTP::<Vec<u8>>::from_url("otpauth://totp/Github:constantoine%40github.com?issuer=Github&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA1").unwrap();
         let totp_bis = TOTP::new(
@@ -904,6 +947,24 @@ mod tests {
         )
         .unwrap();
         assert_eq!(totp.get_url(), totp_bis.get_url());
+    }
+
+    #[test]
+    #[cfg(feature = "otpauth")]
+    fn from_url_unknown_param() {
+        let totp = TOTP::<Vec<u8>>::from_url("otpauth://totp/GitHub:test?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA256&foo=bar").unwrap();
+        assert_eq!(
+            totp.secret,
+            base32::decode(
+                base32::Alphabet::RFC4648 { padding: false },
+                "KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ"
+            )
+            .unwrap()
+        );
+        assert_eq!(totp.algorithm, Algorithm::SHA256);
+        assert_eq!(totp.digits, 8);
+        assert_eq!(totp.skew, 1);
+        assert_eq!(totp.step, 60);
     }
 
     #[test]
@@ -945,6 +1006,24 @@ mod tests {
 
     #[test]
     #[cfg(feature = "otpauth")]
+    fn from_url_wrong_scheme() {
+        let totp = TOTP::<Vec<u8>>::from_url("http://totp/GitHub:test?issuer=GitHub&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA256");
+        assert!(totp.is_err());
+        let err = totp.unwrap_err();
+        assert!(matches!(err, TotpUrlError::Scheme(_)));
+    }
+
+    #[test]
+    #[cfg(feature = "otpauth")]
+    fn from_url_wrong_algo() {
+        let totp = TOTP::<Vec<u8>>::from_url("otpauth://totp/GitHub:test?issuer=GitHub&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=MD5");
+        assert!(totp.is_err());
+        let err = totp.unwrap_err();
+        assert!(matches!(err, TotpUrlError::Algorithm(_)));
+    }
+
+    #[test]
+    #[cfg(feature = "otpauth")]
     fn from_url_query_different_issuers() {
         let totp = TOTP::<Vec<u8>>::from_url("otpauth://totp/GitHub:test?issuer=Gitlab&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA256");
         assert!(totp.is_err());
@@ -980,5 +1059,24 @@ mod tests {
             format!("{:x}", hash_digest).as_str(),
             "025809c9db9c2c918930e018549c90929a083ee757156737812bad40ded64312c1526c73d8f2f59d5c203b97141ddfc331b1192e234f4f43257f50a6d05e382f"
         );
+    }
+
+    #[test]
+    #[cfg(feature = "qr")]
+    fn generates_qr_ok() {
+        use sha2::{Digest, Sha512};
+
+        let totp = TOTP::new(
+            Algorithm::SHA1,
+            6,
+            1,
+            1,
+            "TestSecretSuperSecret",
+            Some("Github".to_string()),
+            "constantoine@github.com".to_string(),
+        )
+        .unwrap();
+        let qr = totp.get_qr();
+        assert!(qr.is_ok());
     }
 }
