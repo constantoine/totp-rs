@@ -357,7 +357,8 @@ mod tests {
         let error = Rfc6238Error::SecretTooSmall(120);
         assert_eq!(
             error.to_string(),
-            "The length of the shared secret MUST be at least 128 bits. 120 bits is not enough".to_string()
+            "The length of the shared secret MUST be at least 128 bits. 120 bits is not enough"
+                .to_string()
         )
     }
 }
