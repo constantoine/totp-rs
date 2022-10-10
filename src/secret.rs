@@ -242,4 +242,28 @@ mod tests {
             Secret::Encoded(_) => panic!("should be raw"),
         }
     }
+
+    #[test]
+    #[cfg(feature = "gen_secret")]
+    fn secret_gen_default() {
+        match Secret::default() {
+            Secret::Raw(secret) => assert_eq!(secret.len(), 20),
+            Secret::Encoded(_) => panic!("should be raw"),
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "gen_secret")]
+    fn secret_empty() {
+        let non_ascii = vec![240, 159, 146, 150];
+        let sec = Secret::Encoded(std::str::from_utf8(&non_ascii).unwrap().to_owned());
+
+        let to_r = sec.to_raw();
+
+        assert!(to_r.is_err());
+
+        let to_b = sec.to_bytes();
+
+        assert!(to_b.is_err());
+    }
 }
