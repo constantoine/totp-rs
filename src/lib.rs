@@ -1064,8 +1064,6 @@ mod tests {
     #[test]
     #[cfg(feature = "qr")]
     fn generates_qr_ok() {
-        use sha2::{Digest, Sha512};
-
         let totp = TOTP::new(
             Algorithm::SHA1,
             6,
