@@ -54,7 +54,7 @@ pub fn assert_secret_length(secret: &[u8]) -> Result<(), Rfc6238Error> {
 /// use totp_rs::{Rfc6238, TOTP};
 ///
 /// let mut rfc = Rfc6238::with_defaults(
-///     "totp-sercret-123"
+///     "totp-sercret-123".as_bytes().to_vec()
 /// ).unwrap();
 ///
 /// // optional, set digits, issuer, account_name
@@ -64,7 +64,7 @@ pub fn assert_secret_length(secret: &[u8]) -> Result<(), Rfc6238Error> {
 /// ```
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde_support", derive(Serialize, Deserialize))]
-pub struct Rfc6238<T = Vec<u8>> {
+pub struct Rfc6238 {
     /// SHA-1
     algorithm: Algorithm,
     /// The number of digits composing the auth code. Per [rfc-4226](https://tools.ietf.org/html/rfc4226#section-5.3), this can oscilate between 6 and 8 digits
@@ -74,7 +74,7 @@ pub struct Rfc6238<T = Vec<u8>> {
     /// The recommended value per [rfc-6238](https://tools.ietf.org/html/rfc6238#section-5.2) is 30 seconds
     step: u64,
     /// As per [rfc-4226](https://tools.ietf.org/html/rfc4226#section-4) the secret should come from a strong source, most likely a CSPRNG. It should be at least 128 bits, but 160 are recommended
-    secret: T,
+    secret: Vec<u8>,
     #[cfg(feature = "otpauth")]
     /// The "Github" part of "Github:constantoine@github.com". Must not contain a colon `:`
     /// For example, the name of your service/website.
@@ -86,7 +86,7 @@ pub struct Rfc6238<T = Vec<u8>> {
     account_name: String,
 }
 
-impl<T: AsRef<[u8]>> Rfc6238<T> {
+impl Rfc6238 {
     /// Create an [rfc-6238](https://tools.ietf.org/html/rfc6238) compliant set of options that can be turned into a [TOTP](struct.TOTP.html)
     ///
     /// # Errors
@@ -97,10 +97,10 @@ impl<T: AsRef<[u8]>> Rfc6238<T> {
     #[cfg(feature = "otpauth")]
     pub fn new(
         digits: usize,
-        secret: T,
+        secret: Vec<u8>,
         issuer: Option<String>,
         account_name: String,
-    ) -> Result<Rfc6238<T>, Rfc6238Error> {
+    ) -> Result<Rfc6238, Rfc6238Error> {
         assert_digits(&digits)?;
         assert_secret_length(secret.as_ref())?;
 
@@ -137,7 +137,7 @@ impl<T: AsRef<[u8]>> Rfc6238<T> {
     /// - `digits` is lower than 6 or higher than 8
     /// - `secret` is smaller than 128 bits (16 characters)
     #[cfg(feature = "otpauth")]
-    pub fn with_defaults(secret: T) -> Result<Rfc6238<T>, Rfc6238Error> {
+    pub fn with_defaults(secret: Vec<u8>) -> Result<Rfc6238, Rfc6238Error> {
         Rfc6238::new(6, secret, Some("".to_string()), "".to_string())
     }
 
@@ -177,11 +177,11 @@ impl<T: AsRef<[u8]>> TryFrom<Rfc6238<T>> for TOTP<T> {
 }
 
 #[cfg(feature = "otpauth")]
-impl<T: AsRef<[u8]>> TryFrom<Rfc6238<T>> for TOTP<T> {
+impl TryFrom<Rfc6238> for TOTP {
     type Error = TotpUrlError;
 
     /// Try to create a [TOTP](struct.TOTP.html) from a [Rfc6238](struct.Rfc6238.html) config
-    fn try_from(rfc: Rfc6238<T>) -> Result<Self, Self::Error> {
+    fn try_from(rfc: Rfc6238) -> Result<Self, Self::Error> {
         TOTP::new(
             rfc.algorithm,
             rfc.digits,
@@ -289,7 +289,7 @@ mod tests {
     fn rfc_to_totp_fail() {
         let rfc = Rfc6238::new(
             8,
-            GOOD_SECRET.to_string(),
+            GOOD_SECRET.as_bytes().to_vec(),
             ISSUER.map(str::to_string),
             INVALID_ACCOUNT.to_string(),
         )
@@ -304,7 +304,7 @@ mod tests {
     fn rfc_to_totp_ok() {
         let rfc = Rfc6238::new(
             8,
-            GOOD_SECRET.to_string(),
+            GOOD_SECRET.as_bytes().to_vec(),
             ISSUER.map(str::to_string),
             ACCOUNT.to_string(),
         )
@@ -316,7 +316,7 @@ mod tests {
     #[test]
     #[cfg(feature = "otpauth")]
     fn rfc_with_default_set_values() {
-        let mut rfc = Rfc6238::with_defaults(GOOD_SECRET.to_string()).unwrap();
+        let mut rfc = Rfc6238::with_defaults(GOOD_SECRET.as_bytes().to_vec()).unwrap();
         let ok = rfc.digits(8);
         assert!(ok.is_ok());
         assert_eq!(rfc.account_name, "");
@@ -331,7 +331,7 @@ mod tests {
     #[test]
     #[cfg(not(feature = "otpauth"))]
     fn rfc_with_default_set_values() {
-        let mut rfc = Rfc6238::with_defaults(GOOD_SECRET.to_string()).unwrap();
+        let mut rfc = Rfc6238::with_defaults(GOOD_SECRET.as_bytes().to_vec()).unwrap();
         let fail = rfc.digits(4);
         assert!(fail.is_err());
         assert!(matches!(fail.unwrap_err(), Rfc6238Error::InvalidDigits(_)));

@@ -17,6 +17,8 @@ With optional feature "otpauth", support parsing the TOTP parameters from an `ot
 With optional feature "serde_support", library-defined types `TOTP` and `Algorithm` and will be Deserialize-able and Serialize-able.
 ### gen_secret
 With optional feature "gen_secret", a secret will be generated for you to store in database.
+### zeroize
+Securely zero secret information when the TOTP struct is dropped.
 
 
 # Examples

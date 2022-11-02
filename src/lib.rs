@@ -36,7 +36,7 @@
 //!     6,
 //!     1,
 //!     30,
-//!     "supersecret_topsecret",
+//!     "supersecret_topsecret".as_bytes().to_vec(),
 //!     Some("Github".to_string()),
 //!     "constantoine@github.com".to_string(),
 //! ).unwrap();
@@ -126,8 +126,10 @@ fn system_time() -> Result<u64, SystemTimeError> {
 /// TOTP holds informations as to how to generate an auth code and validate it. Its [secret](struct.TOTP.html#structfield.secret) field is sensitive data, treat it accordingly
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde_support", derive(Serialize, Deserialize))]
-pub struct TOTP<T = Vec<u8>> {
+#[cfg_attr(feature = "zeroize", derive(zeroize::Zeroize, zeroize::ZeroizeOnDrop))]
+pub struct TOTP {
     /// SHA-1 is the most widespread algorithm used, and for totp pursposes, SHA-1 hash collisions are [not a problem](https://tools.ietf.org/html/rfc4226#appendix-B.2) as HMAC-SHA-1 is not impacted. It's also the main one cited in [rfc-6238](https://tools.ietf.org/html/rfc6238#section-3) even though the [reference implementation](https://tools.ietf.org/html/rfc6238#appendix-A) permits the use of SHA-1, SHA-256 and SHA-512. Not all clients support other algorithms then SHA-1
+    #[cfg_attr(feature = "zeroize", zeroize(skip))]
     pub algorithm: Algorithm,
     /// The number of digits composing the auth code. Per [rfc-4226](https://tools.ietf.org/html/rfc4226#section-5.3), this can oscilate between 6 and 8 digits
     pub digits: usize,
@@ -138,7 +140,7 @@ pub struct TOTP<T = Vec<u8>> {
     /// As per [rfc-4226](https://tools.ietf.org/html/rfc4226#section-4) the secret should come from a strong source, most likely a CSPRNG. It should be at least 128 bits, but 160 are recommended
     ///
     /// non-encoded value
-    pub secret: T,
+    pub secret: Vec<u8>,
     #[cfg(feature = "otpauth")]
     /// The "Github" part of "Github:constantoine@github.com". Must not contain a colon `:`
     /// For example, the name of your service/website.
@@ -150,7 +152,7 @@ pub struct TOTP<T = Vec<u8>> {
     pub account_name: String,
 }
 
-impl<T: AsRef<[u8]>> PartialEq for TOTP<T> {
+impl PartialEq for TOTP {
     /// Will not check for issuer and account_name equality
     /// As they aren't taken in account for token generation/token checking
     fn eq(&self, other: &Self) -> bool {
@@ -200,7 +202,7 @@ impl Default for TOTP {
     }
 }
 
-impl<T: AsRef<[u8]>> TOTP<T> {
+impl TOTP {
     #[cfg(feature = "otpauth")]
     /// Will create a new instance of TOTP with given parameters. See [the doc](struct.TOTP.html#fields) for reference as to how to choose those values
     ///
@@ -225,10 +227,10 @@ impl<T: AsRef<[u8]>> TOTP<T> {
         digits: usize,
         skew: u8,
         step: u64,
-        secret: T,
+        secret: Vec<u8>,
         issuer: Option<String>,
         account_name: String,
-    ) -> Result<TOTP<T>, TotpUrlError> {
+    ) -> Result<TOTP, TotpUrlError> {
         crate::rfc::assert_digits(&digits)?;
         crate::rfc::assert_secret_length(secret.as_ref())?;
         if issuer.is_some() && issuer.as_ref().unwrap().contains(':') {
@@ -288,7 +290,7 @@ impl<T: AsRef<[u8]>> TOTP<T> {
     /// # Errors
     ///
     /// Will return an error in case issuer or label contain the character ':'
-    pub fn from_rfc6238(rfc: Rfc6238<T>) -> Result<TOTP<T>, TotpUrlError> {
+    pub fn from_rfc6238(rfc: Rfc6238) -> Result<TOTP, TotpUrlError> {
         TOTP::try_from(rfc)
     }
 
@@ -369,7 +371,7 @@ impl<T: AsRef<[u8]>> TOTP<T> {
 
     /// Generate a TOTP from the standard otpauth URL
     #[cfg(feature = "otpauth")]
-    pub fn from_url<S: AsRef<str>>(url: S) -> Result<TOTP<Vec<u8>>, TotpUrlError> {
+    pub fn from_url<S: AsRef<str>>(url: S) -> Result<TOTP, TotpUrlError> {
         let url = Url::parse(url.as_ref()).map_err(TotpUrlError::Url)?;
         if url.scheme() != "otpauth" {
             return Err(TotpUrlError::Scheme(url.scheme().to_string()));
@@ -576,7 +578,7 @@ mod tests {
             6,
             1,
             1,
-            "TestSecretSuperSecret",
+            "TestSecretSuperSecret".as_bytes().to_vec(),
             Some("Github:".to_string()),
             "constantoine@github.com".to_string(),
         );
@@ -592,7 +594,7 @@ mod tests {
             6,
             1,
             1,
-            "TestSecretSuperSecret",
+            "TestSecretSuperSecret".as_bytes().to_vec(),
             Some("Github".to_string()),
             "constantoine:github.com".to_string(),
         );
@@ -608,7 +610,7 @@ mod tests {
             6,
             1,
             1,
-            "TestSecretSuperSecret",
+            "TestSecretSuperSecret".as_bytes().to_vec(),
             None,
             "constantoine:github.com".to_string(),
         );
@@ -624,7 +626,7 @@ mod tests {
             6,
             1,
             1,
-            "TestSecretSuperSecret",
+            "TestSecretSuperSecret".as_bytes().to_vec(),
             Some("Github".to_string()),
             "constantoine@github.com".to_string(),
         )
@@ -634,7 +636,7 @@ mod tests {
             6,
             1,
             1,
-            "TestSecretSuperSecret",
+            "TestSecretSuperSecret".as_bytes().to_vec(),
             Some("Github".to_string()),
             "constantoine@github.com".to_string(),
         )
@@ -690,7 +692,7 @@ mod tests {
             6,
             1,
             1,
-            "TestSecretSuperSecret",
+            "TestSecretSuperSecret".as_bytes().to_vec(),
             None,
             "constantoine@github.com".to_string(),
         )
@@ -707,7 +709,7 @@ mod tests {
             6,
             1,
             1,
-            "TestSecretSuperSecret",
+            "TestSecretSuperSecret".as_bytes().to_vec(),
             Some("Github".to_string()),
             "constantoine@github.com".to_string(),
         )
@@ -724,7 +726,7 @@ mod tests {
             6,
             1,
             1,
-            "TestSecretSuperSecret",
+            "TestSecretSuperSecret".as_bytes().to_vec(),
             Some("Github".to_string()),
             "constantoine@github.com".to_string(),
         )
@@ -741,7 +743,7 @@ mod tests {
             6,
             1,
             1,
-            "TestSecretSuperSecret",
+            "TestSecretSuperSecret".as_bytes().to_vec(),
             Some("Github".to_string()),
             "constantoine@github.com".to_string(),
         )
@@ -767,7 +769,7 @@ mod tests {
             6,
             1,
             1,
-            "TestSecretSuperSecret",
+            "TestSecretSuperSecret".as_bytes().to_vec(),
             Some("Github".to_string()),
             "constantoine@github.com".to_string(),
         )
@@ -866,19 +868,19 @@ mod tests {
     #[test]
     #[cfg(feature = "otpauth")]
     fn from_url_err() {
-        assert!(TOTP::<Vec<u8>>::from_url("otpauth://hotp/123").is_err());
-        assert!(TOTP::<Vec<u8>>::from_url("otpauth://totp/GitHub:test").is_err());
-        assert!(TOTP::<Vec<u8>>::from_url(
+        assert!(TOTP::from_url("otpauth://hotp/123").is_err());
+        assert!(TOTP::from_url("otpauth://totp/GitHub:test").is_err());
+        assert!(TOTP::from_url(
             "otpauth://totp/GitHub:test:?secret=ABC&digits=8&period=60&algorithm=SHA256"
         )
         .is_err());
-        assert!(TOTP::<Vec<u8>>::from_url("otpauth://totp/Github:constantoine%40github.com?issuer=GitHub&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA1").is_err())
+        assert!(TOTP::from_url("otpauth://totp/Github:constantoine%40github.com?issuer=GitHub&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA1").is_err())
     }
 
     #[test]
     #[cfg(feature = "otpauth")]
     fn from_url_default() {
-        let totp = TOTP::<Vec<u8>>::from_url(
+        let totp = TOTP::from_url(
             "otpauth://totp/GitHub:test?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ",
         )
         .unwrap();
@@ -899,7 +901,7 @@ mod tests {
     #[test]
     #[cfg(feature = "otpauth")]
     fn from_url_query() {
-        let totp = TOTP::<Vec<u8>>::from_url("otpauth://totp/GitHub:test?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA256").unwrap();
+        let totp = TOTP::from_url("otpauth://totp/GitHub:test?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA256").unwrap();
         assert_eq!(
             totp.secret,
             base32::decode(
@@ -917,7 +919,7 @@ mod tests {
     #[test]
     #[cfg(feature = "otpauth")]
     fn from_url_query_sha512() {
-        let totp = TOTP::<Vec<u8>>::from_url("otpauth://totp/GitHub:test?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA512").unwrap();
+        let totp = TOTP::from_url("otpauth://totp/GitHub:test?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA512").unwrap();
         assert_eq!(
             totp.secret,
             base32::decode(
@@ -935,13 +937,13 @@ mod tests {
     #[test]
     #[cfg(feature = "otpauth")]
     fn from_url_to_url() {
-        let totp = TOTP::<Vec<u8>>::from_url("otpauth://totp/Github:constantoine%40github.com?issuer=Github&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA1").unwrap();
+        let totp = TOTP::from_url("otpauth://totp/Github:constantoine%40github.com?issuer=Github&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA1").unwrap();
         let totp_bis = TOTP::new(
             Algorithm::SHA1,
             6,
             1,
             1,
-            "TestSecretSuperSecret",
+            "TestSecretSuperSecret".as_bytes().to_vec(),
             Some("Github".to_string()),
             "constantoine@github.com".to_string(),
         )
@@ -952,7 +954,7 @@ mod tests {
     #[test]
     #[cfg(feature = "otpauth")]
     fn from_url_unknown_param() {
-        let totp = TOTP::<Vec<u8>>::from_url("otpauth://totp/GitHub:test?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA256&foo=bar").unwrap();
+        let totp = TOTP::from_url("otpauth://totp/GitHub:test?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA256&foo=bar").unwrap();
         assert_eq!(
             totp.secret,
             base32::decode(
@@ -970,25 +972,25 @@ mod tests {
     #[test]
     #[cfg(feature = "otpauth")]
     fn from_url_issuer_special() {
-        let totp = TOTP::<Vec<u8>>::from_url("otpauth://totp/Github%40:constantoine%40github.com?issuer=Github%40&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA1").unwrap();
+        let totp = TOTP::from_url("otpauth://totp/Github%40:constantoine%40github.com?issuer=Github%40&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA1").unwrap();
         let totp_bis = TOTP::new(
             Algorithm::SHA1,
             6,
             1,
             1,
-            "TestSecretSuperSecret",
+            "TestSecretSuperSecret".as_bytes().to_vec(),
             Some("Github@".to_string()),
             "constantoine@github.com".to_string(),
         )
         .unwrap();
         assert_eq!(totp.get_url(), totp_bis.get_url());
-        assert_eq!(totp.issuer.unwrap(), "Github@");
+        assert_eq!(totp.issuer.as_ref().unwrap(), "Github@");
     }
 
     #[test]
     #[cfg(feature = "otpauth")]
     fn from_url_query_issuer() {
-        let totp = TOTP::<Vec<u8>>::from_url("otpauth://totp/GitHub:test?issuer=GitHub&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA256").unwrap();
+        let totp = TOTP::from_url("otpauth://totp/GitHub:test?issuer=GitHub&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA256").unwrap();
         assert_eq!(
             totp.secret,
             base32::decode(
@@ -1001,13 +1003,13 @@ mod tests {
         assert_eq!(totp.digits, 8);
         assert_eq!(totp.skew, 1);
         assert_eq!(totp.step, 60);
-        assert_eq!(totp.issuer.unwrap(), "GitHub");
+        assert_eq!(totp.issuer.as_ref().unwrap(), "GitHub");
     }
 
     #[test]
     #[cfg(feature = "otpauth")]
     fn from_url_wrong_scheme() {
-        let totp = TOTP::<Vec<u8>>::from_url("http://totp/GitHub:test?issuer=GitHub&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA256");
+        let totp = TOTP::from_url("http://totp/GitHub:test?issuer=GitHub&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA256");
         assert!(totp.is_err());
         let err = totp.unwrap_err();
         assert!(matches!(err, TotpUrlError::Scheme(_)));
@@ -1016,7 +1018,7 @@ mod tests {
     #[test]
     #[cfg(feature = "otpauth")]
     fn from_url_wrong_algo() {
-        let totp = TOTP::<Vec<u8>>::from_url("otpauth://totp/GitHub:test?issuer=GitHub&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=MD5");
+        let totp = TOTP::from_url("otpauth://totp/GitHub:test?issuer=GitHub&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=MD5");
         assert!(totp.is_err());
         let err = totp.unwrap_err();
         assert!(matches!(err, TotpUrlError::Algorithm(_)));
@@ -1025,7 +1027,7 @@ mod tests {
     #[test]
     #[cfg(feature = "otpauth")]
     fn from_url_query_different_issuers() {
-        let totp = TOTP::<Vec<u8>>::from_url("otpauth://totp/GitHub:test?issuer=Gitlab&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA256");
+        let totp = TOTP::from_url("otpauth://totp/GitHub:test?issuer=Gitlab&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA256");
         assert!(totp.is_err());
         assert!(matches!(
             totp.unwrap_err(),
@@ -1043,7 +1045,7 @@ mod tests {
             6,
             1,
             1,
-            "TestSecretSuperSecret",
+            "TestSecretSuperSecret".as_bytes().to_vec(),
             Some("Github".to_string()),
             "constantoine@github.com".to_string(),
         )
@@ -1069,7 +1071,7 @@ mod tests {
             6,
             1,
             1,
-            "TestSecretSuperSecret",
+            "TestSecretSuperSecret".as_bytes().to_vec(),
             Some("Github".to_string()),
             "constantoine@github.com".to_string(),
         )
