@@ -191,9 +191,7 @@ impl core::fmt::Display for TOTP {
         write!(
             f,
             "digits: {}; step: {}; alg: {}",
-            self.digits,
-            self.step,
-            self.algorithm,
+            self.digits, self.step, self.algorithm,
         )
     }
 }
@@ -563,10 +561,11 @@ impl<T: AsRef<[u8]>> TOTP<T> {
         let url = self.get_url();
         let mut vec = Vec::new();
 
-        let qr: Result<qrcodegen::QrCode, String> = match qrcodegen::QrCode::encode_text(&url, qrcodegen::QrCodeEcc::Medium) {
-            Ok(qr) => Ok(qr),
-            Err(err) => Err(err.to_string())
-        };
+        let qr: Result<qrcodegen::QrCode, String> =
+            match qrcodegen::QrCode::encode_text(&url, qrcodegen::QrCodeEcc::Medium) {
+                Ok(qr) => Ok(qr),
+                Err(err) => Err(err.to_string()),
+            };
 
         if qr.is_err() {
             return Err(qr.err().unwrap());
@@ -589,7 +588,7 @@ impl<T: AsRef<[u8]>> TOTP<T> {
             image::ColorType::L8,
         ) {
             Ok(_) => Ok(base64::encode(vec)),
-            Err(err) => Err(err.to_string())
+            Err(err) => Err(err.to_string()),
         }
     }
 }
