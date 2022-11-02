@@ -170,6 +170,34 @@ impl<T: AsRef<[u8]>> PartialEq for TOTP<T> {
     }
 }
 
+#[cfg(feature = "otpauth")]
+impl core::fmt::Display for TOTP {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "digits: {}; step: {}; alg: {}; issuer: <{}>({})",
+            self.digits,
+            self.step,
+            self.algorithm,
+            self.issuer.clone().unwrap_or_else(|| "None".to_string()),
+            self.account_name
+        )
+    }
+}
+
+#[cfg(not(feature = "otpauth"))]
+impl core::fmt::Display for TOTP {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "digits: {}; step: {}; alg: {}",
+            self.digits,
+            self.step,
+            self.algorithm,
+        )
+    }
+}
+
 #[cfg(all(feature = "gen_secret", not(feature = "otpauth")))]
 impl Default for TOTP {
     fn default() -> Self {
@@ -529,28 +557,40 @@ impl<T: AsRef<[u8]>> TOTP<T> {
     ///
     /// It will also return an error in case it can't encode the qr into a png. This shouldn't happen unless either the qrcode library returns malformed data, or the image library doesn't encode the data correctly
     #[cfg(feature = "qr")]
-    pub fn get_qr(&self) -> Result<String, Box<dyn std::error::Error>> {
+    pub fn get_qr(&self) -> Result<String, String> {
         use image::ImageEncoder;
 
         let url = self.get_url();
         let mut vec = Vec::new();
-        let qr = qrcodegen::QrCode::encode_text(&url, qrcodegen::QrCodeEcc::Medium)?;
+
+        let qr: Result<qrcodegen::QrCode, String> = match qrcodegen::QrCode::encode_text(&url, qrcodegen::QrCodeEcc::Medium) {
+            Ok(qr) => Ok(qr),
+            Err(err) => Err(err.to_string())
+        };
+
+        if qr.is_err() {
+            return Err(qr.err().unwrap());
+        }
+
+        let code = qr?;
 
         // "+ 8 * 8" is here to add padding (the white border around the QRCode)
         // As some QRCode readers don't work without padding
-        let image_size = (qr.size() as u32) * 8 + 8 * 8;
+        let image_size = (code.size() as u32) * 8 + 8 * 8;
 
-        let canvas = self.get_qr_draw_canvas(qr);
+        let canvas = self.get_qr_draw_canvas(code);
 
         // Encode the canvas into a PNG
         let encoder = image::codecs::png::PngEncoder::new(&mut vec);
-        encoder.write_image(
+        match encoder.write_image(
             &canvas.into_raw(),
             image_size,
             image_size,
             image::ColorType::L8,
-        )?;
-        Ok(base64::encode(vec))
+        ) {
+            Ok(_) => Ok(base64::encode(vec)),
+            Err(err) => Err(err.to_string())
+        }
     }
 }
 
