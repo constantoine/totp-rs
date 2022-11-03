@@ -14,6 +14,8 @@ pub enum Rfc6238Error {
     SecretTooSmall(usize),
 }
 
+impl std::error::Error for Rfc6238Error {}
+
 impl std::fmt::Display for Rfc6238Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
