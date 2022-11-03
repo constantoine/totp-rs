@@ -1,6 +1,6 @@
 [package]
 name = "totp-rs"
-version = "3.0.1"
+version = "3.1.0"
 authors = ["Cleo Rebert <cleo.rebert@gmail.com>"]
 edition = "2021"
 readme = "README.md"
@@ -12,10 +12,10 @@ keywords = ["authentication", "2fa", "totp", "hmac", "otp"]
 categories = ["authentication", "web-programming"]
 
 [package.metadata.docs.rs]
-features = [ "qr", "serde_support", "otpauth" ]
+features = [ "qr", "serde_support" ]
 
 [features]
-default = ["qr", "gen_secret"]
+default = []
 otpauth = ["url", "urlencoding"]
 qr = ["qrcodegen", "image", "base64", "otpauth"]
 serde_support = ["serde"]
