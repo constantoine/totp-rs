@@ -42,7 +42,7 @@ pub fn assert_digits(digits: &usize) -> Result<(), Rfc6238Error> {
 }
 
 pub fn assert_secret_length(secret: &[u8]) -> Result<(), Rfc6238Error> {
-    if secret.as_ref().len() < 16 {
+    if secret.as_ref().len() < 8 {
         Err(Rfc6238Error::SecretTooSmall(secret.as_ref().len() * 8))
     } else {
         Ok(())
