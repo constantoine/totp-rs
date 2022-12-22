@@ -298,8 +298,8 @@ impl TOTP {
         digits: usize,
         skew: u8,
         step: u64,
-        secret: T,
-    ) -> Result<TOTP<T>, TotpUrlError> {
+        secret: Vec<u8>,
+    ) -> Result<TOTP, TotpUrlError> {
         crate::rfc::assert_digits(&digits)?;
         crate::rfc::assert_secret_length(secret.as_ref())?;
         Ok(TOTP {
@@ -686,40 +686,45 @@ mod tests {
     #[test]
     #[cfg(not(feature = "otpauth"))]
     fn comparison_different_algo() {
-        let reference = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret").unwrap();
-        let test = TOTP::new(Algorithm::SHA256, 6, 1, 1, "TestSecretSuperSecret").unwrap();
+        let reference =
+            TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret".into()).unwrap();
+        let test = TOTP::new(Algorithm::SHA256, 6, 1, 1, "TestSecretSuperSecret".into()).unwrap();
         assert_ne!(reference, test);
     }
 
     #[test]
     #[cfg(not(feature = "otpauth"))]
     fn comparison_different_digits() {
-        let reference = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret").unwrap();
-        let test = TOTP::new(Algorithm::SHA1, 8, 1, 1, "TestSecretSuperSecret").unwrap();
+        let reference =
+            TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret".into()).unwrap();
+        let test = TOTP::new(Algorithm::SHA1, 8, 1, 1, "TestSecretSuperSecret".into()).unwrap();
         assert_ne!(reference, test);
     }
 
     #[test]
     #[cfg(not(feature = "otpauth"))]
     fn comparison_different_skew() {
-        let reference = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret").unwrap();
-        let test = TOTP::new(Algorithm::SHA1, 6, 0, 1, "TestSecretSuperSecret").unwrap();
+        let reference =
+            TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret".into()).unwrap();
+        let test = TOTP::new(Algorithm::SHA1, 6, 0, 1, "TestSecretSuperSecret".into()).unwrap();
         assert_ne!(reference, test);
     }
 
     #[test]
     #[cfg(not(feature = "otpauth"))]
     fn comparison_different_step() {
-        let reference = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret").unwrap();
-        let test = TOTP::new(Algorithm::SHA1, 6, 1, 30, "TestSecretSuperSecret").unwrap();
+        let reference =
+            TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret".into()).unwrap();
+        let test = TOTP::new(Algorithm::SHA1, 6, 1, 30, "TestSecretSuperSecret".into()).unwrap();
         assert_ne!(reference, test);
     }
 
     #[test]
     #[cfg(not(feature = "otpauth"))]
     fn comparison_different_secret() {
-        let reference = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret").unwrap();
-        let test = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretDifferentSecret").unwrap();
+        let reference =
+            TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret".into()).unwrap();
+        let test = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretDifferentSecret".into()).unwrap();
         assert_ne!(reference, test);
     }
 
@@ -819,7 +824,7 @@ mod tests {
     #[test]
     #[cfg(not(feature = "otpauth"))]
     fn returns_base32() {
-        let totp = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret").unwrap();
+        let totp = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret".into()).unwrap();
         assert_eq!(
             totp.get_secret_base32().as_str(),
             "KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ"
@@ -829,14 +834,14 @@ mod tests {
     #[test]
     #[cfg(not(feature = "otpauth"))]
     fn generate_token() {
-        let totp = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret").unwrap();
+        let totp = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret".into()).unwrap();
         assert_eq!(totp.generate(1000).as_str(), "659761");
     }
 
     #[test]
     #[cfg(not(feature = "otpauth"))]
     fn generate_token_current() {
-        let totp = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret").unwrap();
+        let totp = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret".into()).unwrap();
         let time = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
             .unwrap()
@@ -850,28 +855,28 @@ mod tests {
     #[test]
     #[cfg(not(feature = "otpauth"))]
     fn generates_token_sha256() {
-        let totp = TOTP::new(Algorithm::SHA256, 6, 1, 1, "TestSecretSuperSecret").unwrap();
+        let totp = TOTP::new(Algorithm::SHA256, 6, 1, 1, "TestSecretSuperSecret".into()).unwrap();
         assert_eq!(totp.generate(1000).as_str(), "076417");
     }
 
     #[test]
     #[cfg(not(feature = "otpauth"))]
     fn generates_token_sha512() {
-        let totp = TOTP::new(Algorithm::SHA512, 6, 1, 1, "TestSecretSuperSecret").unwrap();
+        let totp = TOTP::new(Algorithm::SHA512, 6, 1, 1, "TestSecretSuperSecret".into()).unwrap();
         assert_eq!(totp.generate(1000).as_str(), "473536");
     }
 
     #[test]
     #[cfg(not(feature = "otpauth"))]
     fn checks_token() {
-        let totp = TOTP::new(Algorithm::SHA1, 6, 0, 1, "TestSecretSuperSecret").unwrap();
+        let totp = TOTP::new(Algorithm::SHA1, 6, 0, 1, "TestSecretSuperSecret".into()).unwrap();
         assert!(totp.check("659761", 1000));
     }
 
     #[test]
     #[cfg(not(feature = "otpauth"))]
     fn checks_token_current() {
-        let totp = TOTP::new(Algorithm::SHA1, 6, 0, 1, "TestSecretSuperSecret").unwrap();
+        let totp = TOTP::new(Algorithm::SHA1, 6, 0, 1, "TestSecretSuperSecret".into()).unwrap();
         assert!(totp
             .check_current(&totp.generate_current().unwrap())
             .unwrap());
@@ -881,7 +886,7 @@ mod tests {
     #[test]
     #[cfg(not(feature = "otpauth"))]
     fn checks_token_with_skew() {
-        let totp = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret").unwrap();
+        let totp = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret".into()).unwrap();
         assert!(
             totp.check("174269", 1000) && totp.check("659761", 1000) && totp.check("260393", 1000)
         );
@@ -890,7 +895,7 @@ mod tests {
     #[test]
     #[cfg(not(feature = "otpauth"))]
     fn next_step() {
-        let totp = TOTP::new(Algorithm::SHA1, 6, 1, 30, "TestSecretSuperSecret").unwrap();
+        let totp = TOTP::new(Algorithm::SHA1, 6, 1, 30, "TestSecretSuperSecret".into()).unwrap();
         assert!(totp.next_step(0) == 30);
         assert!(totp.next_step(29) == 30);
         assert!(totp.next_step(30) == 60);
@@ -899,7 +904,7 @@ mod tests {
     #[test]
     #[cfg(not(feature = "otpauth"))]
     fn next_step_current() {
-        let totp = TOTP::new(Algorithm::SHA1, 6, 1, 30, "TestSecretSuperSecret").unwrap();
+        let totp = TOTP::new(Algorithm::SHA1, 6, 1, 30, "TestSecretSuperSecret".into()).unwrap();
         let t = system_time().unwrap();
         assert!(totp.next_step_current().unwrap() == totp.next_step(t));
     }
@@ -919,10 +924,9 @@ mod tests {
     #[test]
     #[cfg(feature = "otpauth")]
     fn from_url_default() {
-        let totp = TOTP::from_url(
-            "otpauth://totp/GitHub:test?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ",
-        )
-        .unwrap();
+        let totp =
+            TOTP::from_url("otpauth://totp/GitHub:test?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ")
+                .unwrap();
         assert_eq!(
             totp.secret,
             base32::decode(
