@@ -2,7 +2,7 @@ use totp_rs::{Rfc6238, TOTP};
 
 #[cfg(feature = "otpauth")]
 fn main() {
-    let mut rfc = Rfc6238::with_defaults("totp-sercret-123").unwrap();
+    let mut rfc = Rfc6238::with_defaults("totp-sercret-123".as_bytes().to_vec()).unwrap();
 
     // optional, set digits, issuer, account_name
     rfc.digits(8).unwrap();
