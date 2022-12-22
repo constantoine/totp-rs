@@ -89,6 +89,7 @@ pub enum SecretParseError {
 }
 
 #[derive(Debug, Clone, Eq)]
+#[cfg_attr(feature = "zeroize", derive(zeroize::Zeroize, zeroize::ZeroizeOnDrop))]
 pub enum Secret {
     /// represent a non-encoded "raw" secret
     Raw(Vec<u8>),
