@@ -1,4 +1,4 @@
-# [4.0](https://github.com/constantoine/totp-rs/releases/tag/v4.1) (29/12/2022)
+# [4.0](https://github.com/constantoine/totp-rs/releases/tag/v4.0) (29/12/2022)
 ### What's new
 - Default features have been set to none.
 
