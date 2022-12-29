@@ -48,7 +48,7 @@ Is equivalent to
 Add it to your `Cargo.toml`:
 ```toml
 [dependencies]
-totp-rs = "^3.0"
+totp-rs = "^4.0"
 ```
 You can then do something like:
 ```Rust
@@ -89,7 +89,7 @@ fn main() {
 Add it to your `Cargo.toml`:
 ```toml
 [dependencies.totp-rs]
-version = "^3.0"
+version = "^4.0"
 features = ["qr"]
 ```
 You can then do something like:
@@ -116,7 +116,7 @@ fn main() {
 Add it to your `Cargo.toml`:
 ```toml
 [dependencies.totp-rs]
-version = "^3.0"
+version = "^4.0"
 features = ["serde_support"]
 ```
 
@@ -125,7 +125,7 @@ features = ["serde_support"]
 Add it to your `Cargo.toml`:
 ```toml
 [dependencies.totp-rs]
-version = "^3.0"
+version = "^4.0"
 features = ["otpauth"]
 ```
 You can then do something like:
@@ -144,7 +144,7 @@ fn main() {
 Add it to your `Cargo.toml`:
 ```toml
 [dependencies.totp-rs]
-version = "^3.0"
+version = "^4.0"
 features = ["gen_secret"]
 ```
 You can then do something like:
