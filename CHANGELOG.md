@@ -1,3 +1,25 @@
+# [4.0](https://github.com/constantoine/totp-rs/releases/tag/v4.1) (29/12/2022)
+### What's new
+- Default features have been set to none.
+
+### Changes
+- MSRV have been set to Rust `1.59`.
+- Updated `base64` crate to `0.20`.
+
+### Breaking changes
+- This was a relic from the beggining of the library, but `TOTP` is no longer generic. In my opinion, while having been used in the past for some historical reasons, the generic was mostly useless as almost everyone just used bytes as a secret, prevented us from doing some work like the `zeroize` feature, and overall made it more complex to new users than it needed to be.
+
+### Special thanks
+* [@tmpfs](https://github.com/tmpfs)  for the work done on #40.
+* [@timvisee](https://github.com/timvisee) for their feedback on #40.
+
+## Note
+This is the last release for 2022. This project has thus far been a wild ride. Originally intended for a non-profit organization, it gained traction outside of it, and soon became one the projects I'm the most proud of. It has been a pleasure learning from amazing people, and getting precious feedback from real life users. The open-source community has always been a special place to me, and being able to put in the hours to finally give something back has been, is, an amazing opportunity.
+
+The year 2023 should see a lot less of breaking changes, as the library slowly approaches a form most users can happily use. This doesn't mean the library will stop being maintained, but I (hopefully) will stop breaking your stuff so often.
+
+As always for every new realease, please report any issue encountered while updating totp-rs to `4.0.0`.
+
 # [3.1](https://github.com/constantoine/totp-rs/releases/tag/v3.1) (03/11/2022)
 ### What's new
 - `get_qr()` now returns a `String` as an error.
