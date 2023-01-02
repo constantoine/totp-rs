@@ -75,6 +75,10 @@ type HmacSha1 = hmac::Hmac<sha1::Sha1>;
 type HmacSha256 = hmac::Hmac<sha2::Sha256>;
 type HmacSha512 = hmac::Hmac<sha2::Sha512>;
 
+/// Alphabet for Steam tokens.
+#[cfg(feature = "steam")]
+const STEAM_CHARS: &str = "23456789BCDFGHJKMNPQRTVWXY";
+
 /// Algorithm enum holds the three standards algorithms for TOTP as per the [reference implementation](https://tools.ietf.org/html/rfc6238#appendix-A)
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 #[cfg_attr(feature = "serde_support", derive(Serialize, Deserialize))]
@@ -82,6 +86,8 @@ pub enum Algorithm {
     SHA1,
     SHA256,
     SHA512,
+    #[cfg(feature = "steam")]
+    Steam,
 }
 
 impl std::default::Default for Algorithm {
@@ -96,6 +102,8 @@ impl fmt::Display for Algorithm {
             Algorithm::SHA1 => f.write_str("SHA1"),
             Algorithm::SHA256 => f.write_str("SHA256"),
             Algorithm::SHA512 => f.write_str("SHA512"),
+            #[cfg(feature = "steam")]
+            Algorithm::Steam => f.write_str("SHA1"),
         }
     }
 }
@@ -114,6 +122,8 @@ impl Algorithm {
             Algorithm::SHA1 => Algorithm::hash(HmacSha1::new_from_slice(key).unwrap(), data),
             Algorithm::SHA256 => Algorithm::hash(HmacSha256::new_from_slice(key).unwrap(), data),
             Algorithm::SHA512 => Algorithm::hash(HmacSha512::new_from_slice(key).unwrap(), data),
+            #[cfg(feature = "steam")]
+            Algorithm::Steam => Algorithm::hash(HmacSha1::new_from_slice(key).unwrap(), data),
         }
     }
 }
@@ -384,13 +394,28 @@ impl TOTP {
     pub fn generate(&self, time: u64) -> String {
         let result: &[u8] = &self.sign(time);
         let offset = (result.last().unwrap() & 15) as usize;
-        let result =
+        #[allow(unused_mut)]
+        let mut result =
             u32::from_be_bytes(result[offset..offset + 4].try_into().unwrap()) & 0x7fff_ffff;
-        format!(
-            "{1:00$}",
-            self.digits,
-            result % 10_u32.pow(self.digits as u32)
-        )
+
+        match self.algorithm {
+            Algorithm::SHA1 | Algorithm::SHA256 | Algorithm::SHA512 => format!(
+                "{1:00$}",
+                self.digits,
+                result % 10_u32.pow(self.digits as u32)
+            ),
+            #[cfg(feature = "steam")]
+            Algorithm::Steam => (0..self.digits)
+                .map(|_| {
+                    let c = STEAM_CHARS
+                        .chars()
+                        .nth(result as usize % STEAM_CHARS.len())
+                        .unwrap();
+                    result /= STEAM_CHARS.len() as u32;
+                    c
+                })
+                .collect(),
+        }
     }
 
     /// Returns the timestamp of the first second for the next step
@@ -476,20 +501,25 @@ impl TOTP {
     fn parts_from_url<S: AsRef<str>>(
         url: S,
     ) -> Result<(Algorithm, usize, u8, u64, Vec<u8>, Option<String>, String), TotpUrlError> {
-        let url = Url::parse(url.as_ref()).map_err(TotpUrlError::Url)?;
-        if url.scheme() != "otpauth" {
-            return Err(TotpUrlError::Scheme(url.scheme().to_string()));
-        }
-        if url.host() != Some(Host::Domain("totp")) {
-            return Err(TotpUrlError::Host(url.host().unwrap().to_string()));
-        }
-
         let mut algorithm = Algorithm::SHA1;
         let mut digits = 6;
         let mut step = 30;
         let mut secret = Vec::new();
         let mut issuer: Option<String> = None;
         let mut account_name: String;
+
+        let url = Url::parse(url.as_ref()).map_err(TotpUrlError::Url)?;
+        if url.scheme() != "otpauth" {
+            return Err(TotpUrlError::Scheme(url.scheme().to_string()));
+        }
+        match url.host() {
+            Some(Host::Domain("totp")) => {}
+            #[cfg(feature = "steam")]
+            Some(Host::Domain("steam")) => algorithm = Algorithm::Steam,
+            _ => {
+                return Err(TotpUrlError::Host(url.host().unwrap().to_string()));
+            }
+        }
 
         let path = url.path().trim_start_matches('/');
         if path.contains(':') {
@@ -510,6 +540,10 @@ impl TOTP {
 
         for (key, value) in url.query_pairs() {
             match key.as_ref() {
+                #[cfg(feature = "steam")]
+                "algorithm" if algorithm == Algorithm::Steam => {
+                    // Do not change used algorithm if this is Steam
+                }
                 "algorithm" => {
                     algorithm = match value.as_ref() {
                         "SHA1" => Algorithm::SHA1,
