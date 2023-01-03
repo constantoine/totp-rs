@@ -598,6 +598,12 @@ impl TOTP {
     /// Secret will be base 32'd without padding, as per RFC.
     #[cfg(feature = "otpauth")]
     pub fn get_url(&self) -> String {
+        #[allow(unused_mut)]
+        let mut host = "totp";
+        #[cfg(feature = "steam")]
+        if self.algorithm == Algorithm::Steam {
+            host = "steam";
+        }
         let account_name: String = urlencoding::encode(self.account_name.as_str()).to_string();
         let mut label: String = format!("{}?", account_name);
         if self.issuer.is_some() {
@@ -607,7 +613,8 @@ impl TOTP {
         }
 
         format!(
-            "otpauth://totp/{}secret={}&digits={}&algorithm={}",
+            "otpauth://{}/{}secret={}&digits={}&algorithm={}",
+            host,
             label,
             self.get_secret_base32(),
             self.digits,
