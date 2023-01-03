@@ -242,10 +242,12 @@ impl TOTP {
     /// ```
     /// * `digits`: MUST be between 6 & 8
     /// * `secret`: Must have bitsize of at least 128
+    /// * `account_name`: Must not contain `:`
+    /// * `issuer`: Must not contain `:`
     ///
     /// # Errors
     ///
-    /// Will return an error if the `digit` or `secret` size is invalid
+    /// Will return an error if the `digit` or `secret` size is invalid or if `issuer` or `label` contain the character ':'
     pub fn new(
         algorithm: Algorithm,
         digits: usize,
@@ -257,6 +259,12 @@ impl TOTP {
     ) -> Result<TOTP, TotpUrlError> {
         crate::rfc::assert_digits(&digits)?;
         crate::rfc::assert_secret_length(secret.as_ref())?;
+        if issuer.is_some() && issuer.as_ref().unwrap().contains(':') {
+            return Err(TotpUrlError::Issuer(issuer.as_ref().unwrap().to_string()));
+        }
+        if account_name.contains(':') {
+            return Err(TotpUrlError::AccountName(account_name));
+        }
         Ok(Self::new_unchecked(
             algorithm,
             digits,
@@ -277,7 +285,7 @@ impl TOTP {
     /// ```rust
     /// use totp_rs::{Secret, TOTP, Algorithm};
     /// let secret = Secret::Encoded("OBWGC2LOFVZXI4TJNZTS243FMNZGK5BNGEZDG".to_string());
-    /// let totp = TOTP::new_unchecked(Algorithm::SHA1, 6, 1, 30, secret.to_bytes().unwrap(), None, "".to_string()).unwrap();
+    /// let totp = TOTP::new_unchecked(Algorithm::SHA1, 6, 1, 30, secret.to_bytes().unwrap(), None, "".to_string());
     /// ```
     pub fn new_unchecked(
         algorithm: Algorithm,
@@ -337,7 +345,7 @@ impl TOTP {
     /// ```rust
     /// use totp_rs::{Secret, TOTP, Algorithm};
     /// let secret = Secret::Encoded("OBWGC2LOFVZXI4TJNZTS243FMNZGK5BNGEZDG".to_string());
-    /// let totp = TOTP::new_unchecked(Algorithm::SHA1, 6, 1, 30, secret.to_bytes().unwrap()).unwrap();
+    /// let totp = TOTP::new_unchecked(Algorithm::SHA1, 6, 1, 30, secret.to_bytes().unwrap());
     /// ```
     pub fn new_unchecked(
         algorithm: Algorithm,
