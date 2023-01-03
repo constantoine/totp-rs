@@ -242,12 +242,10 @@ impl TOTP {
     /// ```
     /// * `digits`: MUST be between 6 & 8
     /// * `secret`: Must have bitsize of at least 128
-    /// * `account_name`: Must not contain `:`
-    /// * `issuer`: Must not contain `:`
     ///
     /// # Errors
     ///
-    /// Will return an error in case issuer or label contain the character ':'
+    /// Will return an error if the `digit` or `secret` size is invalid
     pub fn new(
         algorithm: Algorithm,
         digits: usize,
@@ -259,12 +257,6 @@ impl TOTP {
     ) -> Result<TOTP, TotpUrlError> {
         crate::rfc::assert_digits(&digits)?;
         crate::rfc::assert_secret_length(secret.as_ref())?;
-        if issuer.is_some() && issuer.as_ref().unwrap().contains(':') {
-            return Err(TotpUrlError::Issuer(issuer.as_ref().unwrap().to_string()));
-        }
-        if account_name.contains(':') {
-            return Err(TotpUrlError::AccountName(account_name));
-        }
         Ok(Self::new_unchecked(
             algorithm,
             digits,
@@ -323,7 +315,7 @@ impl TOTP {
     ///
     /// # Errors
     ///
-    /// Will return an error in case issuer or label contain the character ':'
+    /// Will return an error if the `digit` or `secret` size is invalid
     pub fn new(
         algorithm: Algorithm,
         digits: usize,
