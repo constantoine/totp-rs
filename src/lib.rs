@@ -47,6 +47,7 @@
 //! # }
 //! ```
 
+mod custom_providers;
 mod rfc;
 mod secret;
 mod url_error;
