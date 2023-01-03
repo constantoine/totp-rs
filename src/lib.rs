@@ -442,6 +442,32 @@ impl TOTP {
     /// Generate a TOTP from the standard otpauth URL
     #[cfg(feature = "otpauth")]
     pub fn from_url<S: AsRef<str>>(url: S) -> Result<TOTP, TotpUrlError> {
+        let (algorithm, digits, skew, step, secret, issuer, account_name) =
+            Self::parts_from_url(url)?;
+        TOTP::new(algorithm, digits, skew, step, secret, issuer, account_name)
+    }
+
+    /// Generate a TOTP from the standard otpauth URL, using `TOTP::new_unchecked` internally
+    #[cfg(feature = "otpauth")]
+    pub fn from_url_unchecked<S: AsRef<str>>(url: S) -> Result<TOTP, TotpUrlError> {
+        let (algorithm, digits, skew, step, secret, issuer, account_name) =
+            Self::parts_from_url(url)?;
+        Ok(TOTP::new_unchecked(
+            algorithm,
+            digits,
+            skew,
+            step,
+            secret,
+            issuer,
+            account_name,
+        ))
+    }
+
+    /// Parse the TOTP parts from the standard otpauth URL
+    #[cfg(feature = "otpauth")]
+    fn parts_from_url<S: AsRef<str>>(
+        url: S,
+    ) -> Result<(Algorithm, usize, u8, u64, Vec<u8>, Option<String>, String), TotpUrlError> {
         let url = Url::parse(url.as_ref()).map_err(TotpUrlError::Url)?;
         if url.scheme() != "otpauth" {
             return Err(TotpUrlError::Scheme(url.scheme().to_string()));
@@ -521,7 +547,7 @@ impl TOTP {
             return Err(TotpUrlError::Secret("".to_string()));
         }
 
-        TOTP::new(algorithm, digits, 1, step, secret, issuer, account_name)
+        Ok((algorithm, digits, 1, step, secret, issuer, account_name))
     }
 
     /// Will generate a standard URL used to automatically add TOTP auths. Usually used with qr codes
