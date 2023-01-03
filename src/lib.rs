@@ -265,7 +265,7 @@ impl TOTP {
         if account_name.contains(':') {
             return Err(TotpUrlError::AccountName(account_name));
         }
-        Ok(TOTP {
+        Ok(Self::new_unchecked(
             algorithm,
             digits,
             skew,
@@ -273,7 +273,38 @@ impl TOTP {
             secret,
             issuer,
             account_name,
-        })
+        ))
+    }
+
+    #[cfg(feature = "otpauth")]
+    /// Will create a new instance of TOTP with given parameters. See [the doc](struct.TOTP.html#fields) for reference as to how to choose those values. This is unchecked and does not check the `digits` and `secret` size
+    ///
+    /// # Description
+    /// * `secret`: expect a non-encoded value, to pass in base32 string use `Secret::Encoded(String)`
+    ///
+    /// ```rust
+    /// use totp_rs::{Secret, TOTP, Algorithm};
+    /// let secret = Secret::Encoded("OBWGC2LOFVZXI4TJNZTS243FMNZGK5BNGEZDG".to_string());
+    /// let totp = TOTP::new_unchecked(Algorithm::SHA1, 6, 1, 30, secret.to_bytes().unwrap(), None, "".to_string()).unwrap();
+    /// ```
+    pub fn new_unchecked(
+        algorithm: Algorithm,
+        digits: usize,
+        skew: u8,
+        step: u64,
+        secret: Vec<u8>,
+        issuer: Option<String>,
+        account_name: String,
+    ) -> TOTP {
+        TOTP {
+            algorithm,
+            digits,
+            skew,
+            step,
+            secret,
+            issuer,
+            account_name,
+        }
     }
 
     #[cfg(not(feature = "otpauth"))]
@@ -302,13 +333,34 @@ impl TOTP {
     ) -> Result<TOTP, TotpUrlError> {
         crate::rfc::assert_digits(&digits)?;
         crate::rfc::assert_secret_length(secret.as_ref())?;
-        Ok(TOTP {
+        Ok(Self::new_unchecked(algorithm, digits, skew, step, secret))
+    }
+
+    #[cfg(not(feature = "otpauth"))]
+    /// Will create a new instance of TOTP with given parameters. See [the doc](struct.TOTP.html#fields) for reference as to how to choose those values. This is unchecked and does not check the `digits` and `secret` size
+    ///
+    /// # Description
+    /// * `secret`: expect a non-encoded value, to pass in base32 string use `Secret::Encoded(String)`
+    ///
+    /// ```rust
+    /// use totp_rs::{Secret, TOTP, Algorithm};
+    /// let secret = Secret::Encoded("OBWGC2LOFVZXI4TJNZTS243FMNZGK5BNGEZDG".to_string());
+    /// let totp = TOTP::new_unchecked(Algorithm::SHA1, 6, 1, 30, secret.to_bytes().unwrap()).unwrap();
+    /// ```
+    pub fn new_unchecked(
+        algorithm: Algorithm,
+        digits: usize,
+        skew: u8,
+        step: u64,
+        secret: Vec<u8>,
+    ) -> TOTP {
+        TOTP {
             algorithm,
             digits,
             skew,
             step,
             secret,
-        })
+        }
     }
 
     /// Will create a new instance of TOTP from the given [Rfc6238](struct.Rfc6238.html) struct
