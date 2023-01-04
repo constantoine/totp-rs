@@ -516,7 +516,10 @@ impl TOTP {
         match url.host() {
             Some(Host::Domain("totp")) => {}
             #[cfg(feature = "steam")]
-            Some(Host::Domain("steam")) => algorithm = Algorithm::Steam,
+            Some(Host::Domain("steam")) => {
+                algorithm = Algorithm::Steam;
+                digits = 5;
+            }
             _ => {
                 return Err(TotpUrlError::Host(url.host().unwrap().to_string()));
             }
@@ -569,6 +572,12 @@ impl TOTP {
                         value.as_ref(),
                     )
                     .ok_or_else(|| TotpUrlError::Secret(value.to_string()))?;
+                }
+                #[cfg(feature = "steam")]
+                "issuer" if value.to_lowercase() == "steam" => {
+                    algorithm = Algorithm::Steam;
+                    digits = 5;
+                    issuer = Some(value.into());
                 }
                 "issuer" => {
                     let param_issuer = value
