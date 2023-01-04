@@ -247,7 +247,7 @@ impl TOTP {
     ///
     /// # Errors
     ///
-    /// Will return an error in case issuer or label contain the character ':'
+    /// Will return an error if the `digit` or `secret` size is invalid or if `issuer` or `label` contain the character ':'
     pub fn new(
         algorithm: Algorithm,
         digits: usize,
@@ -265,7 +265,7 @@ impl TOTP {
         if account_name.contains(':') {
             return Err(TotpUrlError::AccountName(account_name));
         }
-        Ok(TOTP {
+        Ok(Self::new_unchecked(
             algorithm,
             digits,
             skew,
@@ -273,7 +273,38 @@ impl TOTP {
             secret,
             issuer,
             account_name,
-        })
+        ))
+    }
+
+    #[cfg(feature = "otpauth")]
+    /// Will create a new instance of TOTP with given parameters. See [the doc](struct.TOTP.html#fields) for reference as to how to choose those values. This is unchecked and does not check the `digits` and `secret` size
+    ///
+    /// # Description
+    /// * `secret`: expect a non-encoded value, to pass in base32 string use `Secret::Encoded(String)`
+    ///
+    /// ```rust
+    /// use totp_rs::{Secret, TOTP, Algorithm};
+    /// let secret = Secret::Encoded("OBWGC2LOFVZXI4TJNZTS243FMNZGK5BNGEZDG".to_string());
+    /// let totp = TOTP::new_unchecked(Algorithm::SHA1, 6, 1, 30, secret.to_bytes().unwrap(), None, "".to_string());
+    /// ```
+    pub fn new_unchecked(
+        algorithm: Algorithm,
+        digits: usize,
+        skew: u8,
+        step: u64,
+        secret: Vec<u8>,
+        issuer: Option<String>,
+        account_name: String,
+    ) -> TOTP {
+        TOTP {
+            algorithm,
+            digits,
+            skew,
+            step,
+            secret,
+            issuer,
+            account_name,
+        }
     }
 
     #[cfg(not(feature = "otpauth"))]
@@ -292,7 +323,7 @@ impl TOTP {
     ///
     /// # Errors
     ///
-    /// Will return an error in case issuer or label contain the character ':'
+    /// Will return an error if the `digit` or `secret` size is invalid
     pub fn new(
         algorithm: Algorithm,
         digits: usize,
@@ -302,13 +333,34 @@ impl TOTP {
     ) -> Result<TOTP, TotpUrlError> {
         crate::rfc::assert_digits(&digits)?;
         crate::rfc::assert_secret_length(secret.as_ref())?;
-        Ok(TOTP {
+        Ok(Self::new_unchecked(algorithm, digits, skew, step, secret))
+    }
+
+    #[cfg(not(feature = "otpauth"))]
+    /// Will create a new instance of TOTP with given parameters. See [the doc](struct.TOTP.html#fields) for reference as to how to choose those values. This is unchecked and does not check the `digits` and `secret` size
+    ///
+    /// # Description
+    /// * `secret`: expect a non-encoded value, to pass in base32 string use `Secret::Encoded(String)`
+    ///
+    /// ```rust
+    /// use totp_rs::{Secret, TOTP, Algorithm};
+    /// let secret = Secret::Encoded("OBWGC2LOFVZXI4TJNZTS243FMNZGK5BNGEZDG".to_string());
+    /// let totp = TOTP::new_unchecked(Algorithm::SHA1, 6, 1, 30, secret.to_bytes().unwrap());
+    /// ```
+    pub fn new_unchecked(
+        algorithm: Algorithm,
+        digits: usize,
+        skew: u8,
+        step: u64,
+        secret: Vec<u8>,
+    ) -> TOTP {
+        TOTP {
             algorithm,
             digits,
             skew,
             step,
             secret,
-        })
+        }
     }
 
     /// Will create a new instance of TOTP from the given [Rfc6238](struct.Rfc6238.html) struct
@@ -398,6 +450,32 @@ impl TOTP {
     /// Generate a TOTP from the standard otpauth URL
     #[cfg(feature = "otpauth")]
     pub fn from_url<S: AsRef<str>>(url: S) -> Result<TOTP, TotpUrlError> {
+        let (algorithm, digits, skew, step, secret, issuer, account_name) =
+            Self::parts_from_url(url)?;
+        TOTP::new(algorithm, digits, skew, step, secret, issuer, account_name)
+    }
+
+    /// Generate a TOTP from the standard otpauth URL, using `TOTP::new_unchecked` internally
+    #[cfg(feature = "otpauth")]
+    pub fn from_url_unchecked<S: AsRef<str>>(url: S) -> Result<TOTP, TotpUrlError> {
+        let (algorithm, digits, skew, step, secret, issuer, account_name) =
+            Self::parts_from_url(url)?;
+        Ok(TOTP::new_unchecked(
+            algorithm,
+            digits,
+            skew,
+            step,
+            secret,
+            issuer,
+            account_name,
+        ))
+    }
+
+    /// Parse the TOTP parts from the standard otpauth URL
+    #[cfg(feature = "otpauth")]
+    fn parts_from_url<S: AsRef<str>>(
+        url: S,
+    ) -> Result<(Algorithm, usize, u8, u64, Vec<u8>, Option<String>, String), TotpUrlError> {
         let url = Url::parse(url.as_ref()).map_err(TotpUrlError::Url)?;
         if url.scheme() != "otpauth" {
             return Err(TotpUrlError::Scheme(url.scheme().to_string()));
@@ -477,7 +555,7 @@ impl TOTP {
             return Err(TotpUrlError::Secret("".to_string()));
         }
 
-        TOTP::new(algorithm, digits, 1, step, secret, issuer, account_name)
+        Ok((algorithm, digits, 1, step, secret, issuer, account_name))
     }
 
     /// Will generate a standard URL used to automatically add TOTP auths. Usually used with qr codes
