@@ -14,7 +14,7 @@ impl TOTP {
     /// let secret = Secret::Encoded("ABCDEFGHIJKLMNOPQRSTUVWXYZ234567".to_string());
     /// let totp = TOTP::new_steam(secret.to_bytes().unwrap(), Some("username".to_string()));
     /// ```
-    pub fn new_steam(secret: Vec<u8>, account_name: Option<String>) -> TOTP {
+    pub fn new_steam(secret: Vec<u8>, account_name: String) -> TOTP {
         Self::new_unchecked(
             Algorithm::Steam,
             5,
@@ -22,9 +22,7 @@ impl TOTP {
             30,
             secret,
             Some("Steam".into()),
-            account_name
-                .map(|n| format!("Steam:{}", n))
-                .unwrap_or_else(|| "".into()),
+            account_name,
         )
     }
 
