@@ -19,6 +19,8 @@ With optional feature "serde_support", library-defined types `TOTP` and `Algorit
 With optional feature "gen_secret", a secret will be generated for you to store in database.
 ### zeroize
 Securely zero secret information when the TOTP struct is dropped.
+### steam
+Add support for Steam TOTP tokens.
 
 
 # Examples
