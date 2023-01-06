@@ -21,6 +21,7 @@ otpauth = ["url", "urlencoding"]
 qr = ["qrcodegen", "image", "base64", "otpauth"]
 serde_support = ["serde"]
 gen_secret = ["rand"]
+steam = []
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"], optional = true }
