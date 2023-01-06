@@ -34,6 +34,7 @@ Add support for Steam TOTP tokens.
 4. [Enable otpauth url support](#with-otpauth-url-support)
 5. [Enable gen_secret support](#with-gensecret)
 6. [With RFC-6238 compliant default](#with-rfc-6238-compliant-default)
+7. [New TOTP from steam secret](#new-totp-from-steam-secret)
 
 ### Understanding Secret
 ---
@@ -214,5 +215,26 @@ Note: With `otpauth` feature, `TOTP.issuer` will be `None`, and `TOTP.account_na
 fn main() {
     let totp = TOTP::default();
     println!("code: {}", code);
+}
+```
+
+### New TOTP from steam secret
+---
+Add it to your `Cargo.toml`:
+```toml
+[dependencies.totp-rs]
+version = "^4.1"
+features = ["qr"]
+```
+You can then do something like:
+```Rust
+use totp_rs::{TOTP, Secret};
+
+fn main() {
+    let totp = TOTP::new_steam(
+        Secret::Encoded("KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ".to_string()).to_bytes().unwrap(),
+    ).unwrap();
+    let code = totp.get_qr()?;
+    println!("{}", code);   
 }
 ```

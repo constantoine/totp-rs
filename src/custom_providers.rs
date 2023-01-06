@@ -44,6 +44,7 @@ impl TOTP {
 
 #[cfg(all(test, feature = "steam"))]
 mod test {
+    #[cfg(feature = "otpauth")]
     use super::*;
 
     #[test]
