@@ -11,8 +11,8 @@ impl TOTP {
     ///
     /// ```rust
     /// use totp_rs::{Secret, TOTP};
-    /// let secret = Secret::Encoded("ABCDEFGHIJKLMNOPQRSTUVWXYZ234567".to_string());
-    /// let totp = TOTP::new_steam(secret.to_bytes().unwrap(), Some("username".to_string()));
+    /// let secret = Secret::Encoded("ABCDEFGHIJKLMNOPQRSTUVWXYZ234567".into());
+    /// let totp = TOTP::new_steam(secret.to_bytes().unwrap(), "username".into());
     /// ```
     pub fn new_steam(secret: Vec<u8>, account_name: String) -> TOTP {
         Self::new_unchecked(
@@ -39,5 +39,18 @@ impl TOTP {
     /// ```
     pub fn new_steam(secret: Vec<u8>) -> TOTP {
         Self::new_unchecked(Algorithm::Steam, 5, 1, 30, secret)
+    }
+}
+
+#[cfg(all(test, feature = "steam"))]
+mod test {
+    use super::*;
+
+    #[test]
+    #[cfg(feature = "otpauth")]
+    fn get_url_steam() {
+        let totp = TOTP::new_steam("TestSecretSuperSecret".into(), "constantoine".into());
+        let url = totp.get_url();
+        assert_eq!(url.as_str(), "otpauth://steam/Steam:constantoine?issuer=Steam&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=5&algorithm=SHA1");
     }
 }

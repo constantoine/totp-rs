@@ -518,7 +518,6 @@ impl TOTP {
             #[cfg(feature = "steam")]
             Some(Host::Domain("steam")) => {
                 algorithm = Algorithm::Steam;
-                digits = 5;
             }
             _ => {
                 return Err(TotpUrlError::Host(url.host().unwrap().to_string()));
@@ -580,9 +579,7 @@ impl TOTP {
                     issuer = Some(value.into());
                 }
                 "issuer" => {
-                    let param_issuer = value
-                        .parse::<String>()
-                        .map_err(|_| TotpUrlError::Issuer(value.to_string()))?;
+                    let param_issuer: String = value.into();
                     if issuer.is_some() && param_issuer.as_str() != issuer.as_ref().unwrap() {
                         return Err(TotpUrlError::IssuerMistmatch(
                             issuer.as_ref().unwrap().to_string(),
@@ -590,9 +587,20 @@ impl TOTP {
                         ));
                     }
                     issuer = Some(param_issuer);
+                    #[cfg(feature = "steam")]
+                    if issuer == Some("Steam".into()) {
+                        algorithm = Algorithm::Steam;
+                    }
                 }
                 _ => {}
             }
+        }
+
+        #[cfg(feature = "steam")]
+        if algorithm == Algorithm::Steam {
+            digits = 5;
+            step = 30;
+            issuer = Some("Steam".into());
         }
 
         if secret.is_empty() {
