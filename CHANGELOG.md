@@ -1,3 +1,12 @@
+# [4.1](https://github.com/constantoine/totp-rs/releases/tag/v4.1) (06/01/2023)
+### What's new
+- Add a "steam" feature which adds support for steam's non-standard totp.
+- Add `_unchecked` variants for `TOTP::new` and `TOTP::from_url`, which skip certain checks like key_size and digit numbers.
+
+### Special thanks
+* [@colemickens](colemickens) for opening #45.
+* [@timvisee](https://github.com/timvisee) for their work on #47 and #48, implementing an idea from #44 and working on #45.
+
 # [4.0](https://github.com/constantoine/totp-rs/releases/tag/v4.0) (29/12/2022)
 ### What's new
 - Default features have been set to none.
