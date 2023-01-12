@@ -634,6 +634,9 @@ impl TOTP {
         } else {
             account_name
         };
+        if self.step != 30 {
+            params.push(format!("period={}", self.step));
+        }
 
         format!("otpauth://{}/{}?{}", host, label, params.join("&"))
     }
@@ -1173,7 +1176,7 @@ mod tests {
             Algorithm::SHA1,
             6,
             1,
-            1,
+            30,
             "TestSecretSuperSecret".as_bytes().to_vec(),
             Some("Github".to_string()),
             "constantoine".to_string(),
@@ -1192,7 +1195,7 @@ mod tests {
             Algorithm::SHA1,
             6,
             1,
-            1,
+            30,
             "TestSecretSuperSecret".as_bytes().to_vec(),
             Some("Github".to_string()),
             "constantoine".to_string(),
