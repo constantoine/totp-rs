@@ -621,22 +621,21 @@ impl TOTP {
         if self.algorithm == Algorithm::Steam {
             host = "steam";
         }
-        let account_name: String = urlencoding::encode(self.account_name.as_str()).to_string();
-        let mut label: String = format!("{}?", account_name);
-        if self.issuer.is_some() {
-            let issuer: String =
-                urlencoding::encode(self.issuer.as_ref().unwrap().as_str()).to_string();
-            label = format!("{0}:{1}?issuer={0}&", issuer, account_name);
-        }
+        let account_name = urlencoding::encode(self.account_name.as_str()).to_string();
+        let mut params = vec![
+            format!("secret={}", self.get_secret_base32()),
+            format!("digits={}", self.digits),
+            format!("algorithm={}", self.algorithm),
+        ];
+        let label = if self.issuer.is_some() {
+            let issuer = urlencoding::encode(self.issuer.as_ref().unwrap().as_str()).to_string();
+            params.push(format!("issuer={}", issuer));
+            format!("{0}:{1}", issuer, account_name)
+        } else {
+            account_name
+        };
 
-        format!(
-            "otpauth://{}/{}secret={}&digits={}&algorithm={}",
-            host,
-            label,
-            self.get_secret_base32(),
-            self.digits,
-            self.algorithm,
-        )
+        format!("otpauth://{}/{}?{}", host, label, params.join("&"))
     }
 
     #[cfg(feature = "qr")]
@@ -871,7 +870,7 @@ mod tests {
             Algorithm::SHA1,
             6,
             1,
-            1,
+            30,
             "TestSecretSuperSecret".as_bytes().to_vec(),
             None,
             "constantoine@github.com".to_string(),
@@ -888,14 +887,14 @@ mod tests {
             Algorithm::SHA1,
             6,
             1,
-            1,
+            30,
             "TestSecretSuperSecret".as_bytes().to_vec(),
             Some("Github".to_string()),
             "constantoine@github.com".to_string(),
         )
         .unwrap();
         let url = totp.get_url();
-        assert_eq!(url.as_str(), "otpauth://totp/Github:constantoine%40github.com?issuer=Github&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA1");
+        assert_eq!(url.as_str(), "otpauth://totp/Github:constantoine%40github.com?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA1&issuer=Github");
     }
 
     #[test]
@@ -905,14 +904,14 @@ mod tests {
             Algorithm::SHA256,
             6,
             1,
-            1,
+            30,
             "TestSecretSuperSecret".as_bytes().to_vec(),
             Some("Github".to_string()),
             "constantoine@github.com".to_string(),
         )
         .unwrap();
         let url = totp.get_url();
-        assert_eq!(url.as_str(), "otpauth://totp/Github:constantoine%40github.com?issuer=Github&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA256");
+        assert_eq!(url.as_str(), "otpauth://totp/Github:constantoine%40github.com?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA256&issuer=Github");
     }
 
     #[test]
@@ -922,14 +921,14 @@ mod tests {
             Algorithm::SHA512,
             6,
             1,
-            1,
+            30,
             "TestSecretSuperSecret".as_bytes().to_vec(),
             Some("Github".to_string()),
             "constantoine@github.com".to_string(),
         )
         .unwrap();
         let url = totp.get_url();
-        assert_eq!(url.as_str(), "otpauth://totp/Github:constantoine%40github.com?issuer=Github&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA512");
+        assert_eq!(url.as_str(), "otpauth://totp/Github:constantoine%40github.com?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA512&issuer=Github");
     }
 
     #[test]
@@ -1121,7 +1120,7 @@ mod tests {
             Algorithm::SHA1,
             6,
             1,
-            1,
+            30,
             "TestSecretSuperSecret".as_bytes().to_vec(),
             Some("Github".to_string()),
             "constantoine@github.com".to_string(),
@@ -1156,7 +1155,7 @@ mod tests {
             Algorithm::SHA1,
             6,
             1,
-            1,
+            30,
             "TestSecretSuperSecret".as_bytes().to_vec(),
             Some("Github@".to_string()),
             "constantoine@github.com".to_string(),
