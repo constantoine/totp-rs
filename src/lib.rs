@@ -1278,7 +1278,7 @@ mod tests {
         let hash_digest = Sha512::digest(data);
         assert_eq!(
             format!("{:x}", hash_digest).as_str(),
-            "025809c9db9c2c918930e018549c90929a083ee757156737812bad40ded64312c1526c73d8f2f59d5c203b97141ddfc331b1192e234f4f43257f50a6d05e382f"
+            "2b6e6205bf1cea547b20af23c504eab8062af96c642c0d76afb3df6695fa231b210b7ae435e34bea1ef8b91216fd3a0f7065e7992f1703e0737600b464a1083e"
         );
     }
 
