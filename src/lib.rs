@@ -622,15 +622,17 @@ impl TOTP {
             host = "steam";
         }
         let account_name = urlencoding::encode(self.account_name.as_str()).to_string();
-        let mut params = vec![
-            format!("secret={}", self.get_secret_base32()),
-            format!("digits={}", self.digits),
-            format!("algorithm={}", self.algorithm),
-        ];
-        let label = if self.issuer.is_some() {
-            let issuer = urlencoding::encode(self.issuer.as_ref().unwrap().as_str()).to_string();
+        let mut params = vec![format!("secret={}", self.get_secret_base32())];
+        if self.digits != 6 {
+            params.push(format!("digits={}", self.digits));
+        }
+        if self.algorithm != Algorithm::SHA1 {
+            params.push(format!("algorithm={}", self.algorithm));
+        }
+        let label = if let Some(issuer) = &self.issuer {
+            let issuer = urlencoding::encode(issuer);
             params.push(format!("issuer={}", issuer));
-            format!("{0}:{1}", issuer, account_name)
+            format!("{}:{}", issuer, account_name)
         } else {
             account_name
         };
@@ -880,7 +882,10 @@ mod tests {
         )
         .unwrap();
         let url = totp.get_url();
-        assert_eq!(url.as_str(), "otpauth://totp/constantoine%40github.com?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA1");
+        assert_eq!(
+            url.as_str(),
+            "otpauth://totp/constantoine%40github.com?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ"
+        );
     }
 
     #[test]
@@ -897,7 +902,7 @@ mod tests {
         )
         .unwrap();
         let url = totp.get_url();
-        assert_eq!(url.as_str(), "otpauth://totp/Github:constantoine%40github.com?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA1&issuer=Github");
+        assert_eq!(url.as_str(), "otpauth://totp/Github:constantoine%40github.com?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&issuer=Github");
     }
 
     #[test]
@@ -914,7 +919,7 @@ mod tests {
         )
         .unwrap();
         let url = totp.get_url();
-        assert_eq!(url.as_str(), "otpauth://totp/Github:constantoine%40github.com?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA256&issuer=Github");
+        assert_eq!(url.as_str(), "otpauth://totp/Github:constantoine%40github.com?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&algorithm=SHA256&issuer=Github");
     }
 
     #[test]
@@ -931,7 +936,7 @@ mod tests {
         )
         .unwrap();
         let url = totp.get_url();
-        assert_eq!(url.as_str(), "otpauth://totp/Github:constantoine%40github.com?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA512&issuer=Github");
+        assert_eq!(url.as_str(), "otpauth://totp/Github:constantoine%40github.com?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&algorithm=SHA512&issuer=Github");
     }
 
     #[test]
@@ -1263,7 +1268,7 @@ mod tests {
             Algorithm::SHA1,
             6,
             1,
-            1,
+            30,
             "TestSecretSuperSecret".as_bytes().to_vec(),
             Some("Github".to_string()),
             "constantoine@github.com".to_string(),
@@ -1278,7 +1283,7 @@ mod tests {
         let hash_digest = Sha512::digest(data);
         assert_eq!(
             format!("{:x}", hash_digest).as_str(),
-            "2b6e6205bf1cea547b20af23c504eab8062af96c642c0d76afb3df6695fa231b210b7ae435e34bea1ef8b91216fd3a0f7065e7992f1703e0737600b464a1083e"
+            "fbb0804f1e4f4c689d22292c52b95f0783b01b4319973c0c50dd28af23dbbbe663dce4eb05a7959086d9092341cb9f103ec5a9af4a973867944e34c063145328"
         );
     }
 
