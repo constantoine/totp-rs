@@ -525,16 +525,15 @@ impl TOTP {
         }
 
         let path = url.path().trim_start_matches('/');
+        let path = urlencoding::decode(path)
+            .map_err(|_| TotpUrlError::AccountNameDecoding(path.to_string()))?
+            .to_string();
         if path.contains(':') {
             let parts = path.split_once(':').unwrap();
-            issuer = Some(
-                urlencoding::decode(parts.0.to_owned().as_str())
-                    .map_err(|_| TotpUrlError::IssuerDecoding(parts.0.to_owned()))?
-                    .to_string(),
-            );
-            account_name = parts.1.trim_start_matches(':').to_owned();
+            issuer = Some(parts.0.to_owned());
+            account_name = parts.1.to_owned();
         } else {
-            account_name = path.to_owned();
+            account_name = path;
         }
 
         account_name = urlencoding::decode(account_name.as_str())
@@ -1165,6 +1164,44 @@ mod tests {
         .unwrap();
         assert_eq!(totp.get_url(), totp_bis.get_url());
         assert_eq!(totp.issuer.as_ref().unwrap(), "Github@");
+    }
+
+    #[test]
+    #[cfg(feature = "otpauth")]
+    fn from_url_account_name_issuer() {
+        let totp = TOTP::from_url("otpauth://totp/Github:constantoine?issuer=Github&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA1").unwrap();
+        let totp_bis = TOTP::new(
+            Algorithm::SHA1,
+            6,
+            1,
+            1,
+            "TestSecretSuperSecret".as_bytes().to_vec(),
+            Some("Github".to_string()),
+            "constantoine".to_string(),
+        )
+        .unwrap();
+        assert_eq!(totp.get_url(), totp_bis.get_url());
+        assert_eq!(totp.account_name, "constantoine");
+        assert_eq!(totp.issuer.as_ref().unwrap(), "Github");
+    }
+
+    #[test]
+    #[cfg(feature = "otpauth")]
+    fn from_url_account_name_issuer_encoded() {
+        let totp = TOTP::from_url("otpauth://totp/Github%3Aconstantoine?issuer=Github&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA1").unwrap();
+        let totp_bis = TOTP::new(
+            Algorithm::SHA1,
+            6,
+            1,
+            1,
+            "TestSecretSuperSecret".as_bytes().to_vec(),
+            Some("Github".to_string()),
+            "constantoine".to_string(),
+        )
+        .unwrap();
+        assert_eq!(totp.get_url(), totp_bis.get_url());
+        assert_eq!(totp.account_name, "constantoine");
+        assert_eq!(totp.issuer.as_ref().unwrap(), "Github");
     }
 
     #[test]
