@@ -40,11 +40,11 @@ Add support for Steam TOTP tokens.
 ---
 This new type was added as a disambiguation between Raw and already base32 encoded secrets.
 ```Rust
-    Secret::Raw("TestSecretSuperSecret".as_bytes().to_vec())
+Secret::Raw("TestSecretSuperSecret".as_bytes().to_vec())
 ```
 Is equivalent to
 ```Rust
-    Secret::Encoded("KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ".to_string())
+Secret::Encoded("KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ".to_string())
 ```
 ### Generate a token
 ---
