@@ -1,3 +1,13 @@
+# [4.2](https://github.com/constantoine/totp-rs/releases/tag/v4.2) (14/01/2023)
+### Changes
+- Optionnals parameters in generated URLs are no longer present if their're the default value. (#49)
+
+### Fix
+- The issuer part of the Path when using the couple Issuer:AccountName wasn't cut correctly if the `:` was URL-encoded. (#50)
+
+### Special thanks
+* [@timvisee](https://github.com/timvisee) for their work on #49 and discovering the bug leading to #50.
+
 # [4.1](https://github.com/constantoine/totp-rs/releases/tag/v4.1) (06/01/2023)
 ### What's new
 - Add a "steam" feature which adds support for steam's non-standard totp.
