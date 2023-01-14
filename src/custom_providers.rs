@@ -52,6 +52,6 @@ mod test {
     fn get_url_steam() {
         let totp = TOTP::new_steam("TestSecretSuperSecret".into(), "constantoine".into());
         let url = totp.get_url();
-        assert_eq!(url.as_str(), "otpauth://steam/Steam:constantoine?issuer=Steam&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=5&algorithm=SHA1");
+        assert_eq!(url.as_str(), "otpauth://steam/Steam:constantoine?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=5&algorithm=SHA1&issuer=Steam");
     }
 }

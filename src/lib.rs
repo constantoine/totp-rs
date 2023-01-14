@@ -621,22 +621,26 @@ impl TOTP {
         if self.algorithm == Algorithm::Steam {
             host = "steam";
         }
-        let account_name: String = urlencoding::encode(self.account_name.as_str()).to_string();
-        let mut label: String = format!("{}?", account_name);
-        if self.issuer.is_some() {
-            let issuer: String =
-                urlencoding::encode(self.issuer.as_ref().unwrap().as_str()).to_string();
-            label = format!("{0}:{1}?issuer={0}&", issuer, account_name);
+        let account_name = urlencoding::encode(self.account_name.as_str()).to_string();
+        let mut params = vec![format!("secret={}", self.get_secret_base32())];
+        if self.digits != 6 {
+            params.push(format!("digits={}", self.digits));
+        }
+        if self.algorithm != Algorithm::SHA1 {
+            params.push(format!("algorithm={}", self.algorithm));
+        }
+        let label = if let Some(issuer) = &self.issuer {
+            let issuer = urlencoding::encode(issuer);
+            params.push(format!("issuer={}", issuer));
+            format!("{}:{}", issuer, account_name)
+        } else {
+            account_name
+        };
+        if self.step != 30 {
+            params.push(format!("period={}", self.step));
         }
 
-        format!(
-            "otpauth://{}/{}secret={}&digits={}&algorithm={}",
-            host,
-            label,
-            self.get_secret_base32(),
-            self.digits,
-            self.algorithm,
-        )
+        format!("otpauth://{}/{}?{}", host, label, params.join("&"))
     }
 
     #[cfg(feature = "qr")]
@@ -871,14 +875,17 @@ mod tests {
             Algorithm::SHA1,
             6,
             1,
-            1,
+            30,
             "TestSecretSuperSecret".as_bytes().to_vec(),
             None,
             "constantoine@github.com".to_string(),
         )
         .unwrap();
         let url = totp.get_url();
-        assert_eq!(url.as_str(), "otpauth://totp/constantoine%40github.com?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA1");
+        assert_eq!(
+            url.as_str(),
+            "otpauth://totp/constantoine%40github.com?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ"
+        );
     }
 
     #[test]
@@ -888,14 +895,14 @@ mod tests {
             Algorithm::SHA1,
             6,
             1,
-            1,
+            30,
             "TestSecretSuperSecret".as_bytes().to_vec(),
             Some("Github".to_string()),
             "constantoine@github.com".to_string(),
         )
         .unwrap();
         let url = totp.get_url();
-        assert_eq!(url.as_str(), "otpauth://totp/Github:constantoine%40github.com?issuer=Github&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA1");
+        assert_eq!(url.as_str(), "otpauth://totp/Github:constantoine%40github.com?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&issuer=Github");
     }
 
     #[test]
@@ -905,14 +912,14 @@ mod tests {
             Algorithm::SHA256,
             6,
             1,
-            1,
+            30,
             "TestSecretSuperSecret".as_bytes().to_vec(),
             Some("Github".to_string()),
             "constantoine@github.com".to_string(),
         )
         .unwrap();
         let url = totp.get_url();
-        assert_eq!(url.as_str(), "otpauth://totp/Github:constantoine%40github.com?issuer=Github&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA256");
+        assert_eq!(url.as_str(), "otpauth://totp/Github:constantoine%40github.com?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&algorithm=SHA256&issuer=Github");
     }
 
     #[test]
@@ -922,14 +929,14 @@ mod tests {
             Algorithm::SHA512,
             6,
             1,
-            1,
+            30,
             "TestSecretSuperSecret".as_bytes().to_vec(),
             Some("Github".to_string()),
             "constantoine@github.com".to_string(),
         )
         .unwrap();
         let url = totp.get_url();
-        assert_eq!(url.as_str(), "otpauth://totp/Github:constantoine%40github.com?issuer=Github&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA512");
+        assert_eq!(url.as_str(), "otpauth://totp/Github:constantoine%40github.com?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&algorithm=SHA512&issuer=Github");
     }
 
     #[test]
@@ -1121,7 +1128,7 @@ mod tests {
             Algorithm::SHA1,
             6,
             1,
-            1,
+            30,
             "TestSecretSuperSecret".as_bytes().to_vec(),
             Some("Github".to_string()),
             "constantoine@github.com".to_string(),
@@ -1156,7 +1163,7 @@ mod tests {
             Algorithm::SHA1,
             6,
             1,
-            1,
+            30,
             "TestSecretSuperSecret".as_bytes().to_vec(),
             Some("Github@".to_string()),
             "constantoine@github.com".to_string(),
@@ -1174,7 +1181,7 @@ mod tests {
             Algorithm::SHA1,
             6,
             1,
-            1,
+            30,
             "TestSecretSuperSecret".as_bytes().to_vec(),
             Some("Github".to_string()),
             "constantoine".to_string(),
@@ -1193,7 +1200,7 @@ mod tests {
             Algorithm::SHA1,
             6,
             1,
-            1,
+            30,
             "TestSecretSuperSecret".as_bytes().to_vec(),
             Some("Github".to_string()),
             "constantoine".to_string(),
@@ -1261,7 +1268,7 @@ mod tests {
             Algorithm::SHA1,
             6,
             1,
-            1,
+            30,
             "TestSecretSuperSecret".as_bytes().to_vec(),
             Some("Github".to_string()),
             "constantoine@github.com".to_string(),
@@ -1276,7 +1283,7 @@ mod tests {
         let hash_digest = Sha512::digest(data);
         assert_eq!(
             format!("{:x}", hash_digest).as_str(),
-            "025809c9db9c2c918930e018549c90929a083ee757156737812bad40ded64312c1526c73d8f2f59d5c203b97141ddfc331b1192e234f4f43257f50a6d05e382f"
+            "fbb0804f1e4f4c689d22292c52b95f0783b01b4319973c0c50dd28af23dbbbe663dce4eb05a7959086d9092341cb9f103ec5a9af4a973867944e34c063145328"
         );
     }
 
