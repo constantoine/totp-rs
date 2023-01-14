@@ -1,6 +1,6 @@
 [package]
 name = "totp-rs"
-version = "4.1.0"
+version = "4.2.0"
 authors = ["Cleo Rebert <cleo.rebert@gmail.com>"]
 rust-version = "1.59"
 edition = "2021"
@@ -13,7 +13,7 @@ keywords = ["authentication", "2fa", "totp", "hmac", "otp"]
 categories = ["authentication", "web-programming"]
 
 [package.metadata.docs.rs]
-features = [ "qr", "serde_support" ]
+features = [ "qr", "serde_support", "gen_secret" ]
 
 [features]
 default = []
