@@ -269,7 +269,10 @@ impl TOTP {
         account_name: String,
     ) -> Result<TOTP, TotpUrlError> {
         crate::rfc::assert_digits(&digits)?;
+
+        #[cfg(not(feature = "no-secret-length-req"))]
         crate::rfc::assert_secret_length(secret.as_ref())?;
+        
         if issuer.is_some() && issuer.as_ref().unwrap().contains(':') {
             return Err(TotpUrlError::Issuer(issuer.as_ref().unwrap().to_string()));
         }
@@ -343,7 +346,10 @@ impl TOTP {
         secret: Vec<u8>,
     ) -> Result<TOTP, TotpUrlError> {
         crate::rfc::assert_digits(&digits)?;
+
+        #[cfg(not(feature = "no-secret-length-req"))]
         crate::rfc::assert_secret_length(secret.as_ref())?;
+        
         Ok(Self::new_unchecked(algorithm, digits, skew, step, secret))
     }
 
