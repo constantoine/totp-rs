@@ -270,7 +270,7 @@ impl TOTP {
     ) -> Result<TOTP, TotpUrlError> {
         crate::rfc::assert_digits(&digits)?;
 
-        #[cfg(not(feature = "no-secret-length-req"))]
+        #[cfg(not(feature = "no_secret_length_req"))]
         crate::rfc::assert_secret_length(secret.as_ref())?;
         
         if issuer.is_some() && issuer.as_ref().unwrap().contains(':') {
@@ -347,7 +347,7 @@ impl TOTP {
     ) -> Result<TOTP, TotpUrlError> {
         crate::rfc::assert_digits(&digits)?;
 
-        #[cfg(not(feature = "no-secret-length-req"))]
+        #[cfg(not(feature = "no_secret_length_req"))]
         crate::rfc::assert_secret_length(secret.as_ref())?;
         
         Ok(Self::new_unchecked(algorithm, digits, skew, step, secret))
