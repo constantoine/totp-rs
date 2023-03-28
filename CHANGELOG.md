@@ -1,3 +1,18 @@
+# [5.0](https://github.com/constantoine/totp-rs/releases/tag/v4.2) (28/03/2023)
+### Breaking changes.
+- MSRV has been set to Rust `1.61`.
+- Removed `SecretParseError::Utf8Error`.
+
+### Changes
+- Updated `url` to `2.3`.
+- Updated `zeroize` to `1.6`.
+
+### Note
+This major release is a very small one, and is mostly here to respect semver. No major change was done, it is mostly maintenance and cleanup.
+
+### Special thanks
+* [@bestia-dev](https://github.com/bestia-dev) for opening #55.
+
 # [4.2](https://github.com/constantoine/totp-rs/releases/tag/v4.2) (14/01/2023)
 ### Changes
 - Optionnals parameters in generated URLs are no longer present if their're the default value. (#49)
@@ -22,7 +37,7 @@
 - Default features have been set to none.
 
 ### Changes
-- MSRV have been set to Rust `1.59`.
+- MSRV has been set to Rust `1.59`.
 - Updated `base64` crate to `0.20`.
 
 ### Breaking changes

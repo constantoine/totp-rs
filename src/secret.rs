@@ -78,15 +78,23 @@
 //! ```
 
 use base32::{self, Alphabet};
-use std::string::FromUtf8Error;
 
 use constant_time_eq::constant_time_eq;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SecretParseError {
     ParseBase32,
-    Utf8Error(FromUtf8Error),
 }
+
+impl std::fmt::Display for SecretParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SecretParseError::ParseBase32 => write!(f, "Could not decode base32 secret."),
+        }
+    }
+}
+
+impl std::error::Error for Secret {}
 
 #[derive(Debug, Clone, Eq)]
 #[cfg_attr(feature = "zeroize", derive(zeroize::Zeroize, zeroize::ZeroizeOnDrop))]
