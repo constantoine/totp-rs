@@ -4,6 +4,7 @@
 - Removed `SecretParseError::Utf8Error`.
 
 ### Changes
+- Updated `base64` to `0.21`.
 - Updated `url` to `2.3`.
 - Updated `zeroize` to `1.6`.
 
