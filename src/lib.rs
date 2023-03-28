@@ -699,6 +699,7 @@ impl TOTP {
     #[cfg(feature = "qr")]
     pub fn get_qr(&self) -> Result<String, String> {
         use image::ImageEncoder;
+        use base64::{Engine as _, engine::general_purpose};
 
         let url = self.get_url();
         let mut vec = Vec::new();
@@ -729,7 +730,7 @@ impl TOTP {
             image_size,
             image::ColorType::L8,
         ) {
-            Ok(_) => Ok(base64::encode(vec)),
+            Ok(_) => Ok(general_purpose::STANDARD.encode(vec)),
             Err(err) => Err(err.to_string()),
         }
     }

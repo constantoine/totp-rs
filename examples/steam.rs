@@ -6,10 +6,7 @@ use totp_rs::{Secret, TOTP};
 fn main() {
     // create TOTP from base32 secret
     let secret_b32 = Secret::Encoded(String::from("OBWGC2LOFVZXI4TJNZTS243FMNZGK5BNGEZDG"));
-    let totp_b32 = TOTP::new_steam(
-        secret_b32.to_bytes().unwrap(),
-        "user-account".to_string(),
-    );
+    let totp_b32 = TOTP::new_steam(secret_b32.to_bytes().unwrap(), "user-account".to_string());
 
     println!(
         "base32 {} ; raw {}",
@@ -41,6 +38,4 @@ fn main() {
 }
 
 #[cfg(not(feature = "steam"))]
-fn main() {
-
-}
+fn main() {}
