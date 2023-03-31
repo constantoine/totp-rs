@@ -1,3 +1,12 @@
+# [5.0.1](https://github.com/constantoine/totp-rs/releases/tag/v5.0.1) (31/03/2023)
+### Changes.
+
+### Changes
+- Normalize dependencies specifications since cargo uses range dependency by default.
+
+### Special thanks
+* [@bestia-dev](https://github.com/bestia-dev) for pointing out discrepancies in my dependency requirements.
+
 # [5.0](https://github.com/constantoine/totp-rs/releases/tag/v5.0) (28/03/2023)
 ### Breaking changes.
 - MSRV has been set to Rust `1.61`.
