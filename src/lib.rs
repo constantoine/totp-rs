@@ -449,7 +449,7 @@ impl TOTP {
     /// Will check if token is valid given the provided timestamp in seconds, accounting [skew](struct.TOTP.html#structfield.skew)
     pub fn check(&self, token: &str, time: u64) -> bool {
         let basestep = time / self.step - (self.skew as u64);
-        for i in 0..self.skew * 2 + 1 {
+        for i in 0..(self.skew as u16) * 2 + 1 {
             let step_time = (basestep + (i as u64)) * (self.step as u64);
 
             if constant_time_eq(self.generate(step_time).as_bytes(), token.as_bytes()) {
@@ -1014,6 +1014,13 @@ mod tests {
     #[cfg(not(feature = "otpauth"))]
     fn checks_token() {
         let totp = TOTP::new(Algorithm::SHA1, 6, 0, 1, "TestSecretSuperSecret".into()).unwrap();
+        assert!(totp.check("659761", 1000));
+    }
+
+    #[test]
+    #[cfg(not(feature = "otpauth"))]
+    fn checks_token_big_skew() {
+        let totp = TOTP::new(Algorithm::SHA1, 6, 255, 1, "TestSecretSuperSecret".into()).unwrap();
         assert!(totp.check("659761", 1000));
     }
 
