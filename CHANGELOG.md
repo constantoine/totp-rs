@@ -1,3 +1,10 @@
+# [5.0.2](https://github.com/constantoine/totp-rs/releases/tag/v5.0.1) (15/05/2023)
+### Fix
+- Fix skew overflowing if value is over 128.
+
+### Special thanks
+* [@carl-wallace](https://github.com/carl-wallace) for discovering #58.
+
 # [5.0.1](https://github.com/constantoine/totp-rs/releases/tag/v5.0.1) (31/03/2023)
 ### Changes
 - Normalize dependencies specifications since cargo uses range dependency by default.
