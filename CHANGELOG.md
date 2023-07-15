@@ -1,3 +1,10 @@
+# [5.1.0](https://github.com/constantoine/totp-rs/releases/tag/v5.1.0) (15/07/2023)
+### What's new
+- Added some more documentation.
+
+### Fix
+- Removed unnecessary allocation for `Secret.Display` for the `Raw` variant.
+
 # [5.0.2](https://github.com/constantoine/totp-rs/releases/tag/v5.0.1) (15/05/2023)
 ### Fix
 - Fix skew overflowing if value is over 128.
