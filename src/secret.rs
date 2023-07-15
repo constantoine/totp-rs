@@ -81,8 +81,10 @@ use base32::{self, Alphabet};
 
 use constant_time_eq::constant_time_eq;
 
+/// Different ways secret parsing failed.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SecretParseError {
+    /// Invalid base32 input.
     ParseBase32,
 }
 
@@ -96,18 +98,19 @@ impl std::fmt::Display for SecretParseError {
 
 impl std::error::Error for Secret {}
 
+/// Shared secret between client and server to validate token against/generate token from.
 #[derive(Debug, Clone, Eq)]
 #[cfg_attr(feature = "zeroize", derive(zeroize::Zeroize, zeroize::ZeroizeOnDrop))]
 pub enum Secret {
-    /// represent a non-encoded "raw" secret
+    /// Non-encoded "raw" secret.
     Raw(Vec<u8>),
-    /// represent a base32 encoded secret
+    /// Base32 encoded secret.
     Encoded(String),
 }
 
 impl PartialEq for Secret {
-    /// Will check that to_bytes() returns the same
-    /// One secret can be Raw, and the other Encoded
+    /// Will check that to_bytes() returns the same.
+    /// One secret can be Raw, and the other Encoded.
     fn eq(&self, other: &Self) -> bool {
         constant_time_eq(&self.to_bytes().unwrap(), &other.to_bytes().unwrap())
     }
@@ -121,7 +124,7 @@ impl Default for Secret {
 }
 
 impl Secret {
-    /// Get the inner String value as a Vec of bytes
+    /// Get the inner String value as a Vec of bytes.
     pub fn to_bytes(&self) -> Result<Vec<u8>, SecretParseError> {
         match self {
             Secret::Raw(s) => Ok(s.to_vec()),
@@ -143,7 +146,7 @@ impl Secret {
         }
     }
 
-    /// Try to transforms a `Secret::Raw` into a `Secret::Encoded`
+    /// Try to transforms a `Secret::Raw` into a `Secret::Encoded`.
     pub fn to_encoded(&self) -> Self {
         match self {
             Secret::Raw(s) => {
@@ -153,15 +156,15 @@ impl Secret {
         }
     }
 
-    /// ⚠️ requires feature `gen_secret`
+    /// ⚠️ requires feature `gen_secret`.
     ///
     /// Generate a CSPRNG binary value of 160 bits,
-    /// the recomended size from [rfc-4226](https://www.rfc-editor.org/rfc/rfc4226#section-4)
+    /// the recomended size from [rfc-4226](https://www.rfc-editor.org/rfc/rfc4226#section-4).
     ///
     /// > The length of the shared secret MUST be at least 128 bits.
     /// > This document RECOMMENDs a shared secret length of 160 bits.
     ///
-    /// ⚠️ The generated secret is not guaranteed to be a valid UTF-8 sequence
+    /// ⚠️ The generated secret is not guaranteed to be a valid UTF-8 sequence.
     #[cfg(feature = "gen_secret")]
     pub fn generate_secret() -> Secret {
         use rand::Rng;
@@ -177,11 +180,10 @@ impl std::fmt::Display for Secret {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Secret::Raw(bytes) => {
-                let mut s: String = String::new();
                 for b in bytes {
-                    s = format!("{}{:02x}", &s, &b);
+                    write!(f, "{:02x}", b)?;
                 }
-                write!(f, "{}", s)
+                Ok(())
             }
             Secret::Encoded(s) => write!(f, "{}", s),
         }

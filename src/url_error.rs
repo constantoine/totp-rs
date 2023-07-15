@@ -3,22 +3,37 @@ use url::ParseError;
 
 use crate::Rfc6238Error;
 
+/// Errors returned mostly upon decoding URL.
 #[derive(Debug, Eq, PartialEq)]
 pub enum TotpUrlError {
+    /// Couldn't decode URL.
     #[cfg(feature = "otpauth")]
     Url(ParseError),
+    /// Invalid scheme.
     Scheme(String),
+    /// Invalid host.
     Host(String),
+    /// Wrong base32 input.
     Secret(String),
+    /// Invalid secret size. (Too short?)
     SecretSize(usize),
+    /// Unknown algorithm.
     Algorithm(String),
+    /// Characters should only be digits.
     Digits(String),
+    /// Digits should be between 6 and 8.
     DigitsNumber(usize),
+    /// Couldn't decode step into a number.
     Step(String),
+    /// Issuer contains invalid character `:`.
     Issuer(String),
+    /// Couldn't decode issuer.
     IssuerDecoding(String),
+    /// Issuers should be the same.
     IssuerMistmatch(String, String),
+    /// Account name contains invalid character `:` or couldn't be decoded.
     AccountName(String),
+    /// Couldn't parse account name.
     AccountNameDecoding(String),
 }
 

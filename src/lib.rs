@@ -698,8 +698,8 @@ impl TOTP {
     /// It will also return an error in case it can't encode the qr into a png. This shouldn't happen unless either the qrcode library returns malformed data, or the image library doesn't encode the data correctly
     #[cfg(feature = "qr")]
     pub fn get_qr(&self) -> Result<String, String> {
+        use base64::{engine::general_purpose, Engine as _};
         use image::ImageEncoder;
-        use base64::{Engine as _, engine::general_purpose};
 
         let url = self.get_url();
         let mut vec = Vec::new();
