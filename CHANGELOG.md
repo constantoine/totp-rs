@@ -1,3 +1,7 @@
+# [5.2.0](https://github.com/constantoine/totp-rs/releases/tag/v5.2.0) (10/08/2023)
+### Changes
+- Updated `url` crate to `2.4`.
+
 # [5.1.0](https://github.com/constantoine/totp-rs/releases/tag/v5.1.0) (15/07/2023)
 ### What's new
 - Added some more documentation.
