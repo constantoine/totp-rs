@@ -452,7 +452,7 @@ impl TOTP {
     pub fn check(&self, token: &str, time: u64) -> bool {
         let basestep = time / self.step - (self.skew as u64);
         for i in 0..(self.skew as u16) * 2 + 1 {
-            let step_time = (basestep + (i as u64)) * (self.step as u64);
+            let step_time = (basestep + (i as u64)) * self.step;
 
             if constant_time_eq(self.generate(step_time).as_bytes(), token.as_bytes()) {
                 return true;
