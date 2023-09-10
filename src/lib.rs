@@ -1197,6 +1197,7 @@ mod tests {
     #[test]
     #[cfg(feature = "qr")]
     fn generates_qr() {
+        use qrcodegen_image::qrcodegen;
         use sha2::{Digest, Sha512};
 
         let totp = TOTP::new(
@@ -1212,7 +1213,7 @@ mod tests {
         let url = totp.get_url();
         let qr = qrcodegen::QrCode::encode_text(&url, qrcodegen::QrCodeEcc::Medium)
             .expect("could not generate qr");
-        let data = qr::get_qr_draw_canvas(qr).into_raw();
+        let data = qrcodegen_image::draw_canvas(qr).into_raw();
 
         // Create hash from image
         let hash_digest = Sha512::digest(data);

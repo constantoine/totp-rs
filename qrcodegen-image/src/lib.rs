@@ -2,7 +2,11 @@
 //! to a canvas provided by the `image` crate.
 use image::Luma;
 
-pub(crate) fn get_qr_draw_canvas(qr: qrcodegen::QrCode) -> image::ImageBuffer<Luma<u8>, Vec<u8>> {
+pub use image;
+pub use qrcodegen;
+
+/// Draw a QR code to an image buffer.
+pub fn draw_canvas(qr: qrcodegen::QrCode) -> image::ImageBuffer<Luma<u8>, Vec<u8>> {
     let size = qr.size() as u32;
     // "+ 8 * 8" is here to add padding (the white border around the QRCode)
     // As some QRCode readers don't work without padding
@@ -42,7 +46,7 @@ pub(crate) fn get_qr_draw_canvas(qr: qrcodegen::QrCode) -> image::ImageBuffer<Lu
     canvas
 }
 
-/// Convert text to a PNG QR code.
+/// Draw text to a PNG QR code.
 pub fn draw_png(text: &str) -> Result<Vec<u8>, String> {
     use image::ImageEncoder;
 
@@ -64,7 +68,7 @@ pub fn draw_png(text: &str) -> Result<Vec<u8>, String> {
     // As some QRCode readers don't work without padding
     let image_size = (code.size() as u32) * 8 + 8 * 8;
 
-    let canvas = get_qr_draw_canvas(code);
+    let canvas = draw_canvas(code);
 
     // Encode the canvas into a PNG
     let encoder = image::codecs::png::PngEncoder::new(&mut vec);
@@ -79,7 +83,7 @@ pub fn draw_png(text: &str) -> Result<Vec<u8>, String> {
     }
 }
 
-/// Convert text to a base64 encoded PNG QR code.
+/// Draw text to a Base64-encoded PNG QR code.
 #[cfg(feature = "base64")]
 pub fn draw_base64(text: &str) -> Result<String, String> {
     use base64::{engine::general_purpose, Engine as _};
