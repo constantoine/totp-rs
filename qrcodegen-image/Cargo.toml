@@ -1,12 +1,12 @@
 [package]
 name = "qrcodegen-image"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
 authors = ["Cleo Rebert <cleo.rebert@gmail.com>"]
 rust-version = "1.61"
 readme = "README.md"
 license = "MIT"
-description = "Draw QR codes to a PNG canvas."
+description = "Draw QR codes to a PNG canvas. Wrapper around the qrcodegen crate."
 repository = "https://github.com/constantoine/totp-rs"
 homepage = "https://github.com/constantoine/totp-rs"
 

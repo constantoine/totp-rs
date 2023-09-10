@@ -1,3 +1,13 @@
+# [5.3.0](https://github.com/constantoine/totp-rs/releases/tag/v4.2) (10/09/2023)
+### What's new
+- Creation of a new `qrcodegen-image` subcrate to handle image creation, as the wrapper is actually nice and could be used in placed not related to `totp-rs`. (#61)
+
+### Changes
+- `TOTP::get_qr` was deprecated in favour of `TOTP::get_qr_base64` and `TOTP::get_qr_png`. 
+
+### Special thanks
+* [@tmpfs](https://github.com/tmpfs) for their work on #60 and implementation in #61.
+
 # [5.2.0](https://github.com/constantoine/totp-rs/releases/tag/v5.2.0) (10/08/2023)
 ### Changes
 - Updated `url` crate to `2.4`.

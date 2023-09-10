@@ -42,7 +42,7 @@
 //! ).unwrap();
 //! let url = totp.get_url();
 //! println!("{}", url);
-//! let code = totp.get_qr().unwrap();
+//! let code = totp.get_qr_base64().unwrap();
 //! println!("{}", code);
 //! # }
 //! ```
@@ -646,6 +646,15 @@ impl TOTP {
 
 #[cfg(feature = "qr")]
 impl TOTP {
+    #[deprecated(
+        since = "5.3.0",
+        note = "get_qr was forcing the use of png as a base64. Use get_qr_base64 or get_qr_png instead. Will disappear in 6.0."
+    )]
+    pub fn get_qr(&self) -> Result<String, String> {
+        let url = self.get_url();
+        qrcodegen_image::draw_base64(&url)
+    }
+
     /// Will return a qrcode to automatically add a TOTP as a base64 string. Needs feature `qr` to be enabled!
     /// Result will be in the form of a string containing a base64-encoded png, which you can embed in HTML without needing
     /// To store the png as a file.
@@ -657,9 +666,24 @@ impl TOTP {
     /// Which would be too long for some browsers anyway.
     ///
     /// It will also return an error in case it can't encode the qr into a png. This shouldn't happen unless either the qrcode library returns malformed data, or the image library doesn't encode the data correctly
-    pub fn get_qr(&self) -> Result<String, String> {
+    pub fn get_qr_base64(&self) -> Result<String, String> {
         let url = self.get_url();
         qrcodegen_image::draw_base64(&url)
+    }
+
+    /// Will return a qrcode to automatically add a TOTP as a byte array. Needs feature `qr` to be enabled!
+    /// Result will be in the form of a png file as bytes.
+    ///
+    /// # Errors
+    ///
+    /// This will return an error in case the URL gets too long to encode into a QR code.
+    /// This would require the get_url method to generate an url bigger than 2000 characters,
+    /// Which would be too long for some browsers anyway.
+    ///
+    /// It will also return an error in case it can't encode the qr into a png. This shouldn't happen unless either the qrcode library returns malformed data, or the image library doesn't encode the data correctly
+    pub fn get_qr_png(&self) -> Result<Vec<u8>, String> {
+        let url = self.get_url();
+        qrcodegen_image::draw_png(&url)
     }
 }
 
@@ -1225,7 +1249,7 @@ mod tests {
 
     #[test]
     #[cfg(feature = "qr")]
-    fn generates_qr_ok() {
+    fn generates_qr_base64_ok() {
         let totp = TOTP::new(
             Algorithm::SHA1,
             6,
@@ -1236,7 +1260,24 @@ mod tests {
             "constantoine@github.com".to_string(),
         )
         .unwrap();
-        let qr = totp.get_qr();
+        let qr = totp.get_qr_base64();
+        assert!(qr.is_ok());
+    }
+
+    #[test]
+    #[cfg(feature = "qr")]
+    fn generates_qr_png_ok() {
+        let totp = TOTP::new(
+            Algorithm::SHA1,
+            6,
+            1,
+            1,
+            "TestSecretSuperSecret".as_bytes().to_vec(),
+            Some("Github".to_string()),
+            "constantoine@github.com".to_string(),
+        )
+        .unwrap();
+        let qr = totp.get_qr_png();
         assert!(qr.is_ok());
     }
 }

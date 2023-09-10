@@ -92,7 +92,7 @@ fn main() {
 Add it to your `Cargo.toml`:
 ```toml
 [dependencies.totp-rs]
-version = "^5.0"
+version = "^5.3"
 features = ["qr"]
 ```
 You can then do something like:
@@ -109,8 +109,8 @@ fn main() {
         Some("Github".to_string()),
         "constantoine@github.com".to_string(),
     ).unwrap();
-    let code = totp.get_qr()?;
-    println!("{}", code);   
+    let qr_code = totp.get_qr_base64()?;
+    println!("{}", qr_code);   
 }
 ```
 
@@ -147,7 +147,7 @@ fn main() {
 Add it to your `Cargo.toml`:
 ```toml
 [dependencies.totp-rs]
-version = "^5.0"
+version = "^5.3"
 features = ["gen_secret"]
 ```
 You can then do something like:
@@ -164,8 +164,8 @@ fn main() {
         Some("Github".to_string()),
         "constantoine@github.com".to_string(),
     ).unwrap();
-    let code = totp.get_qr()?;
-    println!("{}", code);   
+    let qr_code = totp.get_qr_base64()?;
+    println!("{}", qr_code);   
 }
 ```
 Which is equivalent to
@@ -182,8 +182,8 @@ fn main() {
         Some("Github".to_string()),
         "constantoine@github.com".to_string(),
     ).unwrap();
-    let code = totp.get_qr()?;
-    println!("{}", code);   
+    let qr_code = totp.get_qr_base64()?;
+    println!("{}", qr_code);   
 }
 ```
 
@@ -223,7 +223,7 @@ fn main() {
 Add it to your `Cargo.toml`:
 ```toml
 [dependencies.totp-rs]
-version = "^5.0"
+version = "^5.3"
 features = ["qr"]
 ```
 You can then do something like:
@@ -234,7 +234,7 @@ fn main() {
     let totp = TOTP::new_steam(
         Secret::Encoded("KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ".to_string()).to_bytes().unwrap(),
     ).unwrap();
-    let code = totp.get_qr()?;
-    println!("{}", code);   
+    let qr_code = totp.get_qr_base64()?;
+    println!("{}", qr_code);     
 }
 ```
