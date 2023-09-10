@@ -12,13 +12,18 @@ homepage = "https://github.com/constantoine/totp-rs"
 keywords = ["authentication", "2fa", "totp", "hmac", "otp"]
 categories = ["authentication", "web-programming"]
 
+[workspace]
+members = [
+  "qrcodegen-image"
+]
+
 [package.metadata.docs.rs]
 features = [ "qr", "serde_support", "gen_secret" ]
 
 [features]
 default = []
 otpauth = ["url", "urlencoding"]
-qr = ["qrcodegen", "image", "base64", "otpauth"]
+qr = ["dep:qrcodegen-image", "otpauth"]
 serde_support = ["serde"]
 gen_secret = ["rand"]
 steam = []
@@ -32,8 +37,6 @@ base32 = "0.4"
 urlencoding = { version = "2.1", optional = true}
 url = { version = "2.4", optional = true }
 constant_time_eq = "0.2"
-qrcodegen = { version = "1.8", optional = true }
-image = { version = "0.24", features = ["png"], optional = true, default-features = false}
-base64 = { version = "0.21", optional = true }
 rand = { version = "0.8", features = ["std_rng", "std"], optional = true, default-features = false }
 zeroize = { version = "1.6", features = ["alloc", "derive"], optional = true }
+qrcodegen-image = { version = "0.1", features = ["base64"], optional = true, path = "qrcodegen-image" }
