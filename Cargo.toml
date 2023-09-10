@@ -1,6 +1,6 @@
 [package]
 name = "totp-rs"
-version = "5.2.0"
+version = "5.3.0"
 authors = ["Cleo Rebert <cleo.rebert@gmail.com>"]
 rust-version = "1.61"
 edition = "2021"
