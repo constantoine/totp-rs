@@ -644,19 +644,19 @@ impl TOTP {
     }
 }
 
-/// Will return a qrcode to automatically add a TOTP as a base64 string. Needs feature `qr` to be enabled!
-/// Result will be in the form of a string containing a base64-encoded png, which you can embed in HTML without needing
-/// To store the png as a file.
-///
-/// # Errors
-///
-/// This will return an error in case the URL gets too long to encode into a QR code.
-/// This would require the get_url method to generate an url bigger than 2000 characters,
-/// Which would be too long for some browsers anyway.
-///
-/// It will also return an error in case it can't encode the qr into a png. This shouldn't happen unless either the qrcode library returns malformed data, or the image library doesn't encode the data correctly
 #[cfg(feature = "qr")]
 impl TOTP {
+    /// Will return a qrcode to automatically add a TOTP as a base64 string. Needs feature `qr` to be enabled!
+    /// Result will be in the form of a string containing a base64-encoded png, which you can embed in HTML without needing
+    /// To store the png as a file.
+    ///
+    /// # Errors
+    ///
+    /// This will return an error in case the URL gets too long to encode into a QR code.
+    /// This would require the get_url method to generate an url bigger than 2000 characters,
+    /// Which would be too long for some browsers anyway.
+    ///
+    /// It will also return an error in case it can't encode the qr into a png. This shouldn't happen unless either the qrcode library returns malformed data, or the image library doesn't encode the data correctly
     pub fn get_qr(&self) -> Result<String, String> {
         let url = self.get_url();
         qrcodegen_image::draw_base64(&url)
