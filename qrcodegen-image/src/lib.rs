@@ -47,6 +47,14 @@ pub fn draw_canvas(qr: qrcodegen::QrCode) -> image::ImageBuffer<Luma<u8>, Vec<u8
 }
 
 /// Draw text to a PNG QR code.
+///     
+/// # Errors
+///
+/// This will return an error in case the URL gets too long to encode into a QR code.
+/// This would require the get_url method to generate an url bigger than 2000 characters,
+/// Which would be too long for some browsers anyway.
+///
+/// It will also return an error in case it can't encode the qr into a png. This shouldn't happen unless either the qrcode library returns malformed data, or the image library doesn't encode the data correctly.
 pub fn draw_png(text: &str) -> Result<Vec<u8>, String> {
     use image::ImageEncoder;
 
@@ -84,6 +92,14 @@ pub fn draw_png(text: &str) -> Result<Vec<u8>, String> {
 }
 
 /// Draw text to a Base64-encoded PNG QR code.
+///
+/// # Errors
+///
+/// This will return an error in case the URL gets too long to encode into a QR code.
+/// This would require the get_url method to generate an url bigger than 2000 characters,
+/// Which would be too long for some browsers anyway.
+///
+/// It will also return an error in case it can't encode the qr into a png. This shouldn't happen unless either the qrcode library returns malformed data, or the image library doesn't encode the data correctly.
 #[cfg(feature = "base64")]
 pub fn draw_base64(text: &str) -> Result<String, String> {
     use base64::{engine::general_purpose, Engine as _};
