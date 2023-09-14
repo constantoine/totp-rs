@@ -1,6 +1,6 @@
 [package]
 name = "qrcodegen-image"
-version = "1.1.0"
+version = "1.2.0"
 edition = "2021"
 authors = ["Cleo Rebert <cleo.rebert@gmail.com>"]
 rust-version = "1.61"
@@ -20,3 +20,10 @@ base64 = ["dep:base64"]
 qrcodegen = "1.8"
 image = { version = "0.24", features = ["png"], default-features = false}
 base64 = { version = "0.21", optional = true }
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "benches"
+harness = false

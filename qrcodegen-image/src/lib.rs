@@ -14,12 +14,8 @@ pub fn draw_canvas(qr: qrcodegen::QrCode) -> image::ImageBuffer<Luma<u8>, Vec<u8
     let mut canvas = image::GrayImage::new(image_size, image_size);
 
     // Draw the border
-    for x in 0..image_size {
-        for y in 0..image_size {
-            if (y < 8 * 4 || y >= image_size - 8 * 4) || (x < 8 * 4 || x >= image_size - 8 * 4) {
-                canvas.put_pixel(x, y, Luma([255]));
-            }
-        }
+    for pixel in canvas.pixels_mut() {
+        *pixel = Luma([255]);
     }
 
     // The QR inside the white border
