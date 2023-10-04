@@ -1,3 +1,10 @@
+# [5.4.0](https://github.com/constantoine/totp-rs/releases/tag/v5.4.0) (04/10/2023)
+### Changes
+- `SecretParseError` now implements `std::error::Error`.
+
+### Special thanks
+* [@FliegendeWurst](https://github.com/FliegendeWurst) for their work on #62.
+
 # [5.3.0](https://github.com/constantoine/totp-rs/releases/tag/v5.3.0) (10/09/2023)
 ### What's new
 - Creation of a new `qrcodegen-image` subcrate to handle image creation, as the wrapper is actually nice and could be used in placed not related to `totp-rs`. (#61)
