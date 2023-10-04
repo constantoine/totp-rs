@@ -88,6 +88,8 @@ pub enum SecretParseError {
     ParseBase32,
 }
 
+impl std::error::Error for SecretParseError {}
+
 impl std::fmt::Display for SecretParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
