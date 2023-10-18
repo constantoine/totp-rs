@@ -447,10 +447,17 @@ impl TOTP {
     }
 
     /// Will check if token is valid given the provided timestamp in seconds, accounting [skew](struct.TOTP.html#structfield.skew)
-    pub fn check(&self, token: &str, time: u64) -> bool {
+    pub fn check(&self, token: &str, time: u64, after: Option<u64>) -> bool {
         let basestep = time / self.step - (self.skew as u64);
+
         for i in 0..(self.skew as u16) * 2 + 1 {
-            let step_time = (basestep + (i as u64)) * self.step;
+            let step_time: u64 = (basestep + (i as u64)) * self.step;
+
+            if let Some(step_time_after) = after {
+                if step_time_after > step_time {
+                    continue;
+                }
+            }
 
             if constant_time_eq(self.generate(step_time).as_bytes(), token.as_bytes()) {
                 return true;
@@ -460,9 +467,9 @@ impl TOTP {
     }
 
     /// Will check if token is valid by current system time, accounting [skew](struct.TOTP.html#structfield.skew)
-    pub fn check_current(&self, token: &str) -> Result<bool, SystemTimeError> {
+    pub fn check_current(&self, token: &str, after: Option<u64>) -> Result<bool, SystemTimeError> {
         let t = system_time()?;
-        Ok(self.check(token, t))
+        Ok(self.check(token, t, after))
     }
 
     /// Will return the base32 representation of the secret, which might be useful when users want to manually add the secret to their authenticator
