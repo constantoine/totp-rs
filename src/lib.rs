@@ -447,6 +447,7 @@ impl TOTP {
     }
 
     /// Will check if token is valid given the provided timestamp in seconds, accounting [skew](struct.TOTP.html#structfield.skew)
+    /// Optionally, you can specify an 'after' timestamp (in seconds) to prevent token reuse.
     pub fn check(&self, token: &str, time: u64, after: Option<u64>) -> bool {
         let basestep = time / self.step - (self.skew as u64);
 
@@ -467,6 +468,7 @@ impl TOTP {
     }
 
     /// Will check if token is valid by current system time, accounting [skew](struct.TOTP.html#structfield.skew)
+    /// Optionally, you can specify an 'after' timestamp (in seconds) to prevent token reuse.
     pub fn check_current(&self, token: &str, after: Option<u64>) -> Result<bool, SystemTimeError> {
         let t = system_time()?;
         Ok(self.check(token, t, after))
