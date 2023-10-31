@@ -974,14 +974,14 @@ mod tests {
     #[cfg(not(feature = "otpauth"))]
     fn checks_token() {
         let totp = TOTP::new(Algorithm::SHA1, 6, 0, 1, "TestSecretSuperSecret".into()).unwrap();
-        assert!(totp.check("659761", 1000));
+        assert!(totp.check("659761", 1000, None));
     }
 
     #[test]
     #[cfg(not(feature = "otpauth"))]
     fn checks_token_big_skew() {
         let totp = TOTP::new(Algorithm::SHA1, 6, 255, 1, "TestSecretSuperSecret".into()).unwrap();
-        assert!(totp.check("659761", 1000));
+        assert!(totp.check("659761", 1000, None));
     }
 
     #[test]
@@ -989,9 +989,9 @@ mod tests {
     fn checks_token_current() {
         let totp = TOTP::new(Algorithm::SHA1, 6, 0, 1, "TestSecretSuperSecret".into()).unwrap();
         assert!(totp
-            .check_current(&totp.generate_current().unwrap())
+            .check_current(&totp.generate_current().unwrap(), None)
             .unwrap());
-        assert!(!totp.check_current("bogus").unwrap());
+        assert!(!totp.check_current("bogus", None).unwrap());
     }
 
     #[test]
@@ -999,7 +999,7 @@ mod tests {
     fn checks_token_with_skew() {
         let totp = TOTP::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret".into()).unwrap();
         assert!(
-            totp.check("174269", 1000) && totp.check("659761", 1000) && totp.check("260393", 1000)
+            totp.check("174269", 1000, None) && totp.check("659761", 1000, None) && totp.check("260393", 1000, None)
         );
     }
 
