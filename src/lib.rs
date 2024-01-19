@@ -519,7 +519,6 @@ impl TOTP {
 
     /// Parse the TOTP parts from the standard otpauth URL
     #[cfg(feature = "otpauth")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
     fn parts_from_url<S: AsRef<str>>(
         url: S,
     ) -> Result<(Algorithm, usize, u8, u64, Vec<u8>, Option<String>, String), TotpUrlError> {
