@@ -1,6 +1,6 @@
 [package]
 name = "qrcodegen-image"
-version = "1.2.0"
+version = "1.3.0"
 edition = "2021"
 authors = ["Cleo Rebert <cleo.rebert@gmail.com>"]
 rust-version = "1.61"

@@ -18,6 +18,8 @@ pub fn draw_canvas(qr: qrcodegen::QrCode) -> image::ImageBuffer<Luma<u8>, Vec<u8
         *pixel = Luma([255]);
     }
 
+    let raw = canvas.as_mut();
+
     // The QR inside the white border
     for x_qr in 0..size {
         for y_qr in 0..size {
@@ -32,10 +34,9 @@ pub fn draw_canvas(qr: qrcodegen::QrCode) -> image::ImageBuffer<Luma<u8>, Vec<u8
             let y_start = y_qr * 8 + 8 * 4;
 
             // Draw a 8-pixels-wide square
-            for x_img in x_start..x_start + 8 {
-                for y_img in y_start..y_start + 8 {
-                    canvas.put_pixel(x_img, y_img, Luma([val]));
-                }
+            for y_img in y_start..y_start + 8 {
+                let start = (x_start + y_img * image_size) as usize;
+                raw[start..start + 8].copy_from_slice(&[val; 8]);
             }
         }
     }
@@ -99,5 +100,5 @@ pub fn draw_png(text: &str) -> Result<Vec<u8>, String> {
 #[cfg(feature = "base64")]
 pub fn draw_base64(text: &str) -> Result<String, String> {
     use base64::{engine::general_purpose, Engine as _};
-    Ok(draw_png(text).map(|vec| general_purpose::STANDARD.encode(vec))?)
+    draw_png(text).map(|vec| general_purpose::STANDARD.encode(vec))
 }

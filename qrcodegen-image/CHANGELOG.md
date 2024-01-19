@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.3.0](https://github.com/constantoine/totp-rs/releases/tag/qrcodegen-image%2Fv1.3.0) (19/01/2024)
+
+### What's new
+
+- `draw_canvas` is now 70%(!) faster on my machine after optimizing the "drawing_square" loop.
+
 ## [1.2.0](https://github.com/constantoine/totp-rs/releases/tag/qrcodegen-image%2Fv1.2.0) (14/09/2023)
 
 ### What's new
