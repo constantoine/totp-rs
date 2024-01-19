@@ -1,3 +1,10 @@
+# [5.5.0](https://github.com/constantoine/totp-rs/releases/tag/v5.5.0) (19/01/2024)
+### Changes
+- Documentation now indicates required feature.
+
+### Special thanks
+* [@AntonnMal](https://github.com/AntonnMal) for his work on #64.
+
 # [5.4.0](https://github.com/constantoine/totp-rs/releases/tag/v5.4.0) (04/10/2023)
 ### Changes
 - `SecretParseError` now implements `std::error::Error`.

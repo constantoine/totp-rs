@@ -214,6 +214,7 @@ Note: With `otpauth` feature, `TOTP.issuer` will be `None`, and `TOTP.account_na
 ```Rust
 fn main() {
     let totp = TOTP::default();
+    let code = totp.generate_current().unwrap();
     println!("code: {}", code);
 }
 ```
@@ -224,7 +225,7 @@ Add it to your `Cargo.toml`:
 ```toml
 [dependencies.totp-rs]
 version = "^5.3"
-features = ["qr"]
+features = ["steam"]
 ```
 You can then do something like:
 ```Rust
@@ -234,7 +235,7 @@ fn main() {
     let totp = TOTP::new_steam(
         Secret::Encoded("KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ".to_string()).to_bytes().unwrap(),
     ).unwrap();
-    let qr_code = totp.get_qr_base64()?;
-    println!("{}", qr_code);     
+    let code = totp.generate_current().unwrap();
+    println!("code: {}", code);   
 }
 ```
