@@ -2,12 +2,15 @@
 use crate::{Algorithm, TOTP};
 
 #[cfg(feature = "steam")]
+#[cfg_attr(docsrs, doc(cfg(feature = "steam")))]
 impl TOTP {
     #[cfg(feature = "otpauth")]
     /// Will create a new instance of TOTP using the Steam algorithm with given parameters. See [the doc](struct.TOTP.html#fields) for reference as to how to choose those values
     ///
     /// # Description
     /// * `secret`: expect a non-encoded value, to pass in base32 string use `Secret::Encoded(String)`
+    ///
+    /// # Example
     ///
     /// ```rust
     /// use totp_rs::{Secret, TOTP};
@@ -31,6 +34,8 @@ impl TOTP {
     ///
     /// # Description
     /// * `secret`: expect a non-encoded value, to pass in base32 string use `Secret::Encoded(String)`
+    ///
+    /// # Example
     ///
     /// ```rust
     /// use totp_rs::{Secret, TOTP};
