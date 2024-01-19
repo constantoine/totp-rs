@@ -18,7 +18,8 @@ members = [
 ]
 
 [package.metadata.docs.rs]
-features = [ "qr", "serde_support", "gen_secret" ]
+all-features = true
+rustc-args = ["--cfg", "docsrs"]
 
 [features]
 default = []

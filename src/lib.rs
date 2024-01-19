@@ -47,6 +47,9 @@
 //! # }
 //! ```
 
+// enable `doc_cfg` feature for `docs.rs`.
+#![cfg_attr(docsrs, feature(doc_cfg))]
+
 mod custom_providers;
 mod rfc;
 mod secret;
@@ -88,6 +91,8 @@ pub enum Algorithm {
     SHA256,
     SHA512,
     #[cfg(feature = "steam")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "steam")))]
+    /// Steam TOTP token algorithm
     Steam,
 }
 
@@ -153,11 +158,13 @@ pub struct TOTP {
     /// non-encoded value
     pub secret: Vec<u8>,
     #[cfg(feature = "otpauth")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
     /// The "Github" part of "Github:constantoine@github.com". Must not contain a colon `:`
     /// For example, the name of your service/website.
     /// Not mandatory, but strongly recommended!
     pub issuer: Option<String>,
     #[cfg(feature = "otpauth")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
     /// The "constantoine@github.com" part of "Github:constantoine@github.com". Must not contain a colon `:`
     /// For example, the name of your user's account.
     pub account_name: String,
@@ -210,6 +217,8 @@ impl core::fmt::Display for TOTP {
 }
 
 #[cfg(all(feature = "gen_secret", not(feature = "otpauth")))]
+// because `Default` is implemented regardless of `otpauth` feature we don't specify it here
+#[cfg_attr(docsrs, doc(cfg(feature = "gen_secret")))]
 impl Default for TOTP {
     fn default() -> Self {
         return TOTP::new(
@@ -224,6 +233,7 @@ impl Default for TOTP {
 }
 
 #[cfg(all(feature = "gen_secret", feature = "otpauth"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "gen_secret")))]
 impl Default for TOTP {
     fn default() -> Self {
         TOTP::new(
@@ -245,16 +255,18 @@ impl TOTP {
     ///
     /// # Description
     /// * `secret`: expect a non-encoded value, to pass in base32 string use `Secret::Encoded(String)`
+    /// * `digits`: MUST be between 6 & 8
+    /// * `secret`: Must have bitsize of at least 128
+    /// * `account_name`: Must not contain `:`
+    /// * `issuer`: Must not contain `:`
+    ///
+    /// # Example
     ///
     /// ```rust
     /// use totp_rs::{Secret, TOTP, Algorithm};
     /// let secret = Secret::Encoded("OBWGC2LOFVZXI4TJNZTS243FMNZGK5BNGEZDG".to_string());
     /// let totp = TOTP::new(Algorithm::SHA1, 6, 1, 30, secret.to_bytes().unwrap(), None, "".to_string()).unwrap();
     /// ```
-    /// * `digits`: MUST be between 6 & 8
-    /// * `secret`: Must have bitsize of at least 128
-    /// * `account_name`: Must not contain `:`
-    /// * `issuer`: Must not contain `:`
     ///
     /// # Errors
     ///
@@ -293,6 +305,8 @@ impl TOTP {
     /// # Description
     /// * `secret`: expect a non-encoded value, to pass in base32 string use `Secret::Encoded(String)`
     ///
+    /// # Example
+    ///
     /// ```rust
     /// use totp_rs::{Secret, TOTP, Algorithm};
     /// let secret = Secret::Encoded("OBWGC2LOFVZXI4TJNZTS243FMNZGK5BNGEZDG".to_string());
@@ -323,14 +337,16 @@ impl TOTP {
     ///
     /// # Description
     /// * `secret`: expect a non-encoded value, to pass in base32 string use `Secret::Encoded(String)`
+    /// * `digits`: MUST be between 6 & 8
+    /// * `secret`: Must have bitsize of at least 128
+    ///
+    /// # Example
     ///
     /// ```rust
     /// use totp_rs::{Secret, TOTP, Algorithm};
     /// let secret = Secret::Encoded("OBWGC2LOFVZXI4TJNZTS243FMNZGK5BNGEZDG".to_string());
     /// let totp = TOTP::new(Algorithm::SHA1, 6, 1, 30, secret.to_bytes().unwrap()).unwrap();
     /// ```
-    /// * `digits`: MUST be between 6 & 8
-    /// * `secret`: Must have bitsize of at least 128
     ///
     /// # Errors
     ///
@@ -352,6 +368,8 @@ impl TOTP {
     ///
     /// # Description
     /// * `secret`: expect a non-encoded value, to pass in base32 string use `Secret::Encoded(String)`
+    ///
+    /// # Example
     ///
     /// ```rust
     /// use totp_rs::{Secret, TOTP, Algorithm};
@@ -475,6 +493,7 @@ impl TOTP {
 
     /// Generate a TOTP from the standard otpauth URL
     #[cfg(feature = "otpauth")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
     pub fn from_url<S: AsRef<str>>(url: S) -> Result<TOTP, TotpUrlError> {
         let (algorithm, digits, skew, step, secret, issuer, account_name) =
             Self::parts_from_url(url)?;
@@ -483,6 +502,7 @@ impl TOTP {
 
     /// Generate a TOTP from the standard otpauth URL, using `TOTP::new_unchecked` internally
     #[cfg(feature = "otpauth")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
     pub fn from_url_unchecked<S: AsRef<str>>(url: S) -> Result<TOTP, TotpUrlError> {
         let (algorithm, digits, skew, step, secret, issuer, account_name) =
             Self::parts_from_url(url)?;
@@ -499,6 +519,7 @@ impl TOTP {
 
     /// Parse the TOTP parts from the standard otpauth URL
     #[cfg(feature = "otpauth")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
     fn parts_from_url<S: AsRef<str>>(
         url: S,
     ) -> Result<(Algorithm, usize, u8, u64, Vec<u8>, Option<String>, String), TotpUrlError> {
@@ -614,6 +635,7 @@ impl TOTP {
     /// Label and issuer will be URL-encoded if needed be
     /// Secret will be base 32'd without padding, as per RFC.
     #[cfg(feature = "otpauth")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
     pub fn get_url(&self) -> String {
         #[allow(unused_mut)]
         let mut host = "totp";
@@ -645,6 +667,7 @@ impl TOTP {
 }
 
 #[cfg(feature = "qr")]
+#[cfg_attr(docsrs, doc(cfg(feature = "qr")))]
 impl TOTP {
     #[deprecated(
         since = "5.3.0",
@@ -665,7 +688,8 @@ impl TOTP {
     /// This would require the get_url method to generate an url bigger than 2000 characters,
     /// Which would be too long for some browsers anyway.
     ///
-    /// It will also return an error in case it can't encode the qr into a png. This shouldn't happen unless either the qrcode library returns malformed data, or the image library doesn't encode the data correctly
+    /// It will also return an error in case it can't encode the qr into a png.
+    /// This shouldn't happen unless either the qrcode library returns malformed data, or the image library doesn't encode the data correctly
     pub fn get_qr_base64(&self) -> Result<String, String> {
         let url = self.get_url();
         qrcodegen_image::draw_base64(&url)
@@ -680,7 +704,8 @@ impl TOTP {
     /// This would require the get_url method to generate an url bigger than 2000 characters,
     /// Which would be too long for some browsers anyway.
     ///
-    /// It will also return an error in case it can't encode the qr into a png. This shouldn't happen unless either the qrcode library returns malformed data, or the image library doesn't encode the data correctly
+    /// It will also return an error in case it can't encode the qr into a png.
+    /// This shouldn't happen unless either the qrcode library returns malformed data, or the image library doesn't encode the data correctly
     pub fn get_qr_png(&self) -> Result<Vec<u8>, String> {
         let url = self.get_url();
         qrcodegen_image::draw_png(&url)

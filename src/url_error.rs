@@ -8,6 +8,7 @@ use crate::Rfc6238Error;
 pub enum TotpUrlError {
     /// Couldn't decode URL.
     #[cfg(feature = "otpauth")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
     Url(ParseError),
     /// Invalid scheme.
     Scheme(String),

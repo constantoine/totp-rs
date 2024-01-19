@@ -78,11 +78,13 @@ pub struct Rfc6238 {
     /// As per [rfc-4226](https://tools.ietf.org/html/rfc4226#section-4) the secret should come from a strong source, most likely a CSPRNG. It should be at least 128 bits, but 160 are recommended.
     secret: Vec<u8>,
     #[cfg(feature = "otpauth")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
     /// The "Github" part of "Github:constantoine@github.com". Must not contain a colon `:`
     /// For example, the name of your service/website.
     /// Not mandatory, but strongly recommended!
     issuer: Option<String>,
     #[cfg(feature = "otpauth")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
     /// The "constantoine@github.com" part of "Github:constantoine@github.com". Must not contain a colon `:`.
     /// For example, the name of your user's account.
     account_name: String,
@@ -156,12 +158,14 @@ impl Rfc6238 {
     }
 
     #[cfg(feature = "otpauth")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
     /// Set the `issuer`.
     pub fn issuer(&mut self, value: String) {
         self.issuer = Some(value);
     }
 
     #[cfg(feature = "otpauth")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
     /// Set the `account_name`.
     pub fn account_name(&mut self, value: String) {
         self.account_name = value;

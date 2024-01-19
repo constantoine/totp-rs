@@ -119,6 +119,7 @@ impl PartialEq for Secret {
 }
 
 #[cfg(feature = "gen_secret")]
+#[cfg_attr(docsrs, doc(cfg(feature = "gen_secret")))]
 impl Default for Secret {
     fn default() -> Self {
         Secret::generate_secret()
@@ -158,8 +159,6 @@ impl Secret {
         }
     }
 
-    /// ⚠️ requires feature `gen_secret`.
-    ///
     /// Generate a CSPRNG binary value of 160 bits,
     /// the recomended size from [rfc-4226](https://www.rfc-editor.org/rfc/rfc4226#section-4).
     ///
@@ -168,6 +167,7 @@ impl Secret {
     ///
     /// ⚠️ The generated secret is not guaranteed to be a valid UTF-8 sequence.
     #[cfg(feature = "gen_secret")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gen_secret")))]
     pub fn generate_secret() -> Secret {
         use rand::Rng;
 
