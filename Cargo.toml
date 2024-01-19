@@ -1,6 +1,6 @@
 [package]
 name = "totp-rs"
-version = "5.5.0"
+version = "5.5.1"
 authors = ["Cleo Rebert <cleo.rebert@gmail.com>"]
 rust-version = "1.61"
 edition = "2021"
@@ -19,7 +19,7 @@ members = [
 
 [package.metadata.docs.rs]
 all-features = true
-rustc-args = ["--cfg", "docsrs"]
+rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
 default = []
