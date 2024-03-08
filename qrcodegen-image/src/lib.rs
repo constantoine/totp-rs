@@ -11,22 +11,16 @@ pub fn draw_canvas(qr: qrcodegen::QrCode) -> image::ImageBuffer<Luma<u8>, Vec<u8
     // "+ 8 * 8" is here to add padding (the white border around the QRCode)
     // As some QRCode readers don't work without padding
     let image_size = size * 8 + 8 * 8;
-    let mut canvas = image::GrayImage::new(image_size, image_size);
-
-    // Draw the border
-    for pixel in canvas.pixels_mut() {
-        *pixel = Luma([255]);
-    }
+    let mut canvas = image::GrayImage::from_pixel(image_size, image_size, Luma([255]));
 
     let raw = canvas.as_mut();
 
     // The QR inside the white border
     for x_qr in 0..size {
         for y_qr in 0..size {
-            // The canvas is a grayscale image without alpha. Hence it's only one 8-bits byte longs
-            // This clever trick to one-line the value was achieved with advanced mathematics
-            // And deep understanding of Boolean algebra.
-            let val = !qr.get_module(x_qr as i32, y_qr as i32) as u8 * 255;
+            if !qr.get_module(x_qr as i32, y_qr as i32) {
+                continue
+            }
 
             // Multiply coordinates by width of pixels
             // And take into account the 8*4 padding on top and left side
@@ -36,7 +30,7 @@ pub fn draw_canvas(qr: qrcodegen::QrCode) -> image::ImageBuffer<Luma<u8>, Vec<u8
             // Draw a 8-pixels-wide square
             for y_img in y_start..y_start + 8 {
                 let start = (x_start + y_img * image_size) as usize;
-                raw[start..start + 8].copy_from_slice(&[val; 8]);
+                raw[start..start + 8].copy_from_slice(&[0; 8]);
             }
         }
     }
