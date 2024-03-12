@@ -19,7 +19,7 @@ pub fn draw_canvas(qr: qrcodegen::QrCode) -> image::ImageBuffer<Luma<u8>, Vec<u8
     for x_qr in 0..size {
         for y_qr in 0..size {
             if !qr.get_module(x_qr as i32, y_qr as i32) {
-                continue
+                continue;
             }
 
             // Multiply coordinates by width of pixels
