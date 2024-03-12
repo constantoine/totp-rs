@@ -280,8 +280,8 @@ impl TOTP {
         issuer: Option<String>,
         account_name: String,
     ) -> Result<TOTP, TotpUrlError> {
-        crate::rfc::assert_digits(&digits)?;
-        crate::rfc::assert_secret_length(secret.as_ref())?;
+        rfc::assert_digits(&digits)?;
+        rfc::assert_secret_length(secret.as_ref())?;
         if issuer.is_some() && issuer.as_ref().unwrap().contains(':') {
             return Err(TotpUrlError::Issuer(issuer.as_ref().unwrap().to_string()));
         }
@@ -484,11 +484,19 @@ impl TOTP {
     }
 
     /// Will return the base32 representation of the secret, which might be useful when users want to manually add the secret to their authenticator
-    pub fn get_secret_base32(&self) -> String {
+    pub fn to_secret_base32(&self) -> String {
         base32::encode(
             base32::Alphabet::RFC4648 { padding: false },
             self.secret.as_ref(),
         )
+    }
+
+    #[deprecated(
+        since = "5.6.0",
+        note = "get_secret_base32 has non-conventionnal name. Use to_secret_base32 instead. Will disappear in 6.0."
+    )]
+    pub fn get_secret_base32(&self) -> String {
+        self.to_secret_base32()
     }
 
     /// Generate a TOTP from the standard otpauth URL
@@ -629,13 +637,23 @@ impl TOTP {
         Ok((algorithm, digits, 1, step, secret, issuer, account_name))
     }
 
+    #[cfg(feature = "otpauth")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
+    #[deprecated(
+        since = "5.6.0",
+        note = "get_url has non-conventionnal name. Use to_url instead. Will disappear in 6.0."
+    )]
+    pub fn get_url(&self) -> String {
+        self.to_url()
+    }
+
     /// Will generate a standard URL used to automatically add TOTP auths. Usually used with qr codes
     ///
     /// Label and issuer will be URL-encoded if needed be
     /// Secret will be base 32'd without padding, as per RFC.
     #[cfg(feature = "otpauth")]
     #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
-    pub fn get_url(&self) -> String {
+    pub fn to_url(&self) -> String {
         #[allow(unused_mut)]
         let mut host = "totp";
         #[cfg(feature = "steam")]
@@ -643,7 +661,7 @@ impl TOTP {
             host = "steam";
         }
         let account_name = urlencoding::encode(self.account_name.as_str()).to_string();
-        let mut params = vec![format!("secret={}", self.get_secret_base32())];
+        let mut params = vec![format!("secret={}", self.to_secret_base32())];
         if self.digits != 6 {
             params.push(format!("digits={}", self.digits));
         }
@@ -670,11 +688,19 @@ impl TOTP {
 impl TOTP {
     #[deprecated(
         since = "5.3.0",
-        note = "get_qr was forcing the use of png as a base64. Use get_qr_base64 or get_qr_png instead. Will disappear in 6.0."
+        note = "get_qr was forcing the use of png as a base64. Use to_qr_base64 or to_qr_png instead. Will disappear in 6.0."
     )]
     pub fn get_qr(&self) -> Result<String, String> {
-        let url = self.get_url();
+        let url = self.to_url();
         qrcodegen_image::draw_base64(&url)
+    }
+
+    #[deprecated(
+        since = "5.6.0",
+        note = "get_qr_base64 has non-conventionnal name. Use to_qr_base64 instead. Will disappear in 6.0."
+    )]
+    pub fn get_qr_base64(&self) -> Result<String, String> {
+        self.to_qr_base64()
     }
 
     /// Will return a qrcode to automatically add a TOTP as a base64 string. Needs feature `qr` to be enabled!
@@ -689,9 +715,17 @@ impl TOTP {
     ///
     /// It will also return an error in case it can't encode the qr into a png.
     /// This shouldn't happen unless either the qrcode library returns malformed data, or the image library doesn't encode the data correctly
-    pub fn get_qr_base64(&self) -> Result<String, String> {
-        let url = self.get_url();
+    pub fn to_qr_base64(&self) -> Result<String, String> {
+        let url = self.to_url();
         qrcodegen_image::draw_base64(&url)
+    }
+
+    #[deprecated(
+        since = "5.6.0",
+        note = "get_qr_png has non-conventionnal name. Use to_qr_png instead. Will disappear in 6.0."
+    )]
+    pub fn get_qr_png(&self) -> Result<Vec<u8>, String> {
+        self.to_qr_png()
     }
 
     /// Will return a qrcode to automatically add a TOTP as a byte array. Needs feature `qr` to be enabled!
@@ -705,8 +739,8 @@ impl TOTP {
     ///
     /// It will also return an error in case it can't encode the qr into a png.
     /// This shouldn't happen unless either the qrcode library returns malformed data, or the image library doesn't encode the data correctly
-    pub fn get_qr_png(&self) -> Result<Vec<u8>, String> {
-        let url = self.get_url();
+    pub fn to_qr_png(&self) -> Result<Vec<u8>, String> {
+        let url = self.to_url();
         qrcodegen_image::draw_png(&url)
     }
 }
@@ -857,7 +891,7 @@ mod tests {
             "constantoine@github.com".to_string(),
         )
         .unwrap();
-        let url = totp.get_url();
+        let url = totp.to_url();
         assert_eq!(
             url.as_str(),
             "otpauth://totp/constantoine%40github.com?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ"
@@ -877,7 +911,7 @@ mod tests {
             "constantoine@github.com".to_string(),
         )
         .unwrap();
-        let url = totp.get_url();
+        let url = totp.to_url();
         assert_eq!(url.as_str(), "otpauth://totp/Github:constantoine%40github.com?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&issuer=Github");
     }
 
@@ -894,7 +928,7 @@ mod tests {
             "constantoine@github.com".to_string(),
         )
         .unwrap();
-        let url = totp.get_url();
+        let url = totp.to_url();
         assert_eq!(url.as_str(), "otpauth://totp/Github:constantoine%40github.com?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&algorithm=SHA256&issuer=Github");
     }
 
@@ -911,7 +945,7 @@ mod tests {
             "constantoine@github.com".to_string(),
         )
         .unwrap();
-        let url = totp.get_url();
+        let url = totp.to_url();
         assert_eq!(url.as_str(), "otpauth://totp/Github:constantoine%40github.com?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&algorithm=SHA512&issuer=Github");
     }
 
@@ -1117,7 +1151,7 @@ mod tests {
             "constantoine@github.com".to_string(),
         )
         .unwrap();
-        assert_eq!(totp.get_url(), totp_bis.get_url());
+        assert_eq!(totp.to_url(), totp_bis.to_url());
     }
 
     #[test]
@@ -1152,7 +1186,7 @@ mod tests {
             "constantoine@github.com".to_string(),
         )
         .unwrap();
-        assert_eq!(totp.get_url(), totp_bis.get_url());
+        assert_eq!(totp.to_url(), totp_bis.to_url());
         assert_eq!(totp.issuer.as_ref().unwrap(), "Github@");
     }
 
@@ -1170,7 +1204,7 @@ mod tests {
             "constantoine".to_string(),
         )
         .unwrap();
-        assert_eq!(totp.get_url(), totp_bis.get_url());
+        assert_eq!(totp.to_url(), totp_bis.to_url());
         assert_eq!(totp.account_name, "constantoine");
         assert_eq!(totp.issuer.as_ref().unwrap(), "Github");
     }
@@ -1189,7 +1223,7 @@ mod tests {
             "constantoine".to_string(),
         )
         .unwrap();
-        assert_eq!(totp.get_url(), totp_bis.get_url());
+        assert_eq!(totp.to_url(), totp_bis.to_url());
         assert_eq!(totp.account_name, "constantoine");
         assert_eq!(totp.issuer.as_ref().unwrap(), "Github");
     }
@@ -1258,7 +1292,7 @@ mod tests {
             "constantoine@github.com".to_string(),
         )
         .unwrap();
-        let url = totp.get_url();
+        let url = totp.to_url();
         let qr = qrcodegen::QrCode::encode_text(&url, qrcodegen::QrCodeEcc::Medium)
             .expect("could not generate qr");
         let data = qrcodegen_image::draw_canvas(qr).into_raw();
@@ -1284,7 +1318,7 @@ mod tests {
             "constantoine@github.com".to_string(),
         )
         .unwrap();
-        let qr = totp.get_qr_base64();
+        let qr = totp.to_qr_base64();
         assert!(qr.is_ok());
     }
 
@@ -1301,7 +1335,7 @@ mod tests {
             "constantoine@github.com".to_string(),
         )
         .unwrap();
-        let qr = totp.get_qr_png();
+        let qr = totp.to_qr_png();
         assert!(qr.is_ok());
     }
 }
