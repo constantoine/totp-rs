@@ -92,7 +92,7 @@ fn main() {
 Add it to your `Cargo.toml`:
 ```toml
 [dependencies.totp-rs]
-version = "^5.3"
+version = "^5.6"
 features = ["qr"]
 ```
 You can then do something like:
@@ -109,7 +109,7 @@ fn main() {
         Some("Github".to_string()),
         "constantoine@github.com".to_string(),
     ).unwrap();
-    let qr_code = totp.get_qr_base64()?;
+    let qr_code = totp.to_qr_base64()?;
     println!("{}", qr_code);   
 }
 ```
@@ -128,7 +128,7 @@ features = ["serde_support"]
 Add it to your `Cargo.toml`:
 ```toml
 [dependencies.totp-rs]
-version = "^5.0"
+version = "^5.6"
 features = ["otpauth"]
 ```
 You can then do something like:
@@ -147,7 +147,7 @@ fn main() {
 Add it to your `Cargo.toml`:
 ```toml
 [dependencies.totp-rs]
-version = "^5.3"
+version = "^5.6"
 features = ["gen_secret"]
 ```
 You can then do something like:
@@ -164,7 +164,7 @@ fn main() {
         Some("Github".to_string()),
         "constantoine@github.com".to_string(),
     ).unwrap();
-    let qr_code = totp.get_qr_base64()?;
+    let qr_code = totp.to_qr_base64()?;
     println!("{}", qr_code);   
 }
 ```
@@ -182,7 +182,7 @@ fn main() {
         Some("Github".to_string()),
         "constantoine@github.com".to_string(),
     ).unwrap();
-    let qr_code = totp.get_qr_base64()?;
+    let qr_code = totp.to_qr_base64()?;
     println!("{}", qr_code);   
 }
 ```
