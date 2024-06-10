@@ -1,9 +1,9 @@
 #[cfg(feature = "steam")]
-use crate::{Algorithm, TOTP};
+use crate::{Algorithm, Totp};
 
 #[cfg(feature = "steam")]
 #[cfg_attr(docsrs, doc(cfg(feature = "steam")))]
-impl TOTP {
+impl Totp {
     #[cfg(feature = "otpauth")]
     /// Will create a new instance of TOTP using the Steam algorithm with given parameters. See [the doc](struct.TOTP.html#fields) for reference as to how to choose those values
     ///
@@ -13,11 +13,11 @@ impl TOTP {
     /// # Example
     ///
     /// ```rust
-    /// use totp_rs::{Secret, TOTP};
+    /// use totp_rs::{Secret, Totp};
     /// let secret = Secret::Encoded("ABCDEFGHIJKLMNOPQRSTUVWXYZ234567".into());
-    /// let totp = TOTP::new_steam(secret.to_bytes().unwrap(), "username".into());
+    /// let totp = Totp::new_steam(secret.to_bytes().unwrap(), "username".into());
     /// ```
-    pub fn new_steam(secret: Vec<u8>, account_name: String) -> TOTP {
+    pub fn new_steam(secret: Vec<u8>, account_name: String) -> Totp {
         Self::new_unchecked(
             Algorithm::Steam,
             5,
@@ -38,11 +38,11 @@ impl TOTP {
     /// # Example
     ///
     /// ```rust
-    /// use totp_rs::{Secret, TOTP};
+    /// use totp_rs::{Secret, Totp};
     /// let secret = Secret::Encoded("ABCDEFGHIJKLMNOPQRSTUVWXYZ234567".to_string());
-    /// let totp = TOTP::new_steam(secret.to_bytes().unwrap());
+    /// let totp = Totp::new_steam(secret.to_bytes().unwrap());
     /// ```
-    pub fn new_steam(secret: Vec<u8>) -> TOTP {
+    pub fn new_steam(secret: Vec<u8>) -> Totp {
         Self::new_unchecked(Algorithm::Steam, 5, 1, 30, secret)
     }
 }
@@ -55,7 +55,7 @@ mod test {
     #[test]
     #[cfg(feature = "otpauth")]
     fn get_url_steam() {
-        let totp = TOTP::new_steam("TestSecretSuperSecret".into(), "constantoine".into());
+        let totp = Totp::new_steam("TestSecretSuperSecret".into(), "constantoine".into());
         let url = totp.to_url();
         assert_eq!(url.as_str(), "otpauth://steam/Steam:constantoine?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=5&algorithm=SHA1&issuer=Steam");
     }
