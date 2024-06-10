@@ -1,3 +1,17 @@
+# [5.6.0](https://github.com/constantoine/totp-rs/releases/tag/v5.6.0) (10/06/2024)
+### Changes
+- Deprecated `get_qr_base64` in favor of `to_qr_base64`.
+- Deprecated `get_qr_png` in favor of `to_qr_png`.
+- Deprecated `get_url` in favor of `to_url`.
+- Deprecated `get_secret_base32` in favor of `to_secret_base32`.
+
+### Notes
+- Deprecated methods will disappear with `6.0.0`.
+- Added `cargo-semver-checks` as part of the CI.
+
+### Special thanks
+* [@virtualritz](https://github.com/virtualritz) for bringing my attention to #65.
+
 # [5.5.0](https://github.com/constantoine/totp-rs/releases/tag/v5.5.0) (19/01/2024)
 ### Changes
 - Documentation now indicates required feature.

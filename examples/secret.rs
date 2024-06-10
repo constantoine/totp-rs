@@ -1,10 +1,10 @@
-use totp_rs::{Algorithm, Secret, TOTP};
+use totp_rs::{Algorithm, Secret, Totp};
 
 #[cfg(feature = "otpauth")]
 fn main() {
     // create TOTP from base32 secret
     let secret_b32 = Secret::Encoded(String::from("OBWGC2LOFVZXI4TJNZTS243FMNZGK5BNGEZDG"));
-    let totp_b32 = TOTP::new(
+    let totp_b32 = Totp::new(
         Algorithm::SHA1,
         6,
         1,
@@ -31,7 +31,7 @@ fn main() {
         0x63, 0x72, 0x65, 0x74, 0x2d, 0x31, 0x32, 0x33,
     ];
     let secret_raw = Secret::Raw(secret.to_vec());
-    let totp_raw = TOTP::new(
+    let totp_raw = Totp::new(
         Algorithm::SHA1,
         6,
         1,
@@ -53,7 +53,7 @@ fn main() {
 fn main() {
     // create TOTP from base32 secret
     let secret_b32 = Secret::Encoded(String::from("OBWGC2LOFVZXI4TJNZTS243FMNZGK5BNGEZDG"));
-    let totp_b32 = TOTP::new(Algorithm::SHA1, 6, 1, 30, secret_b32.to_bytes().unwrap()).unwrap();
+    let totp_b32 = Totp::new(Algorithm::SHA1, 6, 1, 30, secret_b32.to_bytes().unwrap()).unwrap();
 
     println!(
         "base32 {} ; raw {}",
@@ -71,7 +71,7 @@ fn main() {
         0x63, 0x72, 0x65, 0x74, 0x2d, 0x31, 0x32, 0x33,
     ];
     let secret_raw = Secret::Raw(secret.to_vec());
-    let totp_raw = TOTP::new(Algorithm::SHA1, 6, 1, 30, secret_raw.to_bytes().unwrap()).unwrap();
+    let totp_raw = Totp::new(Algorithm::SHA1, 6, 1, 30, secret_raw.to_bytes().unwrap()).unwrap();
 
     println!("raw {} ; base32 {}", secret_raw, secret_raw.to_encoded());
     println!(
