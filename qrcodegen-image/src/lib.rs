@@ -75,7 +75,7 @@ pub fn draw_png(text: &str) -> Result<Vec<u8>, String> {
         &canvas.into_raw(),
         image_size,
         image_size,
-        image::ColorType::L8,
+        image::ExtendedColorType::L8,
     ) {
         Ok(_) => Ok(vec),
         Err(err) => Err(err.to_string()),

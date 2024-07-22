@@ -18,7 +18,7 @@ base64 = ["dep:base64"]
 
 [dependencies]
 qrcodegen = "1.8"
-image = { version = "0.24", features = ["png"], default-features = false}
+image = { version = "0.25", features = ["png"], default-features = false}
 base64 = { version = "0.22", optional = true }
 
 [dev-dependencies]
