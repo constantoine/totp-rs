@@ -1,4 +1,4 @@
-# [5.6.0](https://github.com/constantoine/totp-rs/releases/tag/v5.5.0) (19/01/2024)
+# [5.6.0](https://github.com/constantoine/totp-rs/releases/tag/v5.6.0) (24/07/2024)
 ### Changes
 - [qrcodegen-image](https://crates.io/crates/qrcodegen-image) has now been moved to its own [repo](https://github.com/constantoine/qrcodegen-image).
 
