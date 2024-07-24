@@ -1,6 +1,6 @@
 [package]
 name = "totp-rs"
-version = "5.5.1"
+version = "5.6.0"
 authors = ["Cleo Rebert <cleo.rebert@gmail.com>"]
 rust-version = "1.61"
 edition = "2021"
@@ -11,11 +11,6 @@ repository = "https://github.com/constantoine/totp-rs"
 homepage = "https://github.com/constantoine/totp-rs"
 keywords = ["authentication", "2fa", "totp", "hmac", "otp"]
 categories = ["authentication", "web-programming"]
-
-[workspace]
-members = [
-  "qrcodegen-image"
-]
 
 [package.metadata.docs.rs]
 all-features = true
@@ -40,4 +35,4 @@ url = { version = "2.4", optional = true }
 constant_time_eq = "0.2"
 rand = { version = "0.8", features = ["std_rng", "std"], optional = true, default-features = false }
 zeroize = { version = "1.6", features = ["alloc", "derive"], optional = true }
-qrcodegen-image = { version = "1.0", features = ["base64"], optional = true, path = "qrcodegen-image" }
+qrcodegen-image = { version = "1.4", features = ["base64"], optional = true }
