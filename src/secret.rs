@@ -171,7 +171,7 @@ impl Secret {
     pub fn generate_secret() -> Secret {
         use rand::Rng;
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let mut secret: [u8; 20] = Default::default();
         rng.fill(&mut secret[..]);
         Secret::Raw(secret.to_vec())
