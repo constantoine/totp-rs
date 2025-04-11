@@ -17,6 +17,15 @@ jobs:
     - name: Build
       run: cargo build --all-features
 
+  msrv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install cargo-msrv
+        run: cargo install cargo-msrv
+      - name: Verify Minimum Supported Rust Version
+        run: cargo msrv verify
+
   test:
     runs-on: ubuntu-latest
     steps:

@@ -131,7 +131,7 @@ impl Secret {
     pub fn to_bytes(&self) -> Result<Vec<u8>, SecretParseError> {
         match self {
             Secret::Raw(s) => Ok(s.to_vec()),
-            Secret::Encoded(s) => match base32::decode(Alphabet::RFC4648 { padding: false }, s) {
+            Secret::Encoded(s) => match base32::decode(Alphabet::Rfc4648 { padding: false }, s) {
                 Some(bytes) => Ok(bytes),
                 None => Err(SecretParseError::ParseBase32),
             },
@@ -142,7 +142,7 @@ impl Secret {
     pub fn to_raw(&self) -> Result<Self, SecretParseError> {
         match self {
             Secret::Raw(_) => Ok(self.clone()),
-            Secret::Encoded(s) => match base32::decode(Alphabet::RFC4648 { padding: false }, s) {
+            Secret::Encoded(s) => match base32::decode(Alphabet::Rfc4648 { padding: false }, s) {
                 Some(buf) => Ok(Secret::Raw(buf)),
                 None => Err(SecretParseError::ParseBase32),
             },
@@ -153,7 +153,7 @@ impl Secret {
     pub fn to_encoded(&self) -> Self {
         match self {
             Secret::Raw(s) => {
-                Secret::Encoded(base32::encode(Alphabet::RFC4648 { padding: false }, s))
+                Secret::Encoded(base32::encode(Alphabet::Rfc4648 { padding: false }, s))
             }
             Secret::Encoded(_) => self.clone(),
         }

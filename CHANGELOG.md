@@ -1,3 +1,16 @@
+# [5.7.0](https://github.com/constantoine/totp-rs/releases/tag/v5.7.0) (12/04/2025)
+### Breaking changes.
+- MSRV has been set to Rust `1.66`.
+
+### Changes
+- Updated `base32` crate to `0.5`.
+- Updated `constant_time_eq` crate to `0.3`.
+- Updated `rand` crate to `0.9`.
+
+### Note
+This is probably the last version update before the big `6.0`, which will be a big rewrite, and the `2024` edition.
+The goal will be to expose the same feature as before, but in a more harmonized and idiomatic way.
+
 # [5.6.0](https://github.com/constantoine/totp-rs/releases/tag/v5.6.0) (24/07/2024)
 ### Changes
 - [qrcodegen-image](https://crates.io/crates/qrcodegen-image) has now been moved to its own [repo](https://github.com/constantoine/qrcodegen-image).

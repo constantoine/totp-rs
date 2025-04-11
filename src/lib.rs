@@ -486,7 +486,7 @@ impl TOTP {
     /// Will return the base32 representation of the secret, which might be useful when users want to manually add the secret to their authenticator
     pub fn get_secret_base32(&self) -> String {
         base32::encode(
-            base32::Alphabet::RFC4648 { padding: false },
+            base32::Alphabet::Rfc4648 { padding: false },
             self.secret.as_ref(),
         )
     }
@@ -586,7 +586,7 @@ impl TOTP {
                 }
                 "secret" => {
                     secret = base32::decode(
-                        base32::Alphabet::RFC4648 { padding: false },
+                        base32::Alphabet::Rfc4648 { padding: false },
                         value.as_ref(),
                     )
                     .ok_or_else(|| TotpUrlError::Secret(value.to_string()))?;
@@ -1056,7 +1056,7 @@ mod tests {
         assert_eq!(
             totp.secret,
             base32::decode(
-                base32::Alphabet::RFC4648 { padding: false },
+                base32::Alphabet::Rfc4648 { padding: false },
                 "KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ"
             )
             .unwrap()
@@ -1074,7 +1074,7 @@ mod tests {
         assert_eq!(
             totp.secret,
             base32::decode(
-                base32::Alphabet::RFC4648 { padding: false },
+                base32::Alphabet::Rfc4648 { padding: false },
                 "KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ"
             )
             .unwrap()
@@ -1092,7 +1092,7 @@ mod tests {
         assert_eq!(
             totp.secret,
             base32::decode(
-                base32::Alphabet::RFC4648 { padding: false },
+                base32::Alphabet::Rfc4648 { padding: false },
                 "KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ"
             )
             .unwrap()
@@ -1127,7 +1127,7 @@ mod tests {
         assert_eq!(
             totp.secret,
             base32::decode(
-                base32::Alphabet::RFC4648 { padding: false },
+                base32::Alphabet::Rfc4648 { padding: false },
                 "KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ"
             )
             .unwrap()
@@ -1201,7 +1201,7 @@ mod tests {
         assert_eq!(
             totp.secret,
             base32::decode(
-                base32::Alphabet::RFC4648 { padding: false },
+                base32::Alphabet::Rfc4648 { padding: false },
                 "KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ"
             )
             .unwrap()
