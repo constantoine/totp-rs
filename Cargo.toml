@@ -33,6 +33,6 @@ base32 = "0.5"
 urlencoding = { version = "2.1", optional = true}
 url = { version = "2.4", optional = true }
 constant_time_eq = "0.3"
-rand = { version = "0.9", features = ["std_rng", "std"], optional = true, default-features = false }
+rand = { version = "0.9", features = ["thread_rng"], optional = true, default-features = false }
 zeroize = { version = "1.6", features = ["alloc", "derive"], optional = true }
 qrcodegen-image = { version = "1.4", features = ["base64"], optional = true }

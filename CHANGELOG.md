@@ -6,6 +6,7 @@
 - Updated `base32` crate to `0.5`.
 - Updated `constant_time_eq` crate to `0.3`.
 - Updated `rand` crate to `0.9`.
+- Added a bit of documentation.
 
 ### Note
 This is probably the last version update before the big `6.0`, which will be a big rewrite, and the `2024` edition.
