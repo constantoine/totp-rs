@@ -13,14 +13,23 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Build
       run: cargo build --all-features
+
+  msrv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install cargo-msrv
+        run: cargo install cargo-msrv
+      - name: Verify Minimum Supported Rust Version
+        run: cargo msrv verify
 
   test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Install llvm-tools-preview
       run: rustup component add llvm-tools-preview
     - name: Download grcov
@@ -42,12 +51,12 @@ jobs:
     - name: Create coverage file
       run: ./grcov . --binary-path ./target/debug/deps/ -s . -t cobertura --branch --ignore-not-existing --ignore '../*' --ignore "/*" -o target/coverage/cobertura.xml
     - name: Upload to codecov.io
-      uses: codecov/codecov-action@v2
+      uses: codecov/codecov-action@v5
       with:
         token: ${{secrets.CODECOV_TOKEN}}
 
     - name: Archive code coverage results
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v4
       with:
         name: code-coverage-report
         path: target/coverage/cobertura.xml

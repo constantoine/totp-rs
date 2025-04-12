@@ -87,16 +87,22 @@ const STEAM_CHARS: &str = "23456789BCDFGHJKMNPQRTVWXY";
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 #[cfg_attr(feature = "serde_support", derive(Serialize, Deserialize))]
 pub enum Algorithm {
+    /// HMAC-SHA1 is the default algorithm of most TOTP implementations.
+    /// Some will outright ignore the algorithm parameter to force using SHA1, leading to confusion.
     SHA1,
+    /// HMAC-SHA256. Supported in theory according to [yubico](https://docs.yubico.com/yesdk/users-manual/application-oath/uri-string-format.html).
+    /// Ignored in practice by most.
     SHA256,
+    /// HMAC-SHA512. Supported in theory according to [yubico](https://docs.yubico.com/yesdk/users-manual/application-oath/uri-string-format.html).
+    /// Ignored in practice by most.
     SHA512,
     #[cfg(feature = "steam")]
     #[cfg_attr(docsrs, doc(cfg(feature = "steam")))]
-    /// Steam TOTP token algorithm
+    /// Steam TOTP token algorithm.
     Steam,
 }
 
-impl std::default::Default for Algorithm {
+impl Default for Algorithm {
     fn default() -> Self {
         Algorithm::SHA1
     }
@@ -486,7 +492,7 @@ impl TOTP {
     /// Will return the base32 representation of the secret, which might be useful when users want to manually add the secret to their authenticator
     pub fn get_secret_base32(&self) -> String {
         base32::encode(
-            base32::Alphabet::RFC4648 { padding: false },
+            base32::Alphabet::Rfc4648 { padding: false },
             self.secret.as_ref(),
         )
     }
@@ -586,7 +592,7 @@ impl TOTP {
                 }
                 "secret" => {
                     secret = base32::decode(
-                        base32::Alphabet::RFC4648 { padding: false },
+                        base32::Alphabet::Rfc4648 { padding: false },
                         value.as_ref(),
                     )
                     .ok_or_else(|| TotpUrlError::Secret(value.to_string()))?;
@@ -1056,7 +1062,7 @@ mod tests {
         assert_eq!(
             totp.secret,
             base32::decode(
-                base32::Alphabet::RFC4648 { padding: false },
+                base32::Alphabet::Rfc4648 { padding: false },
                 "KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ"
             )
             .unwrap()
@@ -1074,7 +1080,7 @@ mod tests {
         assert_eq!(
             totp.secret,
             base32::decode(
-                base32::Alphabet::RFC4648 { padding: false },
+                base32::Alphabet::Rfc4648 { padding: false },
                 "KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ"
             )
             .unwrap()
@@ -1092,7 +1098,7 @@ mod tests {
         assert_eq!(
             totp.secret,
             base32::decode(
-                base32::Alphabet::RFC4648 { padding: false },
+                base32::Alphabet::Rfc4648 { padding: false },
                 "KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ"
             )
             .unwrap()
@@ -1127,7 +1133,7 @@ mod tests {
         assert_eq!(
             totp.secret,
             base32::decode(
-                base32::Alphabet::RFC4648 { padding: false },
+                base32::Alphabet::Rfc4648 { padding: false },
                 "KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ"
             )
             .unwrap()
@@ -1201,7 +1207,7 @@ mod tests {
         assert_eq!(
             totp.secret,
             base32::decode(
-                base32::Alphabet::RFC4648 { padding: false },
+                base32::Alphabet::Rfc4648 { padding: false },
                 "KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ"
             )
             .unwrap()

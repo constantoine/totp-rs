@@ -33,6 +33,8 @@ impl std::fmt::Display for Rfc6238Error {
     }
 }
 
+// Check that the number of digits is RFC-compliant.
+// (between 6 and 8 inclusive).
 pub fn assert_digits(digits: &usize) -> Result<(), Rfc6238Error> {
     if !(&6..=&8).contains(&digits) {
         Err(Rfc6238Error::InvalidDigits(*digits))
@@ -41,6 +43,8 @@ pub fn assert_digits(digits: &usize) -> Result<(), Rfc6238Error> {
     }
 }
 
+// Check that the secret is AT LEAST 128 bits long, as per the RFC's requirements.
+// It is still RECOMMENDED to have an at least 160 bits long secret.
 pub fn assert_secret_length(secret: &[u8]) -> Result<(), Rfc6238Error> {
     if secret.as_ref().len() < 16 {
         Err(Rfc6238Error::SecretTooSmall(secret.as_ref().len() * 8))

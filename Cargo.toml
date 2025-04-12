@@ -1,8 +1,8 @@
 [package]
 name = "totp-rs"
-version = "5.6.0"
+version = "5.7.0"
 authors = ["Cleo Rebert <cleo.rebert@gmail.com>"]
-rust-version = "1.61"
+rust-version = "1.66"
 edition = "2021"
 readme = "README.md"
 license = "MIT"
@@ -29,10 +29,10 @@ serde = { version = "1.0", features = ["derive"], optional = true }
 sha2 = "0.10"
 sha1 = "0.10"
 hmac = "0.12"
-base32 = "0.4"
+base32 = "0.5"
 urlencoding = { version = "2.1", optional = true}
 url = { version = "2.4", optional = true }
-constant_time_eq = "0.2"
-rand = { version = "0.8", features = ["std_rng", "std"], optional = true, default-features = false }
+constant_time_eq = "0.3"
+rand = { version = "0.9", features = ["thread_rng"], optional = true, default-features = false }
 zeroize = { version = "1.6", features = ["alloc", "derive"], optional = true }
 qrcodegen-image = { version = "1.4", features = ["base64"], optional = true }
