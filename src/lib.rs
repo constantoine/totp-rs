@@ -51,16 +51,16 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
 mod custom_providers;
+mod error;
 mod rfc;
 mod secret;
-mod url_error;
 
 #[cfg(feature = "qr")]
 pub use qrcodegen_image;
 
-pub use rfc::{Rfc6238, Rfc6238Error};
+pub use error::TotpError;
+pub use rfc::Rfc6238;
 pub use secret::{Secret, SecretParseError};
-pub use url_error::TotpUrlError;
 
 use constant_time_eq::constant_time_eq;
 
@@ -91,7 +91,7 @@ const STEAM_CHARS: &str = "23456789BCDFGHJKMNPQRTVWXY";
 #[cfg_attr(feature = "serde_support", derive(Serialize, Deserialize))]
 pub enum Algorithm {
     /// HMAC-SHA1 is the default algorithm of most TOTP implementations.
-    /// Some will outright ignore the algorithm parameter to force using SHA1, leading to confusion.
+    /// Some will outright silently ignore the algorithm parameter to force using SHA1, leading to confusion.
     SHA1,
     /// HMAC-SHA256. Supported in theory according to [yubico](https://docs.yubico.com/yesdk/users-manual/application-oath/uri-string-format.html).
     /// Ignored in practice by most.
@@ -289,27 +289,18 @@ impl TOTP {
         mut secret: Vec<u8>,
         issuer: Option<String>,
         account_name: String,
-    ) -> Result<TOTP, TotpUrlError> {
-        let validate = || {
-            crate::rfc::assert_digits(&digits)?;
-            crate::rfc::assert_secret_length(secret.as_ref())?;
-
-            if issuer.is_some() && issuer.as_ref().unwrap().contains(':') {
-                return Err(TotpUrlError::Issuer(issuer.as_ref().unwrap().to_string()));
-            }
-
-            if account_name.contains(':') {
-                return Err(TotpUrlError::AccountName(account_name.clone()));
-            }
-
-            Ok(())
-        };
-
-        if let Err(e) = validate() {
-            #[cfg(feature = "zeroize")]
-            zeroize::Zeroize::zeroize(&mut secret);
-
-            return Err(e);
+    ) -> Result<TOTP, TotpError> {
+        crate::rfc::assert_digits(&digits)?;
+        crate::rfc::assert_secret_length(secret.as_ref())?;
+        if issuer.is_some() && issuer.as_ref().unwrap().contains(':') {
+            return Err(TotpError::InvalidIssuer {
+                value: issuer.as_ref().unwrap().to_string(),
+            });
+        }
+        if account_name.contains(':') {
+            return Err(TotpError::InvalidAccountName {
+                value: account_name,
+            });
         }
 
         Ok(Self::new_unchecked(
@@ -381,22 +372,10 @@ impl TOTP {
         digits: usize,
         skew: u8,
         step: u64,
-        mut secret: Vec<u8>,
-    ) -> Result<TOTP, TotpUrlError> {
-        let validate = || {
-            crate::rfc::assert_digits(&digits)?;
-            crate::rfc::assert_secret_length(secret.as_ref())?;
-
-            Ok(())
-        };
-
-        if let Err(e) = validate() {
-            #[cfg(feature = "zeroize")]
-            zeroize::Zeroize::zeroize(&mut secret);
-
-            return Err(e);
-        }
-
+        secret: Vec<u8>,
+    ) -> Result<TOTP, TotpError> {
+        crate::rfc::assert_digits(&digits)?;
+        crate::rfc::assert_secret_length(secret.as_ref())?;
         Ok(Self::new_unchecked(algorithm, digits, skew, step, secret))
     }
 
@@ -434,7 +413,7 @@ impl TOTP {
     /// # Errors
     ///
     /// Will return an error in case issuer or label contain the character ':'
-    pub fn from_rfc6238(rfc: Rfc6238) -> Result<TOTP, TotpUrlError> {
+    pub fn from_rfc6238(rfc: Rfc6238) -> Result<TOTP, TotpError> {
         TOTP::try_from(rfc)
     }
 
@@ -531,7 +510,7 @@ impl TOTP {
     /// Generate a TOTP from the standard otpauth URL
     #[cfg(feature = "otpauth")]
     #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
-    pub fn from_url<S: AsRef<str>>(url: S) -> Result<TOTP, TotpUrlError> {
+    pub fn from_url<S: AsRef<str>>(url: S) -> Result<TOTP, TotpError> {
         let (algorithm, digits, skew, step, secret, issuer, account_name) =
             Self::parts_from_url(url)?;
         TOTP::new(algorithm, digits, skew, step, secret, issuer, account_name)
@@ -540,7 +519,7 @@ impl TOTP {
     /// Generate a TOTP from the standard otpauth URL, using `TOTP::new_unchecked` internally
     #[cfg(feature = "otpauth")]
     #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
-    pub fn from_url_unchecked<S: AsRef<str>>(url: S) -> Result<TOTP, TotpUrlError> {
+    pub fn from_url_unchecked<S: AsRef<str>>(url: S) -> Result<TOTP, TotpError> {
         let (algorithm, digits, skew, step, secret, issuer, account_name) =
             Self::parts_from_url(url)?;
         Ok(TOTP::new_unchecked(
@@ -558,7 +537,7 @@ impl TOTP {
     #[cfg(feature = "otpauth")]
     fn parts_from_url<S: AsRef<str>>(
         url: S,
-    ) -> Result<(Algorithm, usize, u8, u64, Vec<u8>, Option<String>, String), TotpUrlError> {
+    ) -> Result<(Algorithm, usize, u8, u64, Vec<u8>, Option<String>, String), TotpError> {
         let mut algorithm = Algorithm::SHA1;
         let mut digits = 6;
         let mut step = 30;
@@ -569,9 +548,11 @@ impl TOTP {
         let mut issuer: Option<String> = None;
         let mut account_name: String;
 
-        let url = Url::parse(url.as_ref()).map_err(TotpUrlError::Url)?;
+        let url = Url::parse(url.as_ref()).map_err(TotpError::UrlParse)?;
         if url.scheme() != "otpauth" {
-            return Err(TotpUrlError::Scheme(url.scheme().to_string()));
+            return Err(TotpError::InvalidScheme {
+                scheme: url.scheme().to_string(),
+            });
         }
         match url.host() {
             Some(Host::Domain("totp")) => {}
@@ -580,13 +561,17 @@ impl TOTP {
                 algorithm = Algorithm::Steam;
             }
             _ => {
-                return Err(TotpUrlError::Host(url.host().unwrap().to_string()));
+                return Err(TotpError::InvalidHost {
+                    host: url.host().unwrap().to_string(),
+                });
             }
         }
 
         let path = url.path().trim_start_matches('/');
         let path = urlencoding::decode(path)
-            .map_err(|_| TotpUrlError::AccountNameDecoding(path.to_string()))?
+            .map_err(|_| TotpError::AccountNameDecode {
+                value: path.to_string(),
+            })?
             .to_string();
         if path.contains(':') {
             let parts = path.split_once(':').unwrap();
@@ -597,7 +582,9 @@ impl TOTP {
         }
 
         account_name = urlencoding::decode(account_name.as_str())
-            .map_err(|_| TotpUrlError::AccountName(account_name.to_string()))?
+            .map_err(|_| TotpError::AccountNameDecode {
+                value: account_name.to_string(),
+            })?
             .to_string();
 
         for (key, value) in url.query_pairs() {
@@ -611,38 +598,33 @@ impl TOTP {
                         "SHA1" => Algorithm::SHA1,
                         "SHA256" => Algorithm::SHA256,
                         "SHA512" => Algorithm::SHA512,
-                        _ => return Err(TotpUrlError::Algorithm(value.to_string())),
+                        _ => {
+                            return Err(TotpError::InvalidAlgorithm {
+                                algorithm: value.to_string(),
+                            })
+                        }
                     }
                 }
                 "digits" => {
                     digits = value
                         .parse::<usize>()
-                        .map_err(|_| TotpUrlError::Digits(value.to_string()))?;
+                        .map_err(|_| TotpError::InvalidDigitsURL {
+                            digits: value.to_string(),
+                        })?;
                 }
                 "period" => {
                     step = value
                         .parse::<u64>()
-                        .map_err(|_| TotpUrlError::Step(value.to_string()))?;
+                        .map_err(|_| TotpError::InvalidStepURL {
+                            step: value.to_string(),
+                        })?;
                 }
                 "secret" => {
-                    #[cfg(not(feature = "zeroize"))]
-                    {
-                        secret = base32::decode(
-                            base32::Alphabet::Rfc4648 { padding: false },
-                            value.as_ref(),
-                        )
-                        .ok_or_else(|| TotpUrlError::Secret(value.to_string()))?;
-                    }
-                    #[cfg(feature = "zeroize")]
-                    {
-                        secret = zeroize::Zeroizing::new(
-                            base32::decode(
-                                base32::Alphabet::Rfc4648 { padding: false },
-                                value.as_ref(),
-                            )
-                            .ok_or_else(|| TotpUrlError::Secret(value.to_string()))?,
-                        );
-                    }
+                    secret = base32::decode(
+                        base32::Alphabet::Rfc4648 { padding: false },
+                        value.as_ref(),
+                    )
+                    .ok_or_else(|| TotpError::InvalidSecret)?;
                 }
                 #[cfg(feature = "steam")]
                 "issuer" if value.to_lowercase() == "steam" => {
@@ -653,10 +635,10 @@ impl TOTP {
                 "issuer" => {
                     let param_issuer: String = value.into();
                     if issuer.is_some() && param_issuer.as_str() != issuer.as_ref().unwrap() {
-                        return Err(TotpUrlError::IssuerMistmatch(
-                            issuer.as_ref().unwrap().to_string(),
-                            param_issuer,
-                        ));
+                        return Err(TotpError::IssuerMismatch {
+                            path: issuer.as_ref().unwrap().to_string(),
+                            query: param_issuer,
+                        });
                     }
                     issuer = Some(param_issuer);
                     #[cfg(feature = "steam")]
@@ -676,7 +658,7 @@ impl TOTP {
         }
 
         if secret.is_empty() {
-            return Err(TotpUrlError::Secret("".to_string()));
+            return Err(TotpError::SecretTooShort { bits: 0 });
         }
 
         Ok((
@@ -799,7 +781,7 @@ mod tests {
             "constantoine@github.com".to_string(),
         );
         assert!(totp.is_err());
-        assert!(matches!(totp.unwrap_err(), TotpUrlError::Issuer(_)));
+        assert!(matches!(totp.unwrap_err(), TotpError::InvalidIssuer { .. }));
     }
 
     #[test]
@@ -815,7 +797,10 @@ mod tests {
             "constantoine:github.com".to_string(),
         );
         assert!(totp.is_err());
-        assert!(matches!(totp.unwrap_err(), TotpUrlError::AccountName(_)));
+        assert!(matches!(
+            totp.unwrap_err(),
+            TotpError::InvalidAccountName { .. }
+        ));
     }
 
     #[test]
@@ -831,7 +816,10 @@ mod tests {
             "constantoine:github.com".to_string(),
         );
         assert!(totp.is_err());
-        assert!(matches!(totp.unwrap_err(), TotpUrlError::AccountName(_)));
+        assert!(matches!(
+            totp.unwrap_err(),
+            TotpError::InvalidAccountName { .. }
+        ));
     }
 
     #[test]
@@ -1280,7 +1268,7 @@ mod tests {
         let totp = TOTP::from_url("http://totp/GitHub:test?issuer=GitHub&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA256");
         assert!(totp.is_err());
         let err = totp.unwrap_err();
-        assert!(matches!(err, TotpUrlError::Scheme(_)));
+        assert!(matches!(err, TotpError::InvalidScheme { .. }));
     }
 
     #[test]
@@ -1289,7 +1277,7 @@ mod tests {
         let totp = TOTP::from_url("otpauth://totp/GitHub:test?issuer=GitHub&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=MD5");
         assert!(totp.is_err());
         let err = totp.unwrap_err();
-        assert!(matches!(err, TotpUrlError::Algorithm(_)));
+        assert!(matches!(err, TotpError::InvalidAlgorithm { .. }));
     }
 
     #[test]
@@ -1299,7 +1287,7 @@ mod tests {
         assert!(totp.is_err());
         assert!(matches!(
             totp.unwrap_err(),
-            TotpUrlError::IssuerMistmatch(_, _)
+            TotpError::IssuerMismatch { .. },
         ));
     }
 
