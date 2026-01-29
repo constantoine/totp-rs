@@ -180,9 +180,7 @@ impl TryFrom<Rfc6238> for TOTP {
 
 #[cfg(test)]
 mod tests {
-    use super::TotpError;
-    use super::{Rfc6238, TOTP};
-    use crate::Secret;
+    use crate::{Rfc6238, TotpError, TOTP};
 
     const GOOD_SECRET: &str = "01234567890123456789";
     #[cfg(feature = "otpauth")]
@@ -199,7 +197,7 @@ mod tests {
             let rfc = Rfc6238::new(x, GOOD_SECRET.into());
             if !(6..=8).contains(&x) {
                 assert!(rfc.is_err());
-                assert!(matches!(rfc.unwrap_err(), TotpError::InvalidDigits{..}));
+                assert!(matches!(rfc.unwrap_err(), TotpError::InvalidDigits { .. }));
             } else {
                 assert!(rfc.is_ok());
             }
@@ -216,11 +214,11 @@ mod tests {
             let rfc_default = Rfc6238::with_defaults(secret.as_bytes().to_vec());
             if secret.len() < 16 {
                 assert!(rfc.is_err());
-                assert!(matches!(rfc.unwrap_err(), TotpError::SecretTooShort{..}));
+                assert!(matches!(rfc.unwrap_err(), TotpError::SecretTooShort { .. }));
                 assert!(rfc_default.is_err());
                 assert!(matches!(
                     rfc_default.unwrap_err(),
-                    TotpError::SecretTooShort{..}
+                    TotpError::SecretTooShort { .. }
                 ));
             } else {
                 assert!(rfc.is_ok());
@@ -247,7 +245,7 @@ mod tests {
     #[cfg(not(feature = "otpauth"))]
     fn rfc_to_totp_ok_2() {
         let rfc = Rfc6238::with_defaults(
-            Secret::Encoded("KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ".to_string())
+            crate::Secret::Encoded("KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ".to_string())
                 .to_bytes()
                 .unwrap(),
         )
@@ -314,7 +312,7 @@ mod tests {
         let mut rfc = Rfc6238::with_defaults(GOOD_SECRET.as_bytes().to_vec()).unwrap();
         let fail = rfc.digits(4);
         assert!(fail.is_err());
-        assert!(matches!(fail.unwrap_err(), TotpError::InvalidDigits{..}));
+        assert!(matches!(fail.unwrap_err(), TotpError::InvalidDigits { .. }));
         assert_eq!(rfc.digits, 6);
         let ok = rfc.digits(8);
         assert!(ok.is_ok());
@@ -324,7 +322,7 @@ mod tests {
     #[test]
     #[cfg(not(feature = "otpauth"))]
     fn digits_error() {
-        let error = crate::TotpError::InvalidDigits{digits: 9};
+        let error = crate::TotpError::InvalidDigits { digits: 9 };
         assert_eq!(
             error.to_string(),
             "Digits must be 6, 7, or 8, not 9".to_string()
@@ -334,11 +332,10 @@ mod tests {
     #[test]
     #[cfg(not(feature = "otpauth"))]
     fn secret_length_error() {
-        let error = TotpError::SecretTooShort{bits: 120};
+        let error = TotpError::SecretTooShort { bits: 120 };
         assert_eq!(
             error.to_string(),
-            "The length of the shared secret MUST be at least 128 bits, got 120 bits"
-                .to_string()
+            "The length of the shared secret MUST be at least 128 bits, got 120 bits".to_string()
         )
     }
 }
