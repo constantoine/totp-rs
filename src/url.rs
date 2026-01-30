@@ -1,21 +1,21 @@
-use crate::{Algorithm, TotpError, TOTP};
+use crate::{Algorithm, TotpError, Totp};
 
 use url::{Host, Url};
 
 #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
-impl crate::TOTP {
+impl crate::Totp {
     /// Generate a TOTP from the standard otpauth URL
-    pub fn from_url<S: AsRef<str>>(url: S) -> Result<TOTP, TotpError> {
+    pub fn from_url<S: AsRef<str>>(url: S) -> Result<Totp, TotpError> {
         let (algorithm, digits, skew, step, secret, issuer, account_name) =
             Self::parts_from_url(url)?;
-        TOTP::new(algorithm, digits, skew, step, secret, issuer, account_name)
+        Totp::new(algorithm, digits, skew, step, secret, issuer, account_name)
     }
 
-    /// Generate a TOTP from the standard otpauth URL, using `TOTP::new_unchecked` internally
-    pub fn from_url_unchecked<S: AsRef<str>>(url: S) -> Result<TOTP, TotpError> {
+    /// Generate a TOTP from the standard otpauth URL, using `Totp::new_unchecked` internally
+    pub fn from_url_unchecked<S: AsRef<str>>(url: S) -> Result<Totp, TotpError> {
         let (algorithm, digits, skew, step, secret, issuer, account_name) =
             Self::parts_from_url(url)?;
-        Ok(TOTP::new_unchecked(
+        Ok(Totp::new_unchecked(
             algorithm,
             digits,
             skew,
@@ -157,7 +157,7 @@ impl crate::TOTP {
     ///
     /// Label and issuer will be URL-encoded if needed be
     /// Secret will be base 32'd without padding, as per RFC.
-    pub fn get_url(&self) -> String {
+    pub fn to_url(&self) -> String {
         #[allow(unused_mut)]
         let mut host = "totp";
         #[cfg(feature = "steam")]
@@ -165,7 +165,7 @@ impl crate::TOTP {
             host = "steam";
         }
         let account_name = urlencoding::encode(self.account_name.as_str()).to_string();
-        let mut params = vec![format!("secret={}", self.get_secret_base32())];
+        let mut params = vec![format!("secret={}", self.to_secret_base32())];
         if self.digits != 6 {
             params.push(format!("digits={}", self.digits));
         }
@@ -189,7 +189,7 @@ impl crate::TOTP {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Algorithm, TotpError, TOTP};
+    use crate::{Algorithm, TotpError, Totp};
 
     #[cfg(feature = "gen_secret")]
     use crate::{Rfc6238, Secret};
@@ -197,7 +197,7 @@ mod tests {
     #[test]
     #[cfg(feature = "gen_secret")]
     fn default_values() {
-        let totp = TOTP::default();
+        let totp = Totp::default();
         assert_eq!(totp.algorithm, Algorithm::SHA1);
         assert_eq!(totp.digits, 6);
         assert_eq!(totp.skew, 1);
@@ -206,7 +206,7 @@ mod tests {
 
     #[test]
     fn new_wrong_issuer() {
-        let totp = TOTP::new(
+        let totp = Totp::new(
             Algorithm::SHA1,
             6,
             1,
@@ -221,7 +221,7 @@ mod tests {
 
     #[test]
     fn new_wrong_account_name() {
-        let totp = TOTP::new(
+        let totp = Totp::new(
             Algorithm::SHA1,
             6,
             1,
@@ -239,7 +239,7 @@ mod tests {
 
     #[test]
     fn new_wrong_account_name_no_issuer() {
-        let totp = TOTP::new(
+        let totp = Totp::new(
             Algorithm::SHA1,
             6,
             1,
@@ -257,7 +257,7 @@ mod tests {
 
     #[test]
     fn comparison_ok() {
-        let reference = TOTP::new(
+        let reference = Totp::new(
             Algorithm::SHA1,
             6,
             1,
@@ -267,7 +267,7 @@ mod tests {
             "constantoine@github.com".to_string(),
         )
         .unwrap();
-        let test = TOTP::new(
+        let test = Totp::new(
             Algorithm::SHA1,
             6,
             1,
@@ -282,7 +282,7 @@ mod tests {
 
     #[test]
     fn url_for_secret_matches_sha1_without_issuer() {
-        let totp = TOTP::new(
+        let totp = Totp::new(
             Algorithm::SHA1,
             6,
             1,
@@ -292,7 +292,7 @@ mod tests {
             "constantoine@github.com".to_string(),
         )
         .unwrap();
-        let url = totp.get_url();
+        let url = totp.to_url();
         assert_eq!(
             url.as_str(),
             "otpauth://totp/constantoine%40github.com?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ"
@@ -301,7 +301,7 @@ mod tests {
 
     #[test]
     fn url_for_secret_matches_sha1() {
-        let totp = TOTP::new(
+        let totp = Totp::new(
             Algorithm::SHA1,
             6,
             1,
@@ -311,13 +311,13 @@ mod tests {
             "constantoine@github.com".to_string(),
         )
         .unwrap();
-        let url = totp.get_url();
+        let url = totp.to_url();
         assert_eq!(url.as_str(), "otpauth://totp/Github:constantoine%40github.com?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&issuer=Github");
     }
 
     #[test]
     fn url_for_secret_matches_sha256() {
-        let totp = TOTP::new(
+        let totp = Totp::new(
             Algorithm::SHA256,
             6,
             1,
@@ -327,13 +327,13 @@ mod tests {
             "constantoine@github.com".to_string(),
         )
         .unwrap();
-        let url = totp.get_url();
+        let url = totp.to_url();
         assert_eq!(url.as_str(), "otpauth://totp/Github:constantoine%40github.com?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&algorithm=SHA256&issuer=Github");
     }
 
     #[test]
     fn url_for_secret_matches_sha512() {
-        let totp = TOTP::new(
+        let totp = Totp::new(
             Algorithm::SHA512,
             6,
             1,
@@ -343,7 +343,7 @@ mod tests {
             "constantoine@github.com".to_string(),
         )
         .unwrap();
-        let url = totp.get_url();
+        let url = totp.to_url();
         assert_eq!(url.as_str(), "otpauth://totp/Github:constantoine%40github.com?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&algorithm=SHA512&issuer=Github");
     }
 
@@ -352,13 +352,13 @@ mod tests {
     fn ttl() {
         let secret = Secret::default();
         let totp_rfc = Rfc6238::with_defaults(secret.to_bytes().unwrap()).unwrap();
-        let totp = TOTP::from_rfc6238(totp_rfc);
+        let totp = Totp::from_rfc6238(totp_rfc);
         assert!(totp.is_ok());
     }
 
     #[test]
     fn ttl_ok() {
-        let totp = TOTP::new(
+        let totp = Totp::new(
             Algorithm::SHA512,
             6,
             1,
@@ -373,19 +373,19 @@ mod tests {
 
     #[test]
     fn from_url_err() {
-        assert!(TOTP::from_url("otpauth://hotp/123").is_err());
-        assert!(TOTP::from_url("otpauth://totp/GitHub:test").is_err());
-        assert!(TOTP::from_url(
+        assert!(Totp::from_url("otpauth://hotp/123").is_err());
+        assert!(Totp::from_url("otpauth://totp/GitHub:test").is_err());
+        assert!(Totp::from_url(
             "otpauth://totp/GitHub:test:?secret=ABC&digits=8&period=60&algorithm=SHA256"
         )
         .is_err());
-        assert!(TOTP::from_url("otpauth://totp/Github:constantoine%40github.com?issuer=GitHub&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA1").is_err())
+        assert!(Totp::from_url("otpauth://totp/Github:constantoine%40github.com?issuer=GitHub&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA1").is_err())
     }
 
     #[test]
     fn from_url_default() {
         let totp =
-            TOTP::from_url("otpauth://totp/GitHub:test?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ")
+            Totp::from_url("otpauth://totp/GitHub:test?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ")
                 .unwrap();
         assert_eq!(
             totp.secret,
@@ -403,7 +403,7 @@ mod tests {
 
     #[test]
     fn from_url_query() {
-        let totp = TOTP::from_url("otpauth://totp/GitHub:test?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA256").unwrap();
+        let totp = Totp::from_url("otpauth://totp/GitHub:test?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA256").unwrap();
         assert_eq!(
             totp.secret,
             base32::decode(
@@ -420,7 +420,7 @@ mod tests {
 
     #[test]
     fn from_url_query_sha512() {
-        let totp = TOTP::from_url("otpauth://totp/GitHub:test?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA512").unwrap();
+        let totp = Totp::from_url("otpauth://totp/GitHub:test?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA512").unwrap();
         assert_eq!(
             totp.secret,
             base32::decode(
@@ -437,8 +437,8 @@ mod tests {
 
     #[test]
     fn from_url_to_url() {
-        let totp = TOTP::from_url("otpauth://totp/Github:constantoine%40github.com?issuer=Github&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA1").unwrap();
-        let totp_bis = TOTP::new(
+        let totp = Totp::from_url("otpauth://totp/Github:constantoine%40github.com?issuer=Github&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA1").unwrap();
+        let totp_bis = Totp::new(
             Algorithm::SHA1,
             6,
             1,
@@ -448,12 +448,12 @@ mod tests {
             "constantoine@github.com".to_string(),
         )
         .unwrap();
-        assert_eq!(totp.get_url(), totp_bis.get_url());
+        assert_eq!(totp.to_url(), totp_bis.to_url());
     }
 
     #[test]
     fn from_url_unknown_param() {
-        let totp = TOTP::from_url("otpauth://totp/GitHub:test?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA256&foo=bar").unwrap();
+        let totp = Totp::from_url("otpauth://totp/GitHub:test?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA256&foo=bar").unwrap();
         assert_eq!(
             totp.secret,
             base32::decode(
@@ -470,8 +470,8 @@ mod tests {
 
     #[test]
     fn from_url_issuer_special() {
-        let totp = TOTP::from_url("otpauth://totp/Github%40:constantoine%40github.com?issuer=Github%40&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA1").unwrap();
-        let totp_bis = TOTP::new(
+        let totp = Totp::from_url("otpauth://totp/Github%40:constantoine%40github.com?issuer=Github%40&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA1").unwrap();
+        let totp_bis = Totp::new(
             Algorithm::SHA1,
             6,
             1,
@@ -481,14 +481,14 @@ mod tests {
             "constantoine@github.com".to_string(),
         )
         .unwrap();
-        assert_eq!(totp.get_url(), totp_bis.get_url());
+        assert_eq!(totp.to_url(), totp_bis.to_url());
         assert_eq!(totp.issuer.as_ref().unwrap(), "Github@");
     }
 
     #[test]
     fn from_url_account_name_issuer() {
-        let totp = TOTP::from_url("otpauth://totp/Github:constantoine?issuer=Github&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA1").unwrap();
-        let totp_bis = TOTP::new(
+        let totp = Totp::from_url("otpauth://totp/Github:constantoine?issuer=Github&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA1").unwrap();
+        let totp_bis = Totp::new(
             Algorithm::SHA1,
             6,
             1,
@@ -498,15 +498,15 @@ mod tests {
             "constantoine".to_string(),
         )
         .unwrap();
-        assert_eq!(totp.get_url(), totp_bis.get_url());
+        assert_eq!(totp.to_url(), totp_bis.to_url());
         assert_eq!(totp.account_name, "constantoine");
         assert_eq!(totp.issuer.as_ref().unwrap(), "Github");
     }
 
     #[test]
     fn from_url_account_name_issuer_encoded() {
-        let totp = TOTP::from_url("otpauth://totp/Github%3Aconstantoine?issuer=Github&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA1").unwrap();
-        let totp_bis = TOTP::new(
+        let totp = Totp::from_url("otpauth://totp/Github%3Aconstantoine?issuer=Github&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA1").unwrap();
+        let totp_bis = Totp::new(
             Algorithm::SHA1,
             6,
             1,
@@ -516,14 +516,14 @@ mod tests {
             "constantoine".to_string(),
         )
         .unwrap();
-        assert_eq!(totp.get_url(), totp_bis.get_url());
+        assert_eq!(totp.to_url(), totp_bis.to_url());
         assert_eq!(totp.account_name, "constantoine");
         assert_eq!(totp.issuer.as_ref().unwrap(), "Github");
     }
 
     #[test]
     fn from_url_query_issuer() {
-        let totp = TOTP::from_url("otpauth://totp/GitHub:test?issuer=GitHub&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA256").unwrap();
+        let totp = Totp::from_url("otpauth://totp/GitHub:test?issuer=GitHub&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA256").unwrap();
         assert_eq!(
             totp.secret,
             base32::decode(
@@ -541,7 +541,7 @@ mod tests {
 
     #[test]
     fn from_url_wrong_scheme() {
-        let totp = TOTP::from_url("http://totp/GitHub:test?issuer=GitHub&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA256");
+        let totp = Totp::from_url("http://totp/GitHub:test?issuer=GitHub&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA256");
         assert!(totp.is_err());
         let err = totp.unwrap_err();
         assert!(matches!(err, TotpError::InvalidScheme { .. }));
@@ -549,7 +549,7 @@ mod tests {
 
     #[test]
     fn from_url_wrong_algo() {
-        let totp = TOTP::from_url("otpauth://totp/GitHub:test?issuer=GitHub&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=MD5");
+        let totp = Totp::from_url("otpauth://totp/GitHub:test?issuer=GitHub&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=MD5");
         assert!(totp.is_err());
         let err = totp.unwrap_err();
         assert!(matches!(err, TotpError::InvalidAlgorithm { .. }));
@@ -557,7 +557,7 @@ mod tests {
 
     #[test]
     fn from_url_query_different_issuers() {
-        let totp = TOTP::from_url("otpauth://totp/GitHub:test?issuer=Gitlab&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA256");
+        let totp = Totp::from_url("otpauth://totp/GitHub:test?issuer=Gitlab&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA256");
         assert!(totp.is_err());
         assert!(matches!(
             totp.unwrap_err(),

@@ -1,6 +1,6 @@
 use crate::Algorithm;
 use crate::TotpError;
-use crate::TOTP;
+use crate::Totp;
 
 #[cfg(feature = "serde_support")]
 use serde::{Deserialize, Serialize};
@@ -27,11 +27,11 @@ pub fn assert_secret_length(secret: &[u8]) -> Result<(), TotpError> {
     }
 }
 
-/// [rfc-6238](https://tools.ietf.org/html/rfc6238) compliant set of options to create a [TOTP](struct.TOTP.html)
+/// [rfc-6238](https://tools.ietf.org/html/rfc6238) compliant set of options to create a [TOTP](struct.Totp.html)
 ///
 /// # Example
 /// ```
-/// use totp_rs::{Rfc6238, TOTP};
+/// use totp_rs::{Rfc6238, Totp};
 ///
 /// let mut rfc = Rfc6238::with_defaults(
 ///     "totp-sercret-123".as_bytes().to_vec()
@@ -40,7 +40,7 @@ pub fn assert_secret_length(secret: &[u8]) -> Result<(), TotpError> {
 /// // optional, set digits, issuer, account_name
 /// rfc.digits(8).unwrap();
 ///
-/// let totp = TOTP::from_rfc6238(rfc).unwrap();
+/// let totp = Totp::from_rfc6238(rfc).unwrap();
 /// ```
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde_support", derive(Serialize, Deserialize))]
@@ -69,7 +69,7 @@ pub struct Rfc6238 {
 }
 
 impl Rfc6238 {
-    /// Create an [rfc-6238](https://tools.ietf.org/html/rfc6238) compliant set of options that can be turned into a [TOTP](struct.TOTP.html).
+    /// Create an [rfc-6238](https://tools.ietf.org/html/rfc6238) compliant set of options that can be turned into a [TOTP](struct.Totp.html).
     ///
     /// # Errors
     ///
@@ -110,7 +110,7 @@ impl Rfc6238 {
         })
     }
 
-    /// Create an [rfc-6238](https://tools.ietf.org/html/rfc6238) compliant set of options that can be turned into a [TOTP](struct.TOTP.html),
+    /// Create an [rfc-6238](https://tools.ietf.org/html/rfc6238) compliant set of options that can be turned into a [TOTP](struct.Totp.html),
     /// with a default value of 6 for `digits`, None `issuer` and an empty account.
     ///
     /// # Errors
@@ -151,22 +151,22 @@ impl Rfc6238 {
 }
 
 #[cfg(not(feature = "otpauth"))]
-impl TryFrom<Rfc6238> for TOTP {
+impl TryFrom<Rfc6238> for Totp {
     type Error = TotpError;
 
-    /// Try to create a [TOTP](struct.TOTP.html) from a [Rfc6238](struct.Rfc6238.html) config.
+    /// Try to create a [TOTP](struct.Totp.html) from a [Rfc6238](struct.Rfc6238.html) config.
     fn try_from(rfc: Rfc6238) -> Result<Self, Self::Error> {
-        TOTP::new(rfc.algorithm, rfc.digits, rfc.skew, rfc.step, rfc.secret)
+        Totp::new(rfc.algorithm, rfc.digits, rfc.skew, rfc.step, rfc.secret)
     }
 }
 
 #[cfg(feature = "otpauth")]
-impl TryFrom<Rfc6238> for TOTP {
+impl TryFrom<Rfc6238> for Totp {
     type Error = TotpError;
 
-    /// Try to create a [TOTP](struct.TOTP.html) from a [Rfc6238](struct.Rfc6238.html) config.
+    /// Try to create a [TOTP](struct.Totp.html) from a [Rfc6238](struct.Rfc6238.html) config.
     fn try_from(rfc: Rfc6238) -> Result<Self, Self::Error> {
-        TOTP::new(
+        Totp::new(
             rfc.algorithm,
             rfc.digits,
             rfc.skew,
@@ -180,7 +180,7 @@ impl TryFrom<Rfc6238> for TOTP {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Rfc6238, TotpError, TOTP};
+    use crate::{Rfc6238, TotpError, Totp};
 
     const GOOD_SECRET: &str = "01234567890123456789";
     #[cfg(feature = "otpauth")]
@@ -231,7 +231,7 @@ mod tests {
     #[cfg(not(feature = "otpauth"))]
     fn rfc_to_totp_ok() {
         let rfc = Rfc6238::new(8, GOOD_SECRET.into()).unwrap();
-        let totp = TOTP::try_from(rfc);
+        let totp = Totp::try_from(rfc);
         assert!(totp.is_ok());
         let otp = totp.unwrap();
         assert_eq!(&otp.secret, GOOD_SECRET.as_bytes());
@@ -250,7 +250,7 @@ mod tests {
                 .unwrap(),
         )
         .unwrap();
-        let totp = TOTP::try_from(rfc);
+        let totp = Totp::try_from(rfc);
         assert!(totp.is_ok());
         let otp = totp.unwrap();
         assert_eq!(otp.algorithm, crate::Algorithm::SHA1);
@@ -269,7 +269,7 @@ mod tests {
             INVALID_ACCOUNT.to_string(),
         )
         .unwrap();
-        let totp = TOTP::try_from(rfc);
+        let totp = Totp::try_from(rfc);
         assert!(totp.is_err());
         assert!(matches!(
             totp.unwrap_err(),
@@ -287,7 +287,7 @@ mod tests {
             ACCOUNT.to_string(),
         )
         .unwrap();
-        let totp = TOTP::try_from(rfc);
+        let totp = Totp::try_from(rfc);
         assert!(totp.is_ok());
     }
 
