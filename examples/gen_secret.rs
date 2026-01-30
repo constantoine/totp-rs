@@ -1,11 +1,11 @@
 #[cfg(all(feature = "gen_secret", feature = "otpauth"))]
-use totp_rs::{Algorithm, Secret, TOTP};
+use totp_rs::{Algorithm, Secret, Totp};
 
 #[cfg(all(feature = "gen_secret", feature = "otpauth"))]
 fn main() {
     let secret = Secret::generate_secret();
 
-    let totp = TOTP::new(
+    let totp = Totp::new(
         Algorithm::SHA1,
         6,
         1,

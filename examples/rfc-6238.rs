@@ -1,4 +1,4 @@
-use totp_rs::{Rfc6238, TOTP};
+use totp_rs::{Rfc6238, Totp};
 
 #[cfg(feature = "otpauth")]
 fn main() {
@@ -10,7 +10,7 @@ fn main() {
     rfc.account_name("user-account".to_string());
 
     // create a TOTP from rfc
-    let totp = TOTP::from_rfc6238(rfc).unwrap();
+    let totp = Totp::from_rfc6238(rfc).unwrap();
     let code = totp.generate_current().unwrap();
     println!("code: {}", code);
 }
@@ -23,7 +23,7 @@ fn main() {
     rfc.digits(8).unwrap();
 
     // create a TOTP from rfc
-    let totp = TOTP::from_rfc6238(rfc).unwrap();
+    let totp = Totp::from_rfc6238(rfc).unwrap();
     let code = totp.generate_current().unwrap();
     println!("code: {}", code);
 }
