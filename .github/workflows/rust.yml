@@ -4,7 +4,7 @@ on:
   push:
     branches: [ master ]
   pull_request:
-    branches: [ master ]
+    branches: [ master, v6_rewrite ]
 
 env:
   CARGO_TERM_COLOR: always
@@ -13,14 +13,14 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Build
       run: cargo build --all-features
 
   msrv:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install cargo-msrv
         run: cargo install cargo-msrv
       - name: Verify Minimum Supported Rust Version
@@ -29,11 +29,11 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Install llvm-tools-preview
       run: rustup component add llvm-tools-preview
     - name: Download grcov
-      run: wget https://github.com/mozilla/grcov/releases/download/v0.8.11/grcov-x86_64-unknown-linux-gnu.tar.bz2
+      run: wget https://github.com/mozilla/grcov/releases/download/v0.10.5/grcov-x86_64-unknown-linux-gnu.tar.bz2
     - name: Decompress grcov
       run: tar xvf grcov-x86_64-unknown-linux-gnu.tar.bz2
     - name: Create coverage output dir
@@ -56,7 +56,7 @@ jobs:
         token: ${{secrets.CODECOV_TOKEN}}
 
     - name: Archive code coverage results
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: code-coverage-report
         path: target/coverage/cobertura.xml

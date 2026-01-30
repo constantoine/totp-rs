@@ -5,14 +5,14 @@
 //! - Create a TOTP from a "raw" secret
 //! ```
 //! # #[cfg(not(feature = "otpauth"))] {
-//! use totp_rs::{Secret, TOTP, Algorithm};
+//! use totp_rs::{Secret, Totp, Algorithm};
 //!
 //! let secret = [
 //!     0x70, 0x6c, 0x61, 0x69, 0x6e, 0x2d, 0x73, 0x74, 0x72, 0x69, 0x6e, 0x67, 0x2d, 0x73, 0x65,
 //!     0x63, 0x72, 0x65, 0x74, 0x2d, 0x31, 0x32, 0x33,
 //! ];
 //! let secret_raw = Secret::Raw(secret.to_vec());
-//! let totp_raw = TOTP::new(
+//! let totp_raw = Totp::new(
 //!     Algorithm::SHA1,
 //!     6,
 //!     1,
@@ -27,10 +27,10 @@
 //! - Create a TOTP from a base32 encoded secret
 //! ```
 //! # #[cfg(not(feature = "otpauth"))] {
-//! use totp_rs::{Secret, TOTP, Algorithm};
+//! use totp_rs::{Secret, Totp, Algorithm};
 //!
 //! let secret_b32 = Secret::Encoded(String::from("OBWGC2LOFVZXI4TJNZTS243FMNZGK5BNGEZDG"));
-//! let totp_b32 = TOTP::new(
+//! let totp_b32 = Totp::new(
 //!     Algorithm::SHA1,
 //!     6,
 //!     1,
@@ -45,10 +45,10 @@
 //! - Create a TOTP from a Generated Secret
 //! ```
 //! # #[cfg(all(feature = "gen_secret", not(feature = "otpauth")))] {
-//! use totp_rs::{Secret, TOTP, Algorithm};
+//! use totp_rs::{Secret, Totp, Algorithm};
 //!
 //! let secret_b32 = Secret::default();
-//! let totp_b32 = TOTP::new(
+//! let totp_b32 = Totp::new(
 //!     Algorithm::SHA1,
 //!     6,
 //!     1,
@@ -62,10 +62,10 @@
 //! - Create a TOTP from a Generated Secret 2
 //! ```
 //! # #[cfg(all(feature = "gen_secret", not(feature = "otpauth")))] {
-//! use totp_rs::{Secret, TOTP, Algorithm};
+//! use totp_rs::{Secret, Totp, Algorithm};
 //!
 //! let secret_b32 = Secret::generate_secret();
-//! let totp_b32 = TOTP::new(
+//! let totp_b32 = Totp::new(
 //!     Algorithm::SHA1,
 //!     6,
 //!     1,
