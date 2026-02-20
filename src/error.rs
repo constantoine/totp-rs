@@ -1,5 +1,3 @@
-use std::fmt::write;
-
 #[cfg(feature = "otpauth")]
 use url::ParseError;
 
