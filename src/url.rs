@@ -1,4 +1,4 @@
-use crate::{Algorithm, TotpError, Totp};
+use crate::{Algorithm, Totp, TotpError};
 
 use url::{Host, Url};
 
@@ -189,7 +189,7 @@ impl crate::Totp {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Algorithm, TotpError, Totp};
+    use crate::{Algorithm, Totp, TotpError};
 
     #[cfg(feature = "gen_secret")]
     use crate::{Rfc6238, Secret};

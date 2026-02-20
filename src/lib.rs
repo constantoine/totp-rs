@@ -50,6 +50,8 @@
 // enable `doc_cfg` feature for `docs.rs`.
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
+mod algorithm;
+mod builder;
 mod custom_providers;
 mod error;
 mod rfc;
@@ -61,6 +63,8 @@ mod url;
 #[cfg(feature = "qr")]
 pub use qrcodegen_image;
 
+pub use builder::Builder;
+pub use algorithm::Algorithm;
 pub use error::TotpError;
 pub use rfc::Rfc6238;
 pub use secret::{Secret, SecretParseError};
@@ -72,73 +76,7 @@ use serde::{Deserialize, Serialize};
 
 use core::fmt;
 
-use hmac::Mac;
 use std::time::{SystemTime, SystemTimeError, UNIX_EPOCH};
-
-type HmacSha1 = hmac::Hmac<sha1::Sha1>;
-type HmacSha256 = hmac::Hmac<sha2::Sha256>;
-type HmacSha512 = hmac::Hmac<sha2::Sha512>;
-
-/// Alphabet for Steam tokens.
-#[cfg(feature = "steam")]
-const STEAM_CHARS: &str = "23456789BCDFGHJKMNPQRTVWXY";
-
-/// Algorithm enum holds the three standards algorithms for TOTP as per the [reference implementation](https://tools.ietf.org/html/rfc6238#appendix-A)
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-#[cfg_attr(feature = "serde_support", derive(Serialize, Deserialize))]
-pub enum Algorithm {
-    /// HMAC-SHA1 is the default algorithm of most TOTP implementations.
-    /// Some will outright silently ignore the algorithm parameter to force using SHA1, leading to confusion.
-    SHA1,
-    /// HMAC-SHA256. Supported in theory according to [yubico](https://docs.yubico.com/yesdk/users-manual/application-oath/uri-string-format.html).
-    /// Ignored in practice by most.
-    SHA256,
-    /// HMAC-SHA512. Supported in theory according to [yubico](https://docs.yubico.com/yesdk/users-manual/application-oath/uri-string-format.html).
-    /// Ignored in practice by most.
-    SHA512,
-    #[cfg(feature = "steam")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "steam")))]
-    /// Steam TOTP token algorithm.
-    Steam,
-}
-
-impl Default for Algorithm {
-    fn default() -> Self {
-        Algorithm::SHA1
-    }
-}
-
-impl fmt::Display for Algorithm {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Algorithm::SHA1 => f.write_str("SHA1"),
-            Algorithm::SHA256 => f.write_str("SHA256"),
-            Algorithm::SHA512 => f.write_str("SHA512"),
-            #[cfg(feature = "steam")]
-            Algorithm::Steam => f.write_str("SHA1"),
-        }
-    }
-}
-
-impl Algorithm {
-    fn hash<D>(mut digest: D, data: &[u8]) -> Vec<u8>
-    where
-        D: Mac,
-    {
-        digest.update(data);
-        digest.finalize().into_bytes().to_vec()
-    }
-
-    fn sign(&self, key: &[u8], data: &[u8]) -> Vec<u8> {
-        match self {
-            Algorithm::SHA1 => Algorithm::hash(HmacSha1::new_from_slice(key).unwrap(), data),
-            Algorithm::SHA256 => Algorithm::hash(HmacSha256::new_from_slice(key).unwrap(), data),
-            Algorithm::SHA512 => Algorithm::hash(HmacSha512::new_from_slice(key).unwrap(), data),
-            #[cfg(feature = "steam")]
-            Algorithm::Steam => Algorithm::hash(HmacSha1::new_from_slice(key).unwrap(), data),
-        }
-    }
-}
 
 fn system_time() -> Result<u64, SystemTimeError> {
     let t = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
@@ -152,28 +90,28 @@ fn system_time() -> Result<u64, SystemTimeError> {
 pub struct Totp {
     /// SHA-1 is the most widespread algorithm used, and for totp pursposes, SHA-1 hash collisions are [not a problem](https://tools.ietf.org/html/rfc4226#appendix-B.2) as HMAC-SHA-1 is not impacted. It's also the main one cited in [rfc-6238](https://tools.ietf.org/html/rfc6238#section-3) even though the [reference implementation](https://tools.ietf.org/html/rfc6238#appendix-A) permits the use of SHA-1, SHA-256 and SHA-512. Not all clients support other algorithms then SHA-1
     #[cfg_attr(feature = "zeroize", zeroize(skip))]
-    pub algorithm: Algorithm,
+    pub(crate) algorithm: Algorithm,
     /// The number of digits composing the auth code. Per [rfc-4226](https://tools.ietf.org/html/rfc4226#section-5.3), this can oscilate between 6 and 8 digits
-    pub digits: usize,
+    pub(crate) digits: u32,
     /// Number of steps allowed as network delay. 1 would mean one step before current step and one step after are valids. The recommended value per [rfc-6238](https://tools.ietf.org/html/rfc6238#section-5.2) is 1. Anything more is sketchy, and anyone recommending more is, by definition, ugly and stupid
-    pub skew: u8,
+    pub(crate) skew: u32,
     /// Duration in seconds of a step. The recommended value per [rfc-6238](https://tools.ietf.org/html/rfc6238#section-5.2) is 30 seconds
-    pub step: u64,
+    pub(crate) step: u64,
     /// As per [rfc-4226](https://tools.ietf.org/html/rfc4226#section-4) the secret should come from a strong source, most likely a CSPRNG. It should be at least 128 bits, but 160 are recommended
     ///
     /// non-encoded value
-    pub secret: Vec<u8>,
+    pub(crate) secret: Vec<u8>,
     #[cfg(feature = "otpauth")]
     #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
     /// The "Github" part of "Github:constantoine@github.com". Must not contain a colon `:`
     /// For example, the name of your service/website.
     /// Not mandatory, but strongly recommended!
-    pub issuer: Option<String>,
+    pub(crate) issuer: Option<String>,
     #[cfg(feature = "otpauth")]
     #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
     /// The "constantoine@github.com" part of "Github:constantoine@github.com". Must not contain a colon `:`
     /// For example, the name of your user's account.
-    pub account_name: String,
+    pub(crate) account_name: String,
 }
 
 impl PartialEq for Totp {
@@ -363,12 +301,12 @@ impl Totp {
     /// Will return an error if the `digit` or `secret` size is invalid
     pub fn new(
         algorithm: Algorithm,
-        digits: usize,
-        skew: u8,
+        digits: u32,
+        skew: u32,
         step: u64,
         secret: Vec<u8>,
     ) -> Result<Totp, TotpError> {
-        crate::rfc::assert_digits(&digits)?;
+        crate::rfc::assert_digits(digits)?;
         crate::rfc::assert_secret_length(secret.as_ref())?;
         Ok(Self::new_unchecked(algorithm, digits, skew, step, secret))
     }
@@ -388,8 +326,8 @@ impl Totp {
     /// ```
     pub fn new_unchecked(
         algorithm: Algorithm,
-        digits: usize,
-        skew: u8,
+        digits: u32,
+        skew: u32,
         step: u64,
         secret: Vec<u8>,
     ) -> Totp {
@@ -430,8 +368,8 @@ impl Totp {
         match self.algorithm {
             Algorithm::SHA1 | Algorithm::SHA256 | Algorithm::SHA512 => format!(
                 "{1:00$}",
-                self.digits,
-                result % 10_u32.pow(self.digits as u32)
+                self.digits as usize,
+                result % 10_u32.pow(self.digits)
             ),
             #[cfg(feature = "steam")]
             Algorithm::Steam => (0..self.digits)

@@ -1,15 +1,15 @@
 use crate::Algorithm;
-use crate::TotpError;
 use crate::Totp;
+use crate::TotpError;
 
 #[cfg(feature = "serde_support")]
 use serde::{Deserialize, Serialize};
 
 // Check that the number of digits is RFC-compliant.
 // (between 6 and 8 inclusive).
-pub fn assert_digits(digits: &usize) -> Result<(), TotpError> {
-    if !(&6..=&8).contains(&digits) {
-        Err(TotpError::InvalidDigits { digits: *digits })
+pub fn assert_digits(digits: u32) -> Result<(), TotpError> {
+    if !(6..=8).contains(&digits) {
+        Err(TotpError::InvalidDigits { digits: digits })
     } else {
         Ok(())
     }
@@ -48,9 +48,9 @@ pub struct Rfc6238 {
     /// SHA-1
     algorithm: Algorithm,
     /// The number of digits composing the auth code. Per [rfc-4226](https://tools.ietf.org/html/rfc4226#section-5.3), this can oscilate between 6 and 8 digits.
-    digits: usize,
+    digits: u32,
     /// The recommended value per [rfc-6238](https://tools.ietf.org/html/rfc6238#section-5.2) is 1.
-    skew: u8,
+    skew: u32,
     /// The recommended value per [rfc-6238](https://tools.ietf.org/html/rfc6238#section-5.2) is 30 seconds.
     step: u64,
     /// As per [rfc-4226](https://tools.ietf.org/html/rfc4226#section-4) the secret should come from a strong source, most likely a CSPRNG. It should be at least 128 bits, but 160 are recommended.
@@ -97,8 +97,8 @@ impl Rfc6238 {
         })
     }
     #[cfg(not(feature = "otpauth"))]
-    pub fn new(digits: usize, secret: Vec<u8>) -> Result<Rfc6238, TotpError> {
-        assert_digits(&digits)?;
+    pub fn new(digits: u32, secret: Vec<u8>) -> Result<Rfc6238, TotpError> {
+        assert_digits(digits)?;
         assert_secret_length(secret.as_ref())?;
 
         Ok(Rfc6238 {
@@ -129,8 +129,8 @@ impl Rfc6238 {
     }
 
     /// Set the `digits`.
-    pub fn digits(&mut self, value: usize) -> Result<(), TotpError> {
-        assert_digits(&value)?;
+    pub fn digits(&mut self, value: u32) -> Result<(), TotpError> {
+        assert_digits(value)?;
         self.digits = value;
         Ok(())
     }
@@ -180,7 +180,7 @@ impl TryFrom<Rfc6238> for Totp {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Rfc6238, TotpError, Totp};
+    use crate::{Rfc6238, Totp, TotpError};
 
     const GOOD_SECRET: &str = "01234567890123456789";
     #[cfg(feature = "otpauth")]
