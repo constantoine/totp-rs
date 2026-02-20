@@ -63,8 +63,8 @@ mod url;
 #[cfg(feature = "qr")]
 pub use qrcodegen_image;
 
-pub use builder::Builder;
 pub use algorithm::Algorithm;
+pub use builder::Builder;
 pub use error::TotpError;
 pub use rfc::Rfc6238;
 pub use secret::{Secret, SecretParseError};

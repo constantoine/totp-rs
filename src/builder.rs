@@ -93,7 +93,7 @@ impl Builder {
 
     /// The "constantoine@github.com" part of "Github:constantoine@github.com". Must not contain a colon `:`
     /// For example, the name of your user's account.
-    /// 
+    ///
     /// Not calling this method will result in [Self::build] to fail.
     #[cfg(feature = "otpauth")]
     #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
@@ -106,7 +106,7 @@ impl Builder {
     /// The "Github" part of "Github:constantoine@github.com". Must not contain a colon `:`
     /// For example, the name of your service/website.
     /// Not mandatory, but strongly recommended!
-    /// 
+    ///
     /// Unless called, an issuer will not be present.
     #[cfg(feature = "otpauth")]
     #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
