@@ -17,7 +17,7 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-default = []
+default = ["otpauth"]
 otpauth = ["url", "urlencoding"]
 qr = ["dep:qrcodegen-image", "otpauth"]
 serde_support = ["serde"]
