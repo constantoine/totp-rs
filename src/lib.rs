@@ -349,7 +349,7 @@ impl Totp {
         Totp::try_from(rfc)
     }
 
-    /// Will sign the given timestamp
+    /// Will sign the given timestamp. Most users will want to interact with [Self::generate] and [Self::generate_current].
     pub fn sign(&self, time: u64) -> Vec<u8> {
         self.algorithm.sign(
             self.secret.as_ref(),
@@ -357,7 +357,7 @@ impl Totp {
         )
     }
 
-    /// Will generate a token given the provided timestamp in seconds
+    /// Will generate a token given the provided timestamp in seconds.
     pub fn generate(&self, time: u64) -> String {
         let result: &[u8] = &self.sign(time);
         let offset = (result.last().unwrap() & 15) as usize;

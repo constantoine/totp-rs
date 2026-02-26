@@ -41,6 +41,10 @@ impl Builder {
             secret: secret,
             skew: 1,
             step_duration: 30,
+            #[cfg(feature = "otpauth")]
+            account_name: None,
+            #[cfg(feature = "otpauth")]
+            issuer: "".to_string()
         }
     }
 
@@ -116,19 +120,19 @@ impl Builder {
         self
     }
 
-    /// Consume the builder into a [Totp]. See [it's method's docs](struct.Builder.html#impl-Builder) for reference about each values.
+    /// Consume the builder into a [Totp]. See [its method's docs](struct.Builder.html#impl-Builder) for reference about each values.
     ///
     /// # Example
     ///
     /// ```rust
-    /// use totp_rs::{Builder, Algorithm};
+    /// use totp_rs::{Algorithm, Builder, Totp};
     /// use rand::Rng;
     ///
     /// let mut rng = rand::rng();
     /// let mut secret: [u8; 20] = Default::default();
     /// rng.fill(&mut secret[..]);
     ///
-    /// let totp = Builder::new().
+    /// let totp: Totp = Builder::new().
     ///     with_algorithm(Algorithm::SHA256).
     ///     with_secret(secret).
     ///     build().
@@ -139,6 +143,7 @@ impl Builder {
     ///
     /// - If the `digit` or `secret` size are invalid.
     /// - If secret was not set using [Self::with_secret] and the feature `gen_secret` is not enabled.
+    /// - If `issuer` is not set/is an empty string (`otpauth`` feature).
     /// - If `issuer` or `label` contain the character ':' (`otpauth`` feature).
     pub fn build(self) -> Result<Totp, TotpError> {
         let secret = self.secret.as_ref().ok_or(TotpError::SecretNotSet)?;
@@ -154,7 +159,7 @@ impl Builder {
                 });
             }
 
-            if self.account_name.as_ref().contains(':') {
+            if self.account_name.as_ref().is_empty || self.account_name.as_ref().contains(':') {
                 return Err(TotpError::InvalidAccountName {
                     value: account_name,
                 });
@@ -164,6 +169,26 @@ impl Builder {
         Ok(self.build_noncompliant())
     }
 
+    /// Consume the builder into a [Totp], without checking the values for RFC. See [its method's docs](struct.Builder.html#impl-Builder) for reference about each values.
+    ///
+    /// <div class="warning">Logical errors, such as a step_duration of 0, could cause other functions such as [Totp::generate] to panic.</div>
+    /// 
+    /// # Example
+    ///
+    /// ```rust
+    /// use totp_rs::{Algorithm, Builder, Totp};
+    /// use rand::Rng;
+    ///
+    /// let mut rng = rand::rng();
+    /// let mut secret: [u8; 20] = Default::default();
+    /// rng.fill(&mut secret[..]);
+    ///
+    /// let totp: Totp = Builder::new().
+    ///     with_algorithm(Algorithm::SHA256).
+    ///     with_secret(secret).
+    ///     with_digits(10). // Not RFC-compliant.
+    ///     build_noncompliant()
+    /// ```
     pub fn build_noncompliant(self) -> Totp {
         Totp {
             algorithm: self.algorithm,
