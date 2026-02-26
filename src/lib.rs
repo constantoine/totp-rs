@@ -10,20 +10,35 @@
 //!
 //! ```rust
 //! # #[cfg(feature = "otpauth")] {
-//! use std::time::SystemTime;
-//! use totp_rs::{Algorithm, Totp, Secret};
+//! use totp_rs::{Algorithm, Builder, Totp};
 //!
-//! let totp = Totp::new(
-//!     Algorithm::SHA1,
-//!     6,
-//!     1,
-//!     30,
-//!     Secret::Raw("TestSecretSuperSecret".as_bytes().to_vec()).to_bytes().unwrap(),
-//!     Some("Github".to_string()),
-//!     "constantoine@github.com".to_string(),
-//! ).unwrap();
+//! let secret: Vec<u8> = vec![0; 20]; // You want an actual 20bytes of randomness here.
+//!
+//! let totp: Totp = Builder::new().
+//!     with_algorithm(Algorithm::SHA256).
+//!     with_secret(secret).
+//!     with_account_name("constantoine@github.com".to_string()).
+//!     with_issuer(Some("Github".to_string())).
+//!     build().
+//!     unwrap();
+//! 
 //! let token = totp.generate_current().unwrap();
 //! println!("{}", token);
+//! # }
+//! ```
+//!
+//! ```rust
+//! # #[cfg(all(feature = "gen_secret", not(feature = "otpauth")))] {
+//! use totp_rs::Builder;
+//!
+//! let totp: Totp = Builder::new().
+//!     build().
+//!     unwrap();
+//! 
+//! let token = totp.generate_current().unwrap();
+//! println!("{}", token);
+//!
+//! let secret = totp.to_secret_binary();
 //! # }
 //! ```
 //!
@@ -31,15 +46,15 @@
 //! # #[cfg(feature = "qr")] {
 //! use totp_rs::{Algorithm, Totp};
 //!
-//! let totp = Totp::new(
-//!     Algorithm::SHA1,
-//!     6,
-//!     1,
-//!     30,
-//!     "supersecret_topsecret".as_bytes().to_vec(),
-//!     Some("Github".to_string()),
-//!     "constantoine@github.com".to_string(),
-//! ).unwrap();
+//! let secret: Vec<u8> = vec![0; 20]; // You want an actual 20bytes of randomness here.
+//!
+//! let totp: Totp = Builder::new().
+//!     with_secret(secret).
+//!     with_account_name("constantoine@github.com".to_string()).
+//!     with_issuer(Some("Github".to_string())).
+//!     build().
+//!     unwrap();
+//! 
 //! let url = totp.to_url();
 //! println!("{}", url);
 //! let code = totp.to_qr_base64().unwrap();
@@ -66,7 +81,6 @@ pub use qrcodegen_image;
 pub use algorithm::Algorithm;
 pub use builder::Builder;
 pub use error::TotpError;
-pub use rfc::Rfc6238;
 pub use secret::{Secret, SecretParseError};
 
 use constant_time_eq::constant_time_eq;
@@ -160,195 +174,25 @@ impl core::fmt::Display for Totp {
     }
 }
 
+/// Default as set in [Builder::new].
+/// This implementation shall remain, to avoid breaking compatibility.
+/// Use [Self::to_secret_binary] or [Self::to_secret_base32] to retrieve the newly generated secret.
 #[cfg(all(feature = "gen_secret", not(feature = "otpauth")))]
-// because `Default` is implemented regardless of `otpauth` feature we don't specify it here
-#[cfg_attr(docsrs, doc(cfg(feature = "gen_secret")))]
+#[cfg_attr(
+    docsrs,
+    doc(cfg(all(feature = "gen_secret", not(feature = "otpauth"))))
+)]
 impl Default for Totp {
     fn default() -> Self {
-        return Totp::new(
-            Algorithm::SHA1,
-            6,
-            1,
-            30,
-            Secret::generate_secret().to_bytes().unwrap(),
-        )
-        .unwrap();
-    }
-}
+        use crate::Builder;
 
-#[cfg(all(feature = "gen_secret", feature = "otpauth"))]
-#[cfg_attr(docsrs, doc(cfg(feature = "gen_secret")))]
-impl Default for Totp {
-    fn default() -> Self {
-        Totp::new(
-            Algorithm::SHA1,
-            6,
-            1,
-            30,
-            Secret::generate_secret().to_bytes().unwrap(),
-            None,
-            "".to_string(),
-        )
-        .unwrap()
+        Builder::new()
+            .build()
+            .expect("Default value for Builder should never fail")
     }
 }
 
 impl Totp {
-    #[cfg(feature = "otpauth")]
-    /// Will create a new instance of TOTP with given parameters. See [the doc](struct.Totp.html#fields) for reference as to how to choose those values
-    ///
-    /// # Description
-    /// * `secret`: expect a non-encoded value, to pass in base32 string use `Secret::Encoded(String)`
-    /// * `digits`: MUST be between 6 & 8
-    /// * `secret`: Must have bitsize of at least 128
-    /// * `account_name`: Must not contain `:`
-    /// * `issuer`: Must not contain `:`
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use totp_rs::{Secret, Totp, Algorithm};
-    /// let secret = Secret::Encoded("OBWGC2LOFVZXI4TJNZTS243FMNZGK5BNGEZDG".to_string());
-    /// let totp = Totp::new(Algorithm::SHA1, 6, 1, 30, secret.to_bytes().unwrap(), None, "".to_string()).unwrap();
-    /// ```
-    ///
-    /// # Errors
-    ///
-    /// Will return an error if the `digit` or `secret` size is invalid or if `issuer` or `label` contain the character ':'
-    pub fn new(
-        algorithm: Algorithm,
-        digits: usize,
-        skew: u8,
-        step: u64,
-        secret: Vec<u8>,
-        issuer: Option<String>,
-        account_name: String,
-    ) -> Result<Totp, TotpError> {
-        crate::rfc::assert_digits(&digits)?;
-        crate::rfc::assert_secret_length(secret.as_ref())?;
-        if issuer.is_some() && issuer.as_ref().unwrap().contains(':') {
-            return Err(TotpError::InvalidIssuer {
-                value: issuer.as_ref().unwrap().to_string(),
-            });
-        }
-        if account_name.contains(':') {
-            return Err(TotpError::InvalidAccountName {
-                value: account_name,
-            });
-        }
-        Ok(Self::new_unchecked(
-            algorithm,
-            digits,
-            skew,
-            step,
-            secret,
-            issuer,
-            account_name,
-        ))
-    }
-
-    #[cfg(feature = "otpauth")]
-    /// Will create a new instance of TOTP with given parameters. See [the doc](struct.Totp.html#fields) for reference as to how to choose those values. This is unchecked and does not check the `digits` and `secret` size
-    ///
-    /// # Description
-    /// * `secret`: expect a non-encoded value, to pass in base32 string use `Secret::Encoded(String)`
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use totp_rs::{Secret, Totp, Algorithm};
-    /// let secret = Secret::Encoded("OBWGC2LOFVZXI4TJNZTS243FMNZGK5BNGEZDG".to_string());
-    /// let totp = Totp::new_unchecked(Algorithm::SHA1, 6, 1, 30, secret.to_bytes().unwrap(), None, "".to_string());
-    /// ```
-    pub fn new_unchecked(
-        algorithm: Algorithm,
-        digits: usize,
-        skew: u8,
-        step: u64,
-        secret: Vec<u8>,
-        issuer: Option<String>,
-        account_name: String,
-    ) -> Totp {
-        Totp {
-            algorithm,
-            digits,
-            skew,
-            step,
-            secret,
-            issuer,
-            account_name,
-        }
-    }
-
-    #[cfg(not(feature = "otpauth"))]
-    /// Will create a new instance of TOTP with given parameters. See [the doc](struct.Totp.html#fields) for reference as to how to choose those values
-    ///
-    /// # Description
-    /// * `secret`: expect a non-encoded value, to pass in base32 string use `Secret::Encoded(String)`
-    /// * `digits`: MUST be between 6 & 8
-    /// * `secret`: Must have bitsize of at least 128
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use totp_rs::{Secret, Totp, Algorithm};
-    /// let secret = Secret::Encoded("OBWGC2LOFVZXI4TJNZTS243FMNZGK5BNGEZDG".to_string());
-    /// let totp = Totp::new(Algorithm::SHA1, 6, 1, 30, secret.to_bytes().unwrap()).unwrap();
-    /// ```
-    ///
-    /// # Errors
-    ///
-    /// Will return an error if the `digit` or `secret` size is invalid
-    pub fn new(
-        algorithm: Algorithm,
-        digits: u32,
-        skew: u32,
-        step: u64,
-        secret: Vec<u8>,
-    ) -> Result<Totp, TotpError> {
-        crate::rfc::assert_digits(digits)?;
-        crate::rfc::assert_secret_length(secret.as_ref())?;
-        Ok(Self::new_unchecked(algorithm, digits, skew, step, secret))
-    }
-
-    #[cfg(not(feature = "otpauth"))]
-    /// Will create a new instance of TOTP with given parameters. See [the doc](struct.Totp.html#fields) for reference as to how to choose those values. This is unchecked and does not check the `digits` and `secret` size
-    ///
-    /// # Description
-    /// * `secret`: expect a non-encoded value, to pass in base32 string use `Secret::Encoded(String)`
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use totp_rs::{Secret, Totp, Algorithm};
-    /// let secret = Secret::Encoded("OBWGC2LOFVZXI4TJNZTS243FMNZGK5BNGEZDG".to_string());
-    /// let totp = Totp::new_unchecked(Algorithm::SHA1, 6, 1, 30, secret.to_bytes().unwrap());
-    /// ```
-    pub fn new_unchecked(
-        algorithm: Algorithm,
-        digits: u32,
-        skew: u32,
-        step: u64,
-        secret: Vec<u8>,
-    ) -> Totp {
-        Totp {
-            algorithm,
-            digits,
-            skew,
-            step,
-            secret,
-        }
-    }
-
-    /// Will create a new instance of TOTP from the given [Rfc6238](struct.Rfc6238.html) struct
-    ///
-    /// # Errors
-    ///
-    /// Will return an error in case issuer or label contain the character ':'
-    pub fn from_rfc6238(rfc: Rfc6238) -> Result<Totp, TotpError> {
-        Totp::try_from(rfc)
-    }
-
     /// Will sign the given timestamp. Most users will want to interact with [Self::generate] and [Self::generate_current].
     pub fn sign(&self, time: u64) -> Vec<u8> {
         self.algorithm.sign(
@@ -431,6 +275,11 @@ impl Totp {
         Ok(self.check(token, t))
     }
 
+    /// Will return a clone of the secret as raw bytes.
+    pub fn to_secret_binary(&self) -> Vec<u8> {
+        self.secret.clone()
+    }
+
     /// Will return the base32 representation of the secret, which might be useful when users want to manually add the secret to their authenticator
     pub fn to_secret_base32(&self) -> String {
         base32::encode(
@@ -443,15 +292,6 @@ impl Totp {
 #[cfg(feature = "qr")]
 #[cfg_attr(docsrs, doc(cfg(feature = "qr")))]
 impl Totp {
-    #[deprecated(
-        since = "5.3.0",
-        note = "to_qr was forcing the use of png as a base64. Use to_qr_base64 or to_qr_png instead. Will disappear in 6.0."
-    )]
-    pub fn to_qr(&self) -> Result<String, String> {
-        let url = self.to_url();
-        qrcodegen_image::draw_base64(&url)
-    }
-
     /// Will return a qrcode to automatically add a TOTP as a base64 string. Needs feature `qr` to be enabled!
     /// Result will be in the form of a string containing a base64-encoded png, which you can embed in HTML without needing
     /// To store the png as a file.
@@ -494,78 +334,28 @@ mod tests {
     #[cfg(feature = "gen_secret")]
     fn default_values() {
         let totp = Totp::default();
-        assert_eq!(totp.algorithm, Algorithm::SHA1);
-        assert_eq!(totp.digits, 6);
-        assert_eq!(totp.skew, 1);
-        assert_eq!(totp.step, 30)
-    }
+        let totp_from_builder = Builder::new().build().unwrap();
 
-    #[test]
-    #[cfg(not(feature = "otpauth"))]
-    fn comparison_different_algo() {
-        let reference =
-            Totp::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret".into()).unwrap();
-        let test = Totp::new(Algorithm::SHA256, 6, 1, 1, "TestSecretSuperSecret".into()).unwrap();
-        assert_ne!(reference, test);
-    }
-
-    #[test]
-    #[cfg(not(feature = "otpauth"))]
-    fn comparison_different_digits() {
-        let reference =
-            Totp::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret".into()).unwrap();
-        let test = Totp::new(Algorithm::SHA1, 8, 1, 1, "TestSecretSuperSecret".into()).unwrap();
-        assert_ne!(reference, test);
-    }
-
-    #[test]
-    #[cfg(not(feature = "otpauth"))]
-    fn comparison_different_skew() {
-        let reference =
-            Totp::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret".into()).unwrap();
-        let test = Totp::new(Algorithm::SHA1, 6, 0, 1, "TestSecretSuperSecret".into()).unwrap();
-        assert_ne!(reference, test);
-    }
-
-    #[test]
-    #[cfg(not(feature = "otpauth"))]
-    fn comparison_different_step() {
-        let reference =
-            Totp::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret".into()).unwrap();
-        let test = Totp::new(Algorithm::SHA1, 6, 1, 30, "TestSecretSuperSecret".into()).unwrap();
-        assert_ne!(reference, test);
-    }
-
-    #[test]
-    #[cfg(not(feature = "otpauth"))]
-    fn comparison_different_secret() {
-        let reference =
-            Totp::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret".into()).unwrap();
-        let test = Totp::new(Algorithm::SHA1, 6, 1, 1, "TestSecretDifferentSecret".into()).unwrap();
-        assert_ne!(reference, test);
-    }
-
-    #[test]
-    #[cfg(not(feature = "otpauth"))]
-    fn returns_base32() {
-        let totp = Totp::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret".into()).unwrap();
-        assert_eq!(
-            totp.to_secret_base32().as_str(),
-            "KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ"
-        );
+        assert_eq!(totp, totp_from_builder);
     }
 
     #[test]
     #[cfg(not(feature = "otpauth"))]
     fn generate_token() {
-        let totp = Totp::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret".into()).unwrap();
+        let totp = Builder::new()
+            .with_step_duration(1)
+            .with_secret("TestSecretSuperSecret".into())
+            .build_noncompliant();
         assert_eq!(totp.generate(1000).as_str(), "659761");
     }
 
     #[test]
     #[cfg(not(feature = "otpauth"))]
     fn generate_token_current() {
-        let totp = Totp::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret".into()).unwrap();
+        let totp = Builder::new()
+            .with_step_duration(1)
+            .with_secret("TestSecretSuperSecret".into())
+            .build_noncompliant();
         let time = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
             .unwrap()
@@ -579,35 +369,55 @@ mod tests {
     #[test]
     #[cfg(not(feature = "otpauth"))]
     fn generates_token_sha256() {
-        let totp = Totp::new(Algorithm::SHA256, 6, 1, 1, "TestSecretSuperSecret".into()).unwrap();
+        let totp = Builder::new()
+            .with_step_duration(1)
+            .with_skew(1)
+            .with_secret("TestSecretSuperSecret".into())
+            .build_noncompliant();
         assert_eq!(totp.generate(1000).as_str(), "076417");
     }
 
     #[test]
     #[cfg(not(feature = "otpauth"))]
     fn generates_token_sha512() {
-        let totp = Totp::new(Algorithm::SHA512, 6, 1, 1, "TestSecretSuperSecret".into()).unwrap();
+        let totp = Builder::new()
+            .with_step_duration(1)
+            .with_skew(1)
+            .with_secret("TestSecretSuperSecret".into())
+            .build_noncompliant();
         assert_eq!(totp.generate(1000).as_str(), "473536");
     }
 
     #[test]
     #[cfg(not(feature = "otpauth"))]
     fn checks_token() {
-        let totp = Totp::new(Algorithm::SHA1, 6, 0, 1, "TestSecretSuperSecret".into()).unwrap();
+        let totp = Builder::new()
+            .with_step_duration(1)
+            .with_skew(0)
+            .with_secret("TestSecretSuperSecret".into())
+            .build_noncompliant();
         assert!(totp.check("659761", 1000));
     }
 
     #[test]
     #[cfg(not(feature = "otpauth"))]
     fn checks_token_big_skew() {
-        let totp = Totp::new(Algorithm::SHA1, 6, 255, 1, "TestSecretSuperSecret".into()).unwrap();
+        let totp = Builder::new()
+            .with_step_duration(1)
+            .with_skew(1000)
+            .with_secret("TestSecretSuperSecret".into())
+            .build_noncompliant();
         assert!(totp.check("659761", 1000));
     }
 
     #[test]
     #[cfg(not(feature = "otpauth"))]
     fn checks_token_current() {
-        let totp = Totp::new(Algorithm::SHA1, 6, 0, 1, "TestSecretSuperSecret".into()).unwrap();
+        let totp = Builder::new()
+            .with_step_duration(1)
+            .with_skew(0)
+            .with_secret("TestSecretSuperSecret".into())
+            .build_noncompliant();
         assert!(totp
             .check_current(&totp.generate_current().unwrap())
             .unwrap());
@@ -617,7 +427,10 @@ mod tests {
     #[test]
     #[cfg(not(feature = "otpauth"))]
     fn checks_token_with_skew() {
-        let totp = Totp::new(Algorithm::SHA1, 6, 1, 1, "TestSecretSuperSecret".into()).unwrap();
+        let totp = Builder::new()
+            .with_step_duration(1)
+            .with_secret("TestSecretSuperSecret".into())
+            .build_noncompliant();
         assert!(
             totp.check("174269", 1000) && totp.check("659761", 1000) && totp.check("260393", 1000)
         );
@@ -626,7 +439,10 @@ mod tests {
     #[test]
     #[cfg(not(feature = "otpauth"))]
     fn next_step() {
-        let totp = Totp::new(Algorithm::SHA1, 6, 1, 30, "TestSecretSuperSecret".into()).unwrap();
+        let totp = Builder::new()
+            .with_step_duration(30)
+            .with_secret("TestSecretSuperSecret".into())
+            .build_noncompliant();
         assert!(totp.next_step(0) == 30);
         assert!(totp.next_step(29) == 30);
         assert!(totp.next_step(30) == 60);
@@ -635,7 +451,10 @@ mod tests {
     #[test]
     #[cfg(not(feature = "otpauth"))]
     fn next_step_current() {
-        let totp = Totp::new(Algorithm::SHA1, 6, 1, 30, "TestSecretSuperSecret".into()).unwrap();
+        let totp = Builder::new()
+            .with_step_duration(30)
+            .with_secret("TestSecretSuperSecret".into())
+            .build_noncompliant();
         let t = system_time().unwrap();
         assert!(totp.next_step_current().unwrap() == totp.next_step(t));
     }

@@ -1,8 +1,13 @@
-use totp_rs::{Algorithm, Totp};
+use totp_rs::Builder;
+
+const GOOD_SECRET: &[u8] = "TestSecretSuperSecret".as_bytes();
 
 #[cfg(not(feature = "otpauth"))]
 fn main() {
-    let totp = Totp::new(Algorithm::SHA1, 6, 1, 30, "my-secret".as_bytes().to_vec()).unwrap();
+    let totp = Builder::new()
+        .with_secret(GOOD_SECRET.into())
+        .build()
+        .unwrap();
 
     loop {
         println!(
@@ -17,16 +22,12 @@ fn main() {
 
 #[cfg(feature = "otpauth")]
 fn main() {
-    let totp = Totp::new(
-        Algorithm::SHA1,
-        6,
-        1,
-        30,
-        "my-secret".as_bytes().to_vec(),
-        Some("Github".to_string()),
-        "constantoine@github.com".to_string(),
-    )
-    .unwrap();
+    let totp = Builder::new()
+        .with_account_name("constantoine@github.com".to_string())
+        .with_issuer(Some("Github".to_string()))
+        .with_secret(GOOD_SECRET.into())
+        .build()
+        .unwrap();
 
     loop {
         println!(
