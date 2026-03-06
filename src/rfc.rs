@@ -5,6 +5,9 @@ use crate::TOTP;
 #[cfg(feature = "serde_support")]
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "zeroize")]
+use zeroize::Zeroize;
+
 /// Error returned when input is not compliant to [rfc-6238](https://tools.ietf.org/html/rfc6238).
 #[derive(Debug, Eq, PartialEq)]
 pub enum Rfc6238Error {
@@ -70,8 +73,10 @@ pub fn assert_secret_length(secret: &[u8]) -> Result<(), Rfc6238Error> {
 /// ```
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde_support", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "zeroize", derive(zeroize::Zeroize, zeroize::ZeroizeOnDrop))]
 pub struct Rfc6238 {
     /// SHA-1
+    #[cfg_attr(feature = "zeroize", zeroize(skip))]
     algorithm: Algorithm,
     /// The number of digits composing the auth code. Per [rfc-4226](https://tools.ietf.org/html/rfc4226#section-5.3), this can oscilate between 6 and 8 digits.
     digits: usize,
@@ -103,14 +108,23 @@ impl Rfc6238 {
     /// - `digits` is lower than 6 or higher than 8.
     /// - `secret` is smaller than 128 bits (16 characters).
     #[cfg(feature = "otpauth")]
+    #[allow(unused_mut)]
     pub fn new(
         digits: usize,
-        secret: Vec<u8>,
+        mut secret: Vec<u8>,
         issuer: Option<String>,
         account_name: String,
     ) -> Result<Rfc6238, Rfc6238Error> {
-        assert_digits(&digits)?;
-        assert_secret_length(secret.as_ref())?;
+        assert_digits(&digits).map_err(|err| {
+            #[cfg(feature = "zeroize")]
+            secret.zeroize();
+            err
+        })?;
+        assert_secret_length(secret.as_ref()).map_err(|err| {
+            #[cfg(feature = "zeroize")]
+            secret.zeroize();
+            err
+        })?;
 
         Ok(Rfc6238 {
             algorithm: Algorithm::SHA1,
@@ -123,9 +137,18 @@ impl Rfc6238 {
         })
     }
     #[cfg(not(feature = "otpauth"))]
-    pub fn new(digits: usize, secret: Vec<u8>) -> Result<Rfc6238, Rfc6238Error> {
-        assert_digits(&digits)?;
-        assert_secret_length(secret.as_ref())?;
+    #[allow(unused_mut)]
+    pub fn new(digits: usize, mut secret: Vec<u8>) -> Result<Rfc6238, Rfc6238Error> {
+        assert_digits(&digits).map_err(|err| {
+            #[cfg(feature = "zeroize")]
+            secret.zeroize();
+            err
+        })?;
+        assert_secret_length(secret.as_ref()).map_err(|err| {
+            #[cfg(feature = "zeroize")]
+            secret.zeroize();
+            err
+        })?;
 
         Ok(Rfc6238 {
             algorithm: Algorithm::SHA1,
@@ -181,8 +204,14 @@ impl TryFrom<Rfc6238> for TOTP {
     type Error = TotpUrlError;
 
     /// Try to create a [TOTP](struct.TOTP.html) from a [Rfc6238](struct.Rfc6238.html) config.
-    fn try_from(rfc: Rfc6238) -> Result<Self, Self::Error> {
-        TOTP::new(rfc.algorithm, rfc.digits, rfc.skew, rfc.step, rfc.secret)
+    fn try_from(mut rfc: Rfc6238) -> Result<Self, Self::Error> {
+        TOTP::new(
+            rfc.algorithm,
+            rfc.digits,
+            rfc.skew,
+            rfc.step,
+            std::mem::take(&mut rfc.secret),
+        )
     }
 }
 
@@ -191,15 +220,15 @@ impl TryFrom<Rfc6238> for TOTP {
     type Error = TotpUrlError;
 
     /// Try to create a [TOTP](struct.TOTP.html) from a [Rfc6238](struct.Rfc6238.html) config.
-    fn try_from(rfc: Rfc6238) -> Result<Self, Self::Error> {
+    fn try_from(mut rfc: Rfc6238) -> Result<Self, Self::Error> {
         TOTP::new(
             rfc.algorithm,
             rfc.digits,
             rfc.skew,
             rfc.step,
-            rfc.secret,
-            rfc.issuer,
-            rfc.account_name,
+            std::mem::take(&mut rfc.secret),
+            std::mem::take(&mut rfc.issuer),
+            std::mem::take(&mut rfc.account_name),
         )
     }
 }
