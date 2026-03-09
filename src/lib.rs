@@ -68,7 +68,7 @@ use constant_time_eq::constant_time_eq;
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "zeroize")]
-use zeroize::Zeroize;
+use zeroize;
 
 use core::fmt;
 

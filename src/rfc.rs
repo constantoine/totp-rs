@@ -6,7 +6,7 @@ use crate::TOTP;
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "zeroize")]
-use zeroize::Zeroize;
+use zeroize;
 
 /// Error returned when input is not compliant to [rfc-6238](https://tools.ietf.org/html/rfc6238).
 #[derive(Debug, Eq, PartialEq)]
@@ -118,14 +118,9 @@ impl Rfc6238 {
         let validate = || {
             assert_digits(&digits)?;
             assert_secret_length(secret.as_ref())?;
-
-            if issuer.is_some() && issuer.as_ref().unwrap().contains(':') {
-                return Err(TotpUrlError::Issuer(issuer.as_ref().unwrap().to_string()));
-            }
-
-            if account_name.contains(':') {
-                return Err(TotpUrlError::AccountName(account_name.clone()));
-            }
+    
+            // NOTE: Unfortunate lack of issuer and account_name checks.
+            // Will be fixed in 6.0 cause it would be breaking anyway.
 
             Ok(())
         };
