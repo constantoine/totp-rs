@@ -290,26 +290,28 @@ impl TOTP {
         issuer: Option<String>,
         account_name: String,
     ) -> Result<TOTP, TotpUrlError> {
-        crate::rfc::assert_digits(&digits).map_err(|err| {
+        let validate = || {
+            crate::rfc::assert_digits(&digits)?;
+            crate::rfc::assert_secret_length(secret.as_ref())?;
+
+            if issuer.is_some() && issuer.as_ref().unwrap().contains(':') {
+                return Err(TotpUrlError::Issuer(issuer.as_ref().unwrap().to_string()));
+            }
+
+            if account_name.contains(':') {
+                return Err(TotpUrlError::AccountName(account_name.clone()));
+            }
+
+            Ok(())
+        };
+
+        if let Err(e) = validate() {
             #[cfg(feature = "zeroize")]
-            secret.zeroize();
-            err
-        })?;
-        crate::rfc::assert_secret_length(secret.as_ref()).map_err(|err| {
-            #[cfg(feature = "zeroize")]
-            secret.zeroize();
-            err
-        })?;
-        if issuer.is_some() && issuer.as_ref().unwrap().contains(':') {
-            #[cfg(feature = "zeroize")]
-            secret.zeroize();
-            return Err(TotpUrlError::Issuer(issuer.as_ref().unwrap().to_string()));
+            zeroize::Zeroize::zeroize(&mut secret);
+
+            return Err(e);
         }
-        if account_name.contains(':') {
-            #[cfg(feature = "zeroize")]
-            secret.zeroize();
-            return Err(TotpUrlError::AccountName(account_name));
-        }
+
         Ok(Self::new_unchecked(
             algorithm,
             digits,
@@ -381,16 +383,20 @@ impl TOTP {
         step: u64,
         mut secret: Vec<u8>,
     ) -> Result<TOTP, TotpUrlError> {
-        crate::rfc::assert_digits(&digits).map_err(|err| {
+        let validate = || {
+            crate::rfc::assert_digits(&digits)?;
+            crate::rfc::assert_secret_length(secret.as_ref())?;
+
+            Ok(())
+        };
+
+        if let Err(e) = validate() {
             #[cfg(feature = "zeroize")]
-            secret.zeroize();
-            err
-        })?;
-        crate::rfc::assert_secret_length(secret.as_ref()).map_err(|err| {
-            #[cfg(feature = "zeroize")]
-            secret.zeroize();
-            err
-        })?;
+            zeroize::Zeroize::zeroize(&mut secret);
+
+            return Err(e);
+        }
+
         Ok(Self::new_unchecked(algorithm, digits, skew, step, secret))
     }
 

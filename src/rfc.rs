@@ -115,16 +115,27 @@ impl Rfc6238 {
         issuer: Option<String>,
         account_name: String,
     ) -> Result<Rfc6238, Rfc6238Error> {
-        assert_digits(&digits).map_err(|err| {
+        let validate = || {
+            assert_digits(&digits)?;
+            assert_secret_length(secret.as_ref())?;
+
+            if issuer.is_some() && issuer.as_ref().unwrap().contains(':') {
+                return Err(TotpUrlError::Issuer(issuer.as_ref().unwrap().to_string()));
+            }
+
+            if account_name.contains(':') {
+                return Err(TotpUrlError::AccountName(account_name.clone()));
+            }
+
+            Ok(())
+        };
+
+        if let Err(e) = validate() {
             #[cfg(feature = "zeroize")]
-            secret.zeroize();
-            err
-        })?;
-        assert_secret_length(secret.as_ref()).map_err(|err| {
-            #[cfg(feature = "zeroize")]
-            secret.zeroize();
-            err
-        })?;
+            zeroize::Zeroize::zeroize(&mut secret);
+
+            return Err(e);
+        }
 
         Ok(Rfc6238 {
             algorithm: Algorithm::SHA1,
@@ -139,16 +150,18 @@ impl Rfc6238 {
     #[cfg(not(feature = "otpauth"))]
     #[allow(unused_mut)]
     pub fn new(digits: usize, mut secret: Vec<u8>) -> Result<Rfc6238, Rfc6238Error> {
-        assert_digits(&digits).map_err(|err| {
+        let validate = || {
+            crate::rfc::assert_digits(&digits)?;
+            crate::rfc::assert_secret_length(secret.as_ref())?;
+            Ok(())
+        };
+
+        if let Err(e) = validate() {
             #[cfg(feature = "zeroize")]
-            secret.zeroize();
-            err
-        })?;
-        assert_secret_length(secret.as_ref()).map_err(|err| {
-            #[cfg(feature = "zeroize")]
-            secret.zeroize();
-            err
-        })?;
+            zeroize::Zeroize::zeroize(&mut secret);
+
+            return Err(e);
+        }
 
         Ok(Rfc6238 {
             algorithm: Algorithm::SHA1,
