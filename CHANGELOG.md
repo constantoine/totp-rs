@@ -1,3 +1,14 @@
+# [5.7.1](https://github.com/constantoine/totp-rs/releases/tag/v5.7.1) (09/03/2026)
+### Fix
+- Secret gets zeroized more consistently. #81
+
+### Special thanks
+* [@dev-void-7](https://github.com/dev-void-7) for pointing out and giving feedback on #81.
+
+### Note
+This last month has seen a lot of activity on the big `6.0`. No date yet, but it has gone from a nebulous "it will happen"
+to a "most refactor has been done, a lot of code has been either removed or heavily changed, and the API is becoming clearer".
+
 # [5.7.0](https://github.com/constantoine/totp-rs/releases/tag/v5.7.0) (12/04/2025)
 ### Breaking changes.
 - MSRV has been set to Rust `1.66`.
