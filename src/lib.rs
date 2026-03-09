@@ -67,6 +67,9 @@ use constant_time_eq::constant_time_eq;
 #[cfg(feature = "serde_support")]
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "zeroize")]
+use zeroize;
+
 use core::fmt;
 
 #[cfg(feature = "otpauth")]
@@ -277,23 +280,38 @@ impl TOTP {
     /// # Errors
     ///
     /// Will return an error if the `digit` or `secret` size is invalid or if `issuer` or `label` contain the character ':'
+    #[allow(unused_mut)]
     pub fn new(
         algorithm: Algorithm,
         digits: usize,
         skew: u8,
         step: u64,
-        secret: Vec<u8>,
+        mut secret: Vec<u8>,
         issuer: Option<String>,
         account_name: String,
     ) -> Result<TOTP, TotpUrlError> {
-        crate::rfc::assert_digits(&digits)?;
-        crate::rfc::assert_secret_length(secret.as_ref())?;
-        if issuer.is_some() && issuer.as_ref().unwrap().contains(':') {
-            return Err(TotpUrlError::Issuer(issuer.as_ref().unwrap().to_string()));
+        let validate = || {
+            crate::rfc::assert_digits(&digits)?;
+            crate::rfc::assert_secret_length(secret.as_ref())?;
+
+            if issuer.is_some() && issuer.as_ref().unwrap().contains(':') {
+                return Err(TotpUrlError::Issuer(issuer.as_ref().unwrap().to_string()));
+            }
+
+            if account_name.contains(':') {
+                return Err(TotpUrlError::AccountName(account_name.clone()));
+            }
+
+            Ok(())
+        };
+
+        if let Err(e) = validate() {
+            #[cfg(feature = "zeroize")]
+            zeroize::Zeroize::zeroize(&mut secret);
+
+            return Err(e);
         }
-        if account_name.contains(':') {
-            return Err(TotpUrlError::AccountName(account_name));
-        }
+
         Ok(Self::new_unchecked(
             algorithm,
             digits,
@@ -357,15 +375,28 @@ impl TOTP {
     /// # Errors
     ///
     /// Will return an error if the `digit` or `secret` size is invalid
+    #[allow(unused_mut)]
     pub fn new(
         algorithm: Algorithm,
         digits: usize,
         skew: u8,
         step: u64,
-        secret: Vec<u8>,
+        mut secret: Vec<u8>,
     ) -> Result<TOTP, TotpUrlError> {
-        crate::rfc::assert_digits(&digits)?;
-        crate::rfc::assert_secret_length(secret.as_ref())?;
+        let validate = || {
+            crate::rfc::assert_digits(&digits)?;
+            crate::rfc::assert_secret_length(secret.as_ref())?;
+
+            Ok(())
+        };
+
+        if let Err(e) = validate() {
+            #[cfg(feature = "zeroize")]
+            zeroize::Zeroize::zeroize(&mut secret);
+
+            return Err(e);
+        }
+
         Ok(Self::new_unchecked(algorithm, digits, skew, step, secret))
     }
 
@@ -531,6 +562,9 @@ impl TOTP {
         let mut algorithm = Algorithm::SHA1;
         let mut digits = 6;
         let mut step = 30;
+        #[cfg(feature = "zeroize")]
+        let mut secret: zeroize::Zeroizing<Vec<u8>> = zeroize::Zeroizing::new(Vec::new());
+        #[cfg(not(feature = "zeroize"))]
         let mut secret = Vec::new();
         let mut issuer: Option<String> = None;
         let mut account_name: String;
@@ -591,11 +625,24 @@ impl TOTP {
                         .map_err(|_| TotpUrlError::Step(value.to_string()))?;
                 }
                 "secret" => {
-                    secret = base32::decode(
-                        base32::Alphabet::Rfc4648 { padding: false },
-                        value.as_ref(),
-                    )
-                    .ok_or_else(|| TotpUrlError::Secret(value.to_string()))?;
+                    #[cfg(not(feature = "zeroize"))]
+                    {
+                        secret = base32::decode(
+                            base32::Alphabet::Rfc4648 { padding: false },
+                            value.as_ref(),
+                        )
+                        .ok_or_else(|| TotpUrlError::Secret(value.to_string()))?;
+                    }
+                    #[cfg(feature = "zeroize")]
+                    {
+                        secret = zeroize::Zeroizing::new(
+                            base32::decode(
+                                base32::Alphabet::Rfc4648 { padding: false },
+                                value.as_ref(),
+                            )
+                            .ok_or_else(|| TotpUrlError::Secret(value.to_string()))?,
+                        );
+                    }
                 }
                 #[cfg(feature = "steam")]
                 "issuer" if value.to_lowercase() == "steam" => {
@@ -632,7 +679,15 @@ impl TOTP {
             return Err(TotpUrlError::Secret("".to_string()));
         }
 
-        Ok((algorithm, digits, 1, step, secret, issuer, account_name))
+        Ok((
+            algorithm,
+            digits,
+            1,
+            step,
+            std::mem::take(&mut secret),
+            issuer,
+            account_name,
+        ))
     }
 
     /// Will generate a standard URL used to automatically add TOTP auths. Usually used with qr codes
