@@ -3,7 +3,12 @@ type HmacSha1 = hmac::Hmac<sha1::Sha1>;
 type HmacSha256 = hmac::Hmac<sha2::Sha256>;
 type HmacSha512 = hmac::Hmac<sha2::Sha512>;
 
+#[cfg(feature = "serde_support")]
+use serde::{Deserialize, Serialize};
+
+use std::error::Error;
 use std::fmt;
+use std::str::FromStr;
 
 /// Alphabet for Steam tokens.
 #[cfg(feature = "steam")]
@@ -12,6 +17,7 @@ pub(super) const STEAM_CHARS: &str = "23456789BCDFGHJKMNPQRTVWXY";
 /// Algorithm enum holds the three standards algorithms for TOTP as per the [reference implementation](https://tools.ietf.org/html/rfc6238#appendix-A)
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 #[cfg_attr(feature = "serde_support", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde_support", serde(try_from = "String", into = "String"))]
 pub enum Algorithm {
     /// HMAC-SHA1 is the default algorithm of most TOTP implementations.
     /// Some will outright silently ignore the algorithm parameter to force using SHA1, leading to confusion.
@@ -42,6 +48,35 @@ impl fmt::Display for Algorithm {
             Algorithm::SHA512 => f.write_str("SHA512"),
             #[cfg(feature = "steam")]
             Algorithm::Steam => f.write_str("SHA1"),
+        }
+    }
+}
+
+impl From<Algorithm> for String {
+    fn from(value: Algorithm) -> Self {
+        value.to_string()
+    }
+}
+
+impl TryFrom<String> for Algorithm {
+    type Error = Box<dyn Error>;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Self::from_str(&value)
+    }
+}
+
+impl FromStr for Algorithm {
+    type Err = Box<dyn Error>;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "SHA1" => Ok(Self::SHA1),
+            "SHA256" => Ok(Self::SHA256),
+            "SHA512" => Ok(Self::SHA512),
+            #[cfg(feature = "steam")]
+            "STEAM" => Ok(Self::Steam),
+            _ => Err(From::from(format!("Unknown feature: {}", s))),
         }
     }
 }

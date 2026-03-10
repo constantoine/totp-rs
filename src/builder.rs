@@ -5,6 +5,7 @@ use crate::{Algorithm, Totp};
 /// Because it contains the sensitive data of the HMAC secret, treat it accordingly.
 #[cfg_attr(feature = "zeroize", derive(zeroize::Zeroize, zeroize::ZeroizeOnDrop))]
 pub struct Builder {
+    #[cfg_attr(feature = "zeroize", zeroize(skip))]
     pub(super) algorithm: Algorithm,
     pub(super) digits: u32,
     pub(super) secret: Option<Vec<u8>>,
@@ -149,6 +150,14 @@ impl Builder {
     pub fn build(self) -> Result<Totp, TotpError> {
         let secret = self.secret.as_ref().ok_or(TotpError::SecretNotSet)?;
 
+        #[cfg(feature = "steam")]
+        {
+            if self.algorithm != Algorithm::Steam {
+                crate::rfc::assert_digits(self.digits)?;
+            }
+        }
+
+        #[cfg(not(feature = "steam"))]
         crate::rfc::assert_digits(self.digits)?;
         crate::rfc::assert_secret_length(secret)?;
 
@@ -178,18 +187,18 @@ impl Builder {
     ///     with_digits(10). // Not RFC-compliant.
     ///     build_noncompliant();
     /// ```
-    pub fn build_noncompliant(self) -> Totp {
+    pub fn build_noncompliant(mut self) -> Totp {
         Totp {
             algorithm: self.algorithm,
             digits: self.digits,
             skew: self.skew,
             step: self.step_duration,
-            secret: self.secret.unwrap_or_default(),
+            secret: std::mem::take(&mut self.secret).unwrap_or_default(),
 
             #[cfg(feature = "otpauth")]
-            issuer: self.issuer,
+            issuer: std::mem::take(&mut self.issuer),
             #[cfg(feature = "otpauth")]
-            account_name: self.account_name,
+            account_name: std::mem::take(&mut self.account_name),
         }
     }
 }
@@ -201,7 +210,6 @@ mod tests {
 
     const GOOD_SECRET: &str = "01234567890123456789";
 
-    #[cfg(not(feature = "gen_secret"))]
     const SHORT_SECRET: &str = "tooshort";
 
     // === Defaults ===
@@ -227,8 +235,8 @@ mod tests {
     #[cfg(feature = "gen_secret")]
     fn defaults_secret_is_generated_with_gen_secret() {
         let builder = Builder::new();
-        assert!(builder.secret.is_some());
-        assert_eq!(builder.secret.unwrap().len(), 20);
+        assert!(builder.secret.as_ref().is_some());
+        assert_eq!(builder.secret.as_ref().unwrap().len(), 20);
     }
 
     #[test]
@@ -256,7 +264,7 @@ mod tests {
     #[test]
     fn with_secret() {
         let builder = Builder::new().with_secret(GOOD_SECRET.into());
-        assert_eq!(builder.secret.unwrap(), GOOD_SECRET.as_bytes());
+        assert_eq!(builder.secret.as_ref().unwrap(), GOOD_SECRET.as_bytes());
     }
 
     #[test]

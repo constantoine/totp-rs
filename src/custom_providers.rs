@@ -20,22 +20,25 @@ impl Builder {
 
         #[cfg(feature = "otpauth")]
         {
-            new.issuer = Some("Steam");
+            new.issuer = Some("Steam".to_string());
         }
 
         new
     }
 }
 
-#[cfg(all(test, feature = "steam"))]
+#[cfg(all(test, feature = "steam", feature = "otpauth"))]
 mod test {
-    #[cfg(feature = "otpauth")]
-    use super::*;
+    use crate::Builder;
 
     #[test]
     #[cfg(feature = "otpauth")]
     fn to_url_steam() {
-        let totp = Totp::new_steam("TestSecretSuperSecret".into(), "constantoine".into());
+        let totp = Builder::new_steam()
+            .with_secret("TestSecretSuperSecret".into())
+            .with_account_name("constantoine".into())
+            .build()
+            .unwrap();
         let url = totp.to_url();
         assert_eq!(url.as_str(), "otpauth://steam/Steam:constantoine?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=5&algorithm=SHA1&issuer=Steam");
     }

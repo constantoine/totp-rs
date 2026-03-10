@@ -21,7 +21,7 @@ impl crate::Totp {
     /// It returns a builder with defaults values from [Builder::new] + info from the URL.
     /// Notable exception: A password will not be supplied automatically if `gen_secret` is enabled.
     fn parts_from_url<S: AsRef<str>>(url: S) -> Result<Builder, TotpError> {
-        let mut builder = Builder::new().with_secret(Vec::new());
+        let mut builder: Builder;
 
         let url = Url::parse(url.as_ref()).map_err(TotpError::UrlParse)?;
         if url.scheme() != "otpauth" {
@@ -30,17 +30,17 @@ impl crate::Totp {
             });
         }
         match url.host() {
-            Some(Host::Domain("totp")) => {}
+            Some(Host::Domain("totp")) => builder = Builder::new(),
             #[cfg(feature = "steam")]
-            Some(Host::Domain("steam")) => {
-                builder = builder.with_algorithm(Algorithm::Steam);
-            }
+            Some(Host::Domain("steam")) => builder = Builder::new_steam(),
             _ => {
                 return Err(TotpError::InvalidHost {
                     host: url.host().unwrap().to_string(),
                 });
             }
         }
+
+        builder.secret = None;
 
         let path = url.path().trim_start_matches('/');
         let path = urlencoding::decode(path)
@@ -71,14 +71,13 @@ impl crate::Totp {
         for (key, value) in url.query_pairs() {
             match key.as_ref() {
                 #[cfg(feature = "steam")]
-                // Do not change used algorithm if this is Steam
-                "algorithm" if algorithm == Algorithm::Steam => {}
-                #[cfg(not(feature = "steam"))]
                 "algorithm" => {
-                    let algorithm = match value.as_ref() {
-                        "SHA1" => Algorithm::SHA1,
-                        "SHA256" => Algorithm::SHA256,
-                        "SHA512" => Algorithm::SHA512,
+                    let algorithm = match value.clone().to_lowercase().as_ref() {
+                        "sha1" => Algorithm::SHA1,
+                        "sha256" => Algorithm::SHA256,
+                        "sha512" => Algorithm::SHA512,
+                        #[cfg(feature = "steam")]
+                        "steam" => Algorithm::Steam,
                         _ => {
                             return Err(TotpError::InvalidAlgorithm {
                                 algorithm: value.to_string(),
@@ -116,13 +115,14 @@ impl crate::Totp {
 
                     builder = builder.with_secret(secret);
                 }
-                #[cfg(feature = "steam")]
-                "issuer" if value.to_lowercase() == "steam" => {
-                    builder = builder.with_algorithm(Algorithm::Steam);
-                }
-                #[cfg(not(feature = "steam"))]
                 "issuer" => {
                     let param_issuer: String = value.into();
+
+                    #[cfg(feature = "steam")]
+                    if param_issuer.eq_ignore_ascii_case("steam") {
+                        builder = builder.with_algorithm(Algorithm::Steam);
+                    }
+
                     if issuer.as_ref().is_some()
                         && param_issuer.as_str() != issuer.as_ref().unwrap()
                     {
@@ -140,11 +140,11 @@ impl crate::Totp {
         }
 
         #[cfg(feature = "steam")]
-        if algorithm == Algorithm::Steam {
+        if builder.algorithm == Algorithm::Steam {
             builder = builder
                 .with_algorithm(Algorithm::Steam)
                 .with_digits(5)
-                .with_issuer(Some(value.into()));
+                .with_issuer(Some("Steam".to_string()));
         }
 
         Ok(builder)
@@ -193,7 +193,7 @@ mod tests {
     const GOOD_ACCOUNT: &str = "constantoine@github.com";
 
     #[test]
-    #[cfg(feature = "gen_secret")]
+    #[cfg(all(feature = "gen_secret", not(feature = "otpauth")))]
     fn default_values() {
         let totp = Totp::default();
         assert_eq!(totp.algorithm, Algorithm::SHA1);
