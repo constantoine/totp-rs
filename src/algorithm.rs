@@ -7,7 +7,7 @@ use std::fmt;
 
 /// Alphabet for Steam tokens.
 #[cfg(feature = "steam")]
-const STEAM_CHARS: &str = "23456789BCDFGHJKMNPQRTVWXY";
+pub(super) const STEAM_CHARS: &str = "23456789BCDFGHJKMNPQRTVWXY";
 
 /// Algorithm enum holds the three standards algorithms for TOTP as per the [reference implementation](https://tools.ietf.org/html/rfc6238#appendix-A)
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]

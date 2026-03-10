@@ -1,49 +1,29 @@
 #[cfg(feature = "steam")]
-use crate::{Algorithm, Totp};
+use crate::{Algorithm, Builder};
 
 #[cfg(feature = "steam")]
 #[cfg_attr(docsrs, doc(cfg(feature = "steam")))]
-impl Totp {
-    #[cfg(feature = "otpauth")]
-    /// Will create a new instance of TOTP using the Steam algorithm with given parameters. See [the doc](struct.Totp.html#fields) for reference as to how to choose those values
+impl Builder {
+    /// New Builder as created by [Self::new], that is then modified to have the `algorithm`, `digits`, `skew` and `step_duration` options
+    /// to the values Steam uses.
     ///
-    /// # Description
-    /// * `secret`: expect a non-encoded value, to pass in base32 string use `Secret::Encoded(String)`
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use totp_rs::{Secret, Totp};
-    /// let secret = Secret::Encoded("ABCDEFGHIJKLMNOPQRSTUVWXYZ234567".into());
-    /// let totp = Totp::new_steam(secret.to_bytes().unwrap(), "username".into());
-    /// ```
-    pub fn new_steam(secret: Vec<u8>, account_name: String) -> Totp {
-        Self::new_unchecked(
-            Algorithm::Steam,
-            5,
-            1,
-            30,
-            secret,
-            Some("Steam".into()),
-            account_name,
-        )
-    }
+    /// If `otpauth` is enabled, will set `issuer` to `Some("Steam")`.
+    #[cfg(feature = "steam")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "steam")))]
+    pub fn new_steam() -> Self {
+        let mut new = Self::new();
 
-    #[cfg(not(feature = "otpauth"))]
-    /// Will create a new instance of TOTP using the Steam algorithm with given parameters. See [the doc](struct.Totp.html#fields) for reference as to how to choose those values
-    ///
-    /// # Description
-    /// * `secret`: expect a non-encoded value, to pass in base32 string use `Secret::Encoded(String)`
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use totp_rs::{Secret, Totp};
-    /// let secret = Secret::Encoded("ABCDEFGHIJKLMNOPQRSTUVWXYZ234567".to_string());
-    /// let totp = Totp::new_steam(secret.to_bytes().unwrap());
-    /// ```
-    pub fn new_steam(secret: Vec<u8>) -> Totp {
-        Self::new_unchecked(Algorithm::Steam, 5, 1, 30, secret)
+        new.algorithm = Algorithm::Steam;
+        new.digits = 5;
+        new.skew = 1;
+        new.step_duration = 30;
+
+        #[cfg(feature = "otpauth")]
+        {
+            new.issuer = Some("Steam");
+        }
+
+        new
     }
 }
 

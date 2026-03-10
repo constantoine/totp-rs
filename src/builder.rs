@@ -5,24 +5,24 @@ use crate::{Algorithm, Totp};
 /// Because it contains the sensitive data of the HMAC secret, treat it accordingly.
 #[cfg_attr(feature = "zeroize", derive(zeroize::Zeroize, zeroize::ZeroizeOnDrop))]
 pub struct Builder {
-    algorithm: Algorithm,
-    digits: u32,
-    secret: Option<Vec<u8>>,
-    skew: u32,
-    step_duration: u64,
+    pub(super) algorithm: Algorithm,
+    pub(super) digits: u32,
+    pub(super) secret: Option<Vec<u8>>,
+    pub(super) skew: u32,
+    pub(super) step_duration: u64,
 
     #[cfg(feature = "otpauth")]
-    account_name: String,
+    pub(super) account_name: String,
     #[cfg(feature = "otpauth")]
-    issuer: Option<String>,
+    pub(super) issuer: Option<String>,
 }
 
 impl Builder {
-    /// New builder.
+    /// New Builder.
     /// If `gen_secret` is enabled, [Self::new] will generate a new, safe-to-use, secret.
     /// in case `gen_secret` is enabled, [Totp::default] will be equivalent to calling [Self::new] followed by [Self::build] in which case
     /// After build, use [Totp::to_secret_binary] or [Totp::to_secret_base32] to retrieve the newly generated secret.
-    pub fn new() -> Builder {
+    pub fn new() -> Self {
         #[cfg(feature = "gen_secret")]
         let secret: Option<Vec<u8>> = {
             use rand::Rng;
