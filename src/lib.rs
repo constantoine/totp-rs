@@ -44,7 +44,7 @@
 //!
 //! ```rust
 //! # #[cfg(feature = "qr")] {
-//! use totp_rs::{Algorithm, Totp};
+//! use totp_rs::{Algorithm, Builder, Totp};
 //!
 //! let secret: Vec<u8> = vec![0; 20]; // You want an actual 20bytes of randomness here.
 //!

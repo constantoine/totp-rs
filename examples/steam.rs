@@ -9,11 +9,11 @@ fn main() {
         "OBWGC2LOFVZXI4TJNZTS243FMNZGK5BNGEZDG",
     )
     .unwrap();
-    let secret_b32 = Secret::Encoded(s);
+    let secret_b32 = Secret::Raw(secret);
 
     let totp_b32 = Builder::new_steam()
         .with_secret(secret_b32.to_bytes().unwrap())
-        .with_account_name("user-account")
+        .with_account_name("user-account".to_string())
         .build()
         .unwrap();
 
