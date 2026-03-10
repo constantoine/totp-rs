@@ -70,7 +70,6 @@ impl crate::Totp {
 
         for (key, value) in url.query_pairs() {
             match key.as_ref() {
-                #[cfg(feature = "steam")]
                 "algorithm" => {
                     let algorithm = match value.clone().to_lowercase().as_ref() {
                         "sha1" => Algorithm::SHA1,

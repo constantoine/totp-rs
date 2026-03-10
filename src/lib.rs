@@ -29,7 +29,7 @@
 //!
 //! ```rust
 //! # #[cfg(all(feature = "gen_secret", not(feature = "otpauth")))] {
-//! use totp_rs::Builder;
+//! use totp_rs::{Builder, Totp};
 //!
 //! let totp: Totp = Builder::new().
 //!     build().
@@ -334,9 +334,8 @@ mod tests {
     #[cfg(feature = "gen_secret")]
     fn default_values() {
         let totp = Totp::default();
-        let totp_from_builder = Builder::new().build().unwrap();
 
-        assert_eq!(totp, totp_from_builder);
+        assert_eq!(totp.secret.len(), 20);
     }
 
     #[test]

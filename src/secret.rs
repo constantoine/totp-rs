@@ -39,16 +39,13 @@
 //! - Create a TOTP from a Generated Secret
 //! ```
 //! # #[cfg(all(feature = "gen_secret", not(feature = "otpauth")))] {
-//! use totp_rs::{Secret, Totp, Algorithm};
+//! use totp_rs::{Algorithm, Builder, Totp, Secret};
 //!
 //! let secret_b32 = Secret::default();
-//! let totp_b32 = Totp::new(
-//!     Algorithm::SHA1,
-//!     6,
-//!     1,
-//!     30,
-//!     secret_b32.to_bytes().unwrap(),
-//! ).unwrap();
+//! let totp_b32 = Builder::new()
+//!         .with_secret(secret_b32.to_bytes().unwrap())
+//!         .build()
+//!         .unwrap();
 //!
 //! println!("code from base32:\t{}", totp_b32.generate_current().unwrap());
 //! # }
@@ -56,16 +53,13 @@
 //! - Create a TOTP from a Generated Secret 2
 //! ```
 //! # #[cfg(all(feature = "gen_secret", not(feature = "otpauth")))] {
-//! use totp_rs::{Secret, Totp, Algorithm};
+//! use totp_rs::{Algorithm, Builder, Totp, Secret };
 //!
 //! let secret_b32 = Secret::generate_secret();
-//! let totp_b32 = Totp::new(
-//!     Algorithm::SHA1,
-//!     6,
-//!     1,
-//!     30,
-//!     secret_b32.to_bytes().unwrap(),
-//! ).unwrap();
+//! let totp_b32: Totp = Builder::new()
+//!     .with_secret(secret_b32.to_bytes().unwrap())
+//!     .build()
+//!     .unwrap();
 //!
 //! println!("code from base32:\t{}", totp_b32.generate_current().unwrap());
 //! # }
