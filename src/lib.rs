@@ -21,7 +21,7 @@
 //!     with_issuer(Some("Github".to_string())).
 //!     build().
 //!     unwrap();
-//! 
+//!
 //! let token = totp.generate_current().unwrap();
 //! println!("{}", token);
 //! # }
@@ -34,7 +34,7 @@
 //! let totp: Totp = Builder::new().
 //!     build().
 //!     unwrap();
-//! 
+//!
 //! let token = totp.generate_current().unwrap();
 //! println!("{}", token);
 //!
@@ -54,7 +54,7 @@
 //!     with_issuer(Some("Github".to_string())).
 //!     build().
 //!     unwrap();
-//! 
+//!
 //! let url = totp.to_url();
 //! println!("{}", url);
 //! let code = totp.to_qr_base64().unwrap();
@@ -218,11 +218,11 @@ impl Totp {
             #[cfg(feature = "steam")]
             Algorithm::Steam => (0..self.digits)
                 .map(|_| {
-                    let c = STEAM_CHARS
+                    let c = algorithm::STEAM_CHARS
                         .chars()
-                        .nth(result as usize % STEAM_CHARS.len())
+                        .nth(result as usize % algorithm::STEAM_CHARS.len())
                         .unwrap();
-                    result /= STEAM_CHARS.len() as u32;
+                    result /= algorithm::STEAM_CHARS.len() as u32;
                     c
                 })
                 .collect(),
@@ -370,8 +370,8 @@ mod tests {
     #[cfg(not(feature = "otpauth"))]
     fn generates_token_sha256() {
         let totp = Builder::new()
+            .with_algorithm(Algorithm::SHA256)
             .with_step_duration(1)
-            .with_skew(1)
             .with_secret("TestSecretSuperSecret".into())
             .build_noncompliant();
         assert_eq!(totp.generate(1000).as_str(), "076417");
@@ -381,8 +381,8 @@ mod tests {
     #[cfg(not(feature = "otpauth"))]
     fn generates_token_sha512() {
         let totp = Builder::new()
+            .with_algorithm(Algorithm::SHA512)
             .with_step_duration(1)
-            .with_skew(1)
             .with_secret("TestSecretSuperSecret".into())
             .build_noncompliant();
         assert_eq!(totp.generate(1000).as_str(), "473536");

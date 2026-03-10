@@ -17,7 +17,7 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-default = ["otpauth"]
+default = []
 otpauth = ["url", "urlencoding"]
 qr = ["dep:qrcodegen-image", "otpauth"]
 serde_support = ["serde"]
@@ -36,3 +36,11 @@ constant_time_eq = "0.3"
 rand = { version = "0.9", features = ["thread_rng"], optional = true, default-features = false }
 zeroize = { version = "1.6", features = ["alloc", "derive"], optional = true }
 qrcodegen-image = { version = "1.4", features = ["base64"], optional = true }
+
+[[example]]
+name = "steam"
+required-features = ["steam"]
+
+[[example]]
+name = "gen_secret"
+required-features = ["gen_secret", "otpauth"]
