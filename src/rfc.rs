@@ -37,7 +37,7 @@ pub fn assert_account_name_valid(account_name: &String) -> Result<(), TotpError>
 // Checks that issuer is either unset (not recommended) or doesn't contain `:`.
 #[cfg(feature = "otpauth")]
 pub fn assert_issuer_valid(issuer: &Option<String>) -> Result<(), TotpError> {
-    if let Some(ref issuer) = issuer {
+    if let Some(issuer) = issuer {
         if issuer.contains(':') {
             return Err(TotpError::InvalidIssuer {
                 value: issuer.clone(),

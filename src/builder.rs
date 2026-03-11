@@ -1,5 +1,6 @@
 use crate::error::TotpError;
-use crate::{secret, Algorithm, Totp};
+use crate::secret::InnerSecret;
+use crate::{Algorithm, Totp};
 
 /// Builder used to build a [Totp] with sane defaults.
 /// Because it contains the sensitive data of the HMAC secret, treat it accordingly.
@@ -8,7 +9,7 @@ pub struct Builder {
     #[cfg_attr(feature = "zeroize", zeroize(skip))]
     pub(super) algorithm: Algorithm,
     pub(super) digits: u32,
-    pub(super) secret: Option<secret::InnerSecret>,
+    pub(super) secret: Option<InnerSecret>,
     pub(super) skew: u32,
     pub(super) step_duration: u64,
 
@@ -29,7 +30,7 @@ impl Builder {
             use rand::prelude::*;
 
             let mut rng = rand::rng();
-            let mut secret: secret::InnerSecret = vec![0; 20].into();
+            let mut secret: InnerSecret = vec![0; 20].into();
             rng.fill(&mut secret[..]);
 
             #[cfg(feature = "gen_secret")]
@@ -207,7 +208,7 @@ impl Builder {
 #[cfg(test)]
 mod tests {
     use crate::error::TotpError;
-    use crate::secret;
+    use crate::secret::InnerSecret;
     use crate::{Algorithm, Builder};
 
     const GOOD_SECRET: &str = "01234567890123456789";
@@ -265,7 +266,7 @@ mod tests {
     #[test]
     fn with_secret() {
         let builder = Builder::new().with_secret(GOOD_SECRET.into());
-        let to_compare: secret::InnerSecret = GOOD_SECRET.as_bytes().to_vec().into();
+        let to_compare: InnerSecret = GOOD_SECRET.as_bytes().to_vec().into();
 
         assert_eq!(
             std::mem::take(&mut builder.secret.clone().unwrap()),

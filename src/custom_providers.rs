@@ -40,6 +40,9 @@ mod test {
             .build()
             .unwrap();
         let url = totp.to_url();
-        assert_eq!(url.as_str(), "otpauth://steam/Steam:constantoine?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=5&algorithm=SHA1&issuer=Steam");
+        assert_eq!(
+            url.as_str(),
+            "otpauth://steam/Steam:constantoine?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=5&algorithm=SHA1&issuer=Steam"
+        );
     }
 }
