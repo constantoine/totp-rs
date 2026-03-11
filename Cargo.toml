@@ -2,8 +2,8 @@
 name = "totp-rs"
 version = "5.7.0"
 authors = ["Cleo Rebert <cleo.rebert@gmail.com>"]
-rust-version = "1.66"
-edition = "2021"
+rust-version = "1.88"
+edition = "2024"
 readme = "README.md"
 license = "MIT"
 description = "RFC-compliant TOTP implementation with ease of use as a goal and additionnal QoL features."
@@ -18,10 +18,10 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
 default = []
+gen_secret = ["rand"]
 otpauth = ["url", "urlencoding"]
 qr = ["dep:qrcodegen-image", "otpauth"]
-serde_support = ["serde"]
-gen_secret = ["rand"]
+serde_support = ["serde", "zeroize?/serde"]
 steam = []
 
 [dependencies]
@@ -32,7 +32,15 @@ hmac = "0.12"
 base32 = "0.5"
 urlencoding = { version = "2.1", optional = true}
 url = { version = "2.4", optional = true }
-constant_time_eq = "0.3"
-rand = { version = "0.9", features = ["thread_rng"], optional = true, default-features = false }
-zeroize = { version = "1.6", features = ["alloc", "derive"], optional = true }
-qrcodegen-image = { version = "1.4", features = ["base64"], optional = true }
+constant_time_eq = "0.4"
+rand = { version = "0.10", features = ["thread_rng"], optional = true, default-features = false }
+qrcodegen-image = { version = "1.5", features = ["base64"], optional = true }
+zeroize = { version = "1.8", features = ["alloc", "derive"], optional = true }
+
+[[example]]
+name = "steam"
+required-features = ["steam"]
+
+[[example]]
+name = "gen_secret"
+required-features = ["gen_secret", "otpauth"]

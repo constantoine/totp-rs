@@ -1,4 +1,4 @@
-use crate::{Algorithm, TotpError, Totp};
+use crate::{Algorithm, Builder, Totp, TotpError};
 
 use url::{Host, Url};
 
@@ -6,36 +6,22 @@ use url::{Host, Url};
 impl crate::Totp {
     /// Generate a TOTP from the standard otpauth URL
     pub fn from_url<S: AsRef<str>>(url: S) -> Result<Totp, TotpError> {
-        let (algorithm, digits, skew, step, secret, issuer, account_name) =
-            Self::parts_from_url(url)?;
-        Totp::new(algorithm, digits, skew, step, secret, issuer, account_name)
+        let builder = Self::parts_from_url(url)?;
+
+        builder.build()
     }
 
     /// Generate a TOTP from the standard otpauth URL, using `Totp::new_unchecked` internally
     pub fn from_url_unchecked<S: AsRef<str>>(url: S) -> Result<Totp, TotpError> {
-        let (algorithm, digits, skew, step, secret, issuer, account_name) =
-            Self::parts_from_url(url)?;
-        Ok(Totp::new_unchecked(
-            algorithm,
-            digits,
-            skew,
-            step,
-            secret,
-            issuer,
-            account_name,
-        ))
+        let builder = Self::parts_from_url(url)?;
+        Ok(builder.build_noncompliant())
     }
 
-    /// Parse the TOTP parts from the standard otpauth URL
-    fn parts_from_url<S: AsRef<str>>(
-        url: S,
-    ) -> Result<(Algorithm, usize, u8, u64, Vec<u8>, Option<String>, String), TotpError> {
-        let mut algorithm = Algorithm::SHA1;
-        let mut digits = 6;
-        let mut step = 30;
-        let mut secret = Vec::new();
-        let mut issuer: Option<String> = None;
-        let mut account_name: String;
+    /// Parse the TOTP parts from the standard otpauth URL.
+    /// It returns a builder with defaults values from [Builder::new] + info from the URL.
+    /// Notable exception: A password will not be supplied automatically if `gen_secret` is enabled.
+    fn parts_from_url<S: AsRef<str>>(url: S) -> Result<Builder, TotpError> {
+        let mut builder: Builder;
 
         let url = Url::parse(url.as_ref()).map_err(TotpError::UrlParse)?;
         if url.scheme() != "otpauth" {
@@ -44,11 +30,9 @@ impl crate::Totp {
             });
         }
         match url.host() {
-            Some(Host::Domain("totp")) => {}
+            Some(Host::Domain("totp")) => builder = Builder::new(),
             #[cfg(feature = "steam")]
-            Some(Host::Domain("steam")) => {
-                algorithm = Algorithm::Steam;
-            }
+            Some(Host::Domain("steam")) => builder = Builder::new_steam(),
             _ => {
                 return Err(TotpError::InvalidHost {
                     host: url.host().unwrap().to_string(),
@@ -56,101 +40,113 @@ impl crate::Totp {
             }
         }
 
+        builder.secret = None;
+
         let path = url.path().trim_start_matches('/');
         let path = urlencoding::decode(path)
             .map_err(|_| TotpError::AccountNameDecode {
                 value: path.to_string(),
             })?
             .to_string();
+
+        let account_name: String;
+        let mut issuer: Option<String> = None;
         if path.contains(':') {
             let parts = path.split_once(':').unwrap();
             issuer = Some(parts.0.to_owned());
+            builder = builder.with_issuer(issuer.clone());
             account_name = parts.1.to_owned();
         } else {
             account_name = path;
         }
 
-        account_name = urlencoding::decode(account_name.as_str())
+        let account_name = urlencoding::decode(account_name.as_str())
             .map_err(|_| TotpError::AccountNameDecode {
                 value: account_name.to_string(),
             })?
             .to_string();
 
+        builder = builder.with_account_name(account_name);
+
         for (key, value) in url.query_pairs() {
             match key.as_ref() {
-                #[cfg(feature = "steam")]
-                "algorithm" if algorithm == Algorithm::Steam => {
-                    // Do not change used algorithm if this is Steam
-                }
                 "algorithm" => {
-                    algorithm = match value.as_ref() {
-                        "SHA1" => Algorithm::SHA1,
-                        "SHA256" => Algorithm::SHA256,
-                        "SHA512" => Algorithm::SHA512,
+                    let algorithm = match value.clone().to_lowercase().as_ref() {
+                        "sha1" => Algorithm::SHA1,
+                        "sha256" => Algorithm::SHA256,
+                        "sha512" => Algorithm::SHA512,
+                        #[cfg(feature = "steam")]
+                        "steam" => Algorithm::Steam,
                         _ => {
                             return Err(TotpError::InvalidAlgorithm {
                                 algorithm: value.to_string(),
-                            })
+                            });
                         }
-                    }
+                    };
+
+                    builder = builder.with_algorithm(algorithm);
                 }
                 "digits" => {
-                    digits = value
-                        .parse::<usize>()
+                    let digits = value
+                        .parse::<u32>()
                         .map_err(|_| TotpError::InvalidDigitsURL {
                             digits: value.to_string(),
                         })?;
+
+                    builder = builder.with_digits(digits);
                 }
                 "period" => {
-                    step = value
-                        .parse::<u64>()
-                        .map_err(|_| TotpError::InvalidStepURL {
-                            step: value.to_string(),
-                        })?;
+                    let step_duration =
+                        value
+                            .parse::<u64>()
+                            .map_err(|_| TotpError::InvalidStepURL {
+                                step: value.to_string(),
+                            })?;
+
+                    builder = builder.with_step_duration(step_duration);
                 }
                 "secret" => {
-                    secret = base32::decode(
+                    let secret = base32::decode(
                         base32::Alphabet::Rfc4648 { padding: false },
                         value.as_ref(),
                     )
                     .ok_or_else(|| TotpError::InvalidSecret)?;
-                }
-                #[cfg(feature = "steam")]
-                "issuer" if value.to_lowercase() == "steam" => {
-                    algorithm = Algorithm::Steam;
-                    digits = 5;
-                    issuer = Some(value.into());
+
+                    builder = builder.with_secret(secret);
                 }
                 "issuer" => {
                     let param_issuer: String = value.into();
-                    if issuer.is_some() && param_issuer.as_str() != issuer.as_ref().unwrap() {
+
+                    #[cfg(feature = "steam")]
+                    if param_issuer.eq_ignore_ascii_case("steam") {
+                        builder = builder.with_algorithm(Algorithm::Steam);
+                    }
+
+                    if issuer.as_ref().is_some()
+                        && param_issuer.as_str() != issuer.as_ref().unwrap()
+                    {
                         return Err(TotpError::IssuerMismatch {
                             path: issuer.as_ref().unwrap().to_string(),
                             query: param_issuer,
                         });
                     }
+
                     issuer = Some(param_issuer);
-                    #[cfg(feature = "steam")]
-                    if issuer == Some("Steam".into()) {
-                        algorithm = Algorithm::Steam;
-                    }
+                    builder = builder.with_issuer(issuer.clone());
                 }
                 _ => {}
             }
         }
 
         #[cfg(feature = "steam")]
-        if algorithm == Algorithm::Steam {
-            digits = 5;
-            step = 30;
-            issuer = Some("Steam".into());
+        if builder.algorithm == Algorithm::Steam {
+            builder = builder
+                .with_algorithm(Algorithm::Steam)
+                .with_digits(5)
+                .with_issuer(Some("Steam".to_string()));
         }
 
-        if secret.is_empty() {
-            return Err(TotpError::SecretTooShort { bits: 0 });
-        }
-
-        Ok((algorithm, digits, 1, step, secret, issuer, account_name))
+        Ok(builder)
     }
 
     /// Will generate a standard URL used to automatically add TOTP auths. Usually used with qr codes
@@ -189,13 +185,14 @@ impl crate::Totp {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Algorithm, TotpError, Totp};
+    use crate::{Algorithm, Builder, Totp, TotpError};
 
-    #[cfg(feature = "gen_secret")]
-    use crate::{Rfc6238, Secret};
+    const GOOD_SECRET: &[u8] = "TestSecretSuperSecret".as_bytes();
+    const GOOD_ISSUER: &str = "Github";
+    const GOOD_ACCOUNT: &str = "constantoine@github.com";
 
     #[test]
-    #[cfg(feature = "gen_secret")]
+    #[cfg(all(feature = "gen_secret", not(feature = "otpauth")))]
     fn default_values() {
         let totp = Totp::default();
         assert_eq!(totp.algorithm, Algorithm::SHA1);
@@ -205,93 +202,13 @@ mod tests {
     }
 
     #[test]
-    fn new_wrong_issuer() {
-        let totp = Totp::new(
-            Algorithm::SHA1,
-            6,
-            1,
-            1,
-            "TestSecretSuperSecret".as_bytes().to_vec(),
-            Some("Github:".to_string()),
-            "constantoine@github.com".to_string(),
-        );
-        assert!(totp.is_err());
-        assert!(matches!(totp.unwrap_err(), TotpError::InvalidIssuer { .. }));
-    }
-
-    #[test]
-    fn new_wrong_account_name() {
-        let totp = Totp::new(
-            Algorithm::SHA1,
-            6,
-            1,
-            1,
-            "TestSecretSuperSecret".as_bytes().to_vec(),
-            Some("Github".to_string()),
-            "constantoine:github.com".to_string(),
-        );
-        assert!(totp.is_err());
-        assert!(matches!(
-            totp.unwrap_err(),
-            TotpError::InvalidAccountName { .. }
-        ));
-    }
-
-    #[test]
-    fn new_wrong_account_name_no_issuer() {
-        let totp = Totp::new(
-            Algorithm::SHA1,
-            6,
-            1,
-            1,
-            "TestSecretSuperSecret".as_bytes().to_vec(),
-            None,
-            "constantoine:github.com".to_string(),
-        );
-        assert!(totp.is_err());
-        assert!(matches!(
-            totp.unwrap_err(),
-            TotpError::InvalidAccountName { .. }
-        ));
-    }
-
-    #[test]
-    fn comparison_ok() {
-        let reference = Totp::new(
-            Algorithm::SHA1,
-            6,
-            1,
-            1,
-            "TestSecretSuperSecret".as_bytes().to_vec(),
-            Some("Github".to_string()),
-            "constantoine@github.com".to_string(),
-        )
-        .unwrap();
-        let test = Totp::new(
-            Algorithm::SHA1,
-            6,
-            1,
-            1,
-            "TestSecretSuperSecret".as_bytes().to_vec(),
-            Some("Github".to_string()),
-            "constantoine@github.com".to_string(),
-        )
-        .unwrap();
-        assert_eq!(reference, test);
-    }
-
-    #[test]
     fn url_for_secret_matches_sha1_without_issuer() {
-        let totp = Totp::new(
-            Algorithm::SHA1,
-            6,
-            1,
-            30,
-            "TestSecretSuperSecret".as_bytes().to_vec(),
-            None,
-            "constantoine@github.com".to_string(),
-        )
-        .unwrap();
+        let totp = Builder::new()
+            .with_account_name(GOOD_ACCOUNT.into())
+            .with_secret(GOOD_SECRET.into())
+            .build()
+            .unwrap();
+
         let url = totp.to_url();
         assert_eq!(
             url.as_str(),
@@ -301,84 +218,62 @@ mod tests {
 
     #[test]
     fn url_for_secret_matches_sha1() {
-        let totp = Totp::new(
-            Algorithm::SHA1,
-            6,
-            1,
-            30,
-            "TestSecretSuperSecret".as_bytes().to_vec(),
-            Some("Github".to_string()),
-            "constantoine@github.com".to_string(),
-        )
-        .unwrap();
+        let totp = Builder::new()
+            .with_algorithm(Algorithm::SHA1)
+            .with_account_name(GOOD_ACCOUNT.into())
+            .with_issuer(Some(GOOD_ISSUER.into()))
+            .with_secret(GOOD_SECRET.into())
+            .build()
+            .unwrap();
         let url = totp.to_url();
-        assert_eq!(url.as_str(), "otpauth://totp/Github:constantoine%40github.com?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&issuer=Github");
+        assert_eq!(
+            url.as_str(),
+            "otpauth://totp/Github:constantoine%40github.com?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&issuer=Github"
+        );
     }
 
     #[test]
     fn url_for_secret_matches_sha256() {
-        let totp = Totp::new(
-            Algorithm::SHA256,
-            6,
-            1,
-            30,
-            "TestSecretSuperSecret".as_bytes().to_vec(),
-            Some("Github".to_string()),
-            "constantoine@github.com".to_string(),
-        )
-        .unwrap();
+        let totp = Builder::new()
+            .with_algorithm(Algorithm::SHA256)
+            .with_account_name(GOOD_ACCOUNT.into())
+            .with_issuer(Some(GOOD_ISSUER.into()))
+            .with_secret(GOOD_SECRET.into())
+            .build()
+            .unwrap();
         let url = totp.to_url();
-        assert_eq!(url.as_str(), "otpauth://totp/Github:constantoine%40github.com?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&algorithm=SHA256&issuer=Github");
+        assert_eq!(
+            url.as_str(),
+            "otpauth://totp/Github:constantoine%40github.com?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&algorithm=SHA256&issuer=Github"
+        );
     }
 
     #[test]
     fn url_for_secret_matches_sha512() {
-        let totp = Totp::new(
-            Algorithm::SHA512,
-            6,
-            1,
-            30,
-            "TestSecretSuperSecret".as_bytes().to_vec(),
-            Some("Github".to_string()),
-            "constantoine@github.com".to_string(),
-        )
-        .unwrap();
+        let totp = Builder::new()
+            .with_algorithm(Algorithm::SHA512)
+            .with_account_name(GOOD_ACCOUNT.into())
+            .with_issuer(Some(GOOD_ISSUER.into()))
+            .with_secret(GOOD_SECRET.into())
+            .build()
+            .unwrap();
         let url = totp.to_url();
-        assert_eq!(url.as_str(), "otpauth://totp/Github:constantoine%40github.com?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&algorithm=SHA512&issuer=Github");
-    }
-
-    #[test]
-    #[cfg(feature = "gen_secret")]
-    fn ttl() {
-        let secret = Secret::default();
-        let totp_rfc = Rfc6238::with_defaults(secret.to_bytes().unwrap()).unwrap();
-        let totp = Totp::from_rfc6238(totp_rfc);
-        assert!(totp.is_ok());
-    }
-
-    #[test]
-    fn ttl_ok() {
-        let totp = Totp::new(
-            Algorithm::SHA512,
-            6,
-            1,
-            1,
-            "TestSecretSuperSecret".as_bytes().to_vec(),
-            Some("Github".to_string()),
-            "constantoine@github.com".to_string(),
-        )
-        .unwrap();
-        assert!(totp.ttl().is_ok());
+        assert_eq!(
+            url.as_str(),
+            "otpauth://totp/Github:constantoine%40github.com?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&algorithm=SHA512&issuer=Github"
+        );
     }
 
     #[test]
     fn from_url_err() {
         assert!(Totp::from_url("otpauth://hotp/123").is_err());
         assert!(Totp::from_url("otpauth://totp/GitHub:test").is_err());
-        assert!(Totp::from_url(
-            "otpauth://totp/GitHub:test:?secret=ABC&digits=8&period=60&algorithm=SHA256"
-        )
-        .is_err());
+        assert!(
+            Totp::from_url(
+                "otpauth://totp/GitHub:test:?secret=ABC&digits=8&period=60&algorithm=SHA256"
+            )
+            .is_err()
+        );
         assert!(Totp::from_url("otpauth://totp/Github:constantoine%40github.com?issuer=GitHub&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA1").is_err())
     }
 
@@ -388,7 +283,7 @@ mod tests {
             Totp::from_url("otpauth://totp/GitHub:test?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ")
                 .unwrap();
         assert_eq!(
-            totp.secret,
+            totp.to_secret_binary(),
             base32::decode(
                 base32::Alphabet::Rfc4648 { padding: false },
                 "KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ"
@@ -405,7 +300,7 @@ mod tests {
     fn from_url_query() {
         let totp = Totp::from_url("otpauth://totp/GitHub:test?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA256").unwrap();
         assert_eq!(
-            totp.secret,
+            totp.to_secret_binary(),
             base32::decode(
                 base32::Alphabet::Rfc4648 { padding: false },
                 "KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ"
@@ -422,7 +317,7 @@ mod tests {
     fn from_url_query_sha512() {
         let totp = Totp::from_url("otpauth://totp/GitHub:test?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA512").unwrap();
         assert_eq!(
-            totp.secret,
+            totp.to_secret_binary(),
             base32::decode(
                 base32::Alphabet::Rfc4648 { padding: false },
                 "KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ"
@@ -438,16 +333,13 @@ mod tests {
     #[test]
     fn from_url_to_url() {
         let totp = Totp::from_url("otpauth://totp/Github:constantoine%40github.com?issuer=Github&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA1").unwrap();
-        let totp_bis = Totp::new(
-            Algorithm::SHA1,
-            6,
-            1,
-            30,
-            "TestSecretSuperSecret".as_bytes().to_vec(),
-            Some("Github".to_string()),
-            "constantoine@github.com".to_string(),
-        )
-        .unwrap();
+        let totp_bis = Builder::new()
+            .with_algorithm(Algorithm::SHA1)
+            .with_account_name(GOOD_ACCOUNT.into())
+            .with_issuer(Some(GOOD_ISSUER.into()))
+            .with_secret(GOOD_SECRET.into())
+            .build()
+            .unwrap();
         assert_eq!(totp.to_url(), totp_bis.to_url());
     }
 
@@ -455,7 +347,7 @@ mod tests {
     fn from_url_unknown_param() {
         let totp = Totp::from_url("otpauth://totp/GitHub:test?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA256&foo=bar").unwrap();
         assert_eq!(
-            totp.secret,
+            totp.to_secret_binary(),
             base32::decode(
                 base32::Alphabet::Rfc4648 { padding: false },
                 "KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ"
@@ -469,35 +361,15 @@ mod tests {
     }
 
     #[test]
-    fn from_url_issuer_special() {
-        let totp = Totp::from_url("otpauth://totp/Github%40:constantoine%40github.com?issuer=Github%40&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA1").unwrap();
-        let totp_bis = Totp::new(
-            Algorithm::SHA1,
-            6,
-            1,
-            30,
-            "TestSecretSuperSecret".as_bytes().to_vec(),
-            Some("Github@".to_string()),
-            "constantoine@github.com".to_string(),
-        )
-        .unwrap();
-        assert_eq!(totp.to_url(), totp_bis.to_url());
-        assert_eq!(totp.issuer.as_ref().unwrap(), "Github@");
-    }
-
-    #[test]
     fn from_url_account_name_issuer() {
         let totp = Totp::from_url("otpauth://totp/Github:constantoine?issuer=Github&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA1").unwrap();
-        let totp_bis = Totp::new(
-            Algorithm::SHA1,
-            6,
-            1,
-            30,
-            "TestSecretSuperSecret".as_bytes().to_vec(),
-            Some("Github".to_string()),
-            "constantoine".to_string(),
-        )
-        .unwrap();
+        let totp_bis = Builder::new()
+            .with_algorithm(Algorithm::SHA1)
+            .with_account_name("constantoine".into())
+            .with_issuer(Some(GOOD_ISSUER.into()))
+            .with_secret(GOOD_SECRET.into())
+            .build()
+            .unwrap();
         assert_eq!(totp.to_url(), totp_bis.to_url());
         assert_eq!(totp.account_name, "constantoine");
         assert_eq!(totp.issuer.as_ref().unwrap(), "Github");
@@ -506,16 +378,13 @@ mod tests {
     #[test]
     fn from_url_account_name_issuer_encoded() {
         let totp = Totp::from_url("otpauth://totp/Github%3Aconstantoine?issuer=Github&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA1").unwrap();
-        let totp_bis = Totp::new(
-            Algorithm::SHA1,
-            6,
-            1,
-            30,
-            "TestSecretSuperSecret".as_bytes().to_vec(),
-            Some("Github".to_string()),
-            "constantoine".to_string(),
-        )
-        .unwrap();
+        let totp_bis = Builder::new()
+            .with_algorithm(Algorithm::SHA1)
+            .with_account_name("constantoine".into())
+            .with_issuer(Some(GOOD_ISSUER.into()))
+            .with_secret(GOOD_SECRET.into())
+            .build()
+            .unwrap();
         assert_eq!(totp.to_url(), totp_bis.to_url());
         assert_eq!(totp.account_name, "constantoine");
         assert_eq!(totp.issuer.as_ref().unwrap(), "Github");
@@ -525,7 +394,7 @@ mod tests {
     fn from_url_query_issuer() {
         let totp = Totp::from_url("otpauth://totp/GitHub:test?issuer=GitHub&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA256").unwrap();
         assert_eq!(
-            totp.secret,
+            totp.to_secret_binary(),
             base32::decode(
                 base32::Alphabet::Rfc4648 { padding: false },
                 "KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ"
@@ -541,7 +410,9 @@ mod tests {
 
     #[test]
     fn from_url_wrong_scheme() {
-        let totp = Totp::from_url("http://totp/GitHub:test?issuer=GitHub&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA256");
+        let totp = Totp::from_url(
+            "http://totp/GitHub:test?issuer=GitHub&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA256",
+        );
         assert!(totp.is_err());
         let err = totp.unwrap_err();
         assert!(matches!(err, TotpError::InvalidScheme { .. }));
@@ -549,7 +420,9 @@ mod tests {
 
     #[test]
     fn from_url_wrong_algo() {
-        let totp = Totp::from_url("otpauth://totp/GitHub:test?issuer=GitHub&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=MD5");
+        let totp = Totp::from_url(
+            "otpauth://totp/GitHub:test?issuer=GitHub&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=MD5",
+        );
         assert!(totp.is_err());
         let err = totp.unwrap_err();
         assert!(matches!(err, TotpError::InvalidAlgorithm { .. }));
@@ -557,7 +430,9 @@ mod tests {
 
     #[test]
     fn from_url_query_different_issuers() {
-        let totp = Totp::from_url("otpauth://totp/GitHub:test?issuer=Gitlab&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA256");
+        let totp = Totp::from_url(
+            "otpauth://totp/GitHub:test?issuer=Gitlab&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA256",
+        );
         assert!(totp.is_err());
         assert!(matches!(
             totp.unwrap_err(),
