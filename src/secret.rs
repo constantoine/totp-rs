@@ -76,6 +76,11 @@ pub enum SecretParseError {
     ParseBase32,
 }
 
+#[cfg(not(feature = "zeroize"))]
+pub(crate) type InnerSecret = Vec<u8>;
+#[cfg(feature = "zeroize")]
+pub(crate) type InnerSecret = zeroize::Zeroizing<Vec<u8>>;
+
 impl std::error::Error for SecretParseError {}
 
 impl std::fmt::Display for SecretParseError {
@@ -157,7 +162,7 @@ impl Secret {
     #[cfg(feature = "gen_secret")]
     #[cfg_attr(docsrs, doc(cfg(feature = "gen_secret")))]
     pub fn generate_secret() -> Secret {
-        use rand::Rng;
+        use rand::prelude::*;
 
         let mut rng = rand::rng();
         let mut secret: [u8; 20] = Default::default();
