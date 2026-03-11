@@ -272,7 +272,7 @@ mod tests {
             Totp::from_url("otpauth://totp/GitHub:test?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ")
                 .unwrap();
         assert_eq!(
-            totp.secret,
+            totp.to_secret_binary(),
             base32::decode(
                 base32::Alphabet::Rfc4648 { padding: false },
                 "KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ"
@@ -289,7 +289,7 @@ mod tests {
     fn from_url_query() {
         let totp = Totp::from_url("otpauth://totp/GitHub:test?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA256").unwrap();
         assert_eq!(
-            totp.secret,
+            totp.to_secret_binary(),
             base32::decode(
                 base32::Alphabet::Rfc4648 { padding: false },
                 "KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ"
@@ -306,7 +306,7 @@ mod tests {
     fn from_url_query_sha512() {
         let totp = Totp::from_url("otpauth://totp/GitHub:test?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA512").unwrap();
         assert_eq!(
-            totp.secret,
+            totp.to_secret_binary(),
             base32::decode(
                 base32::Alphabet::Rfc4648 { padding: false },
                 "KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ"
@@ -336,7 +336,7 @@ mod tests {
     fn from_url_unknown_param() {
         let totp = Totp::from_url("otpauth://totp/GitHub:test?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA256&foo=bar").unwrap();
         assert_eq!(
-            totp.secret,
+            totp.to_secret_binary(),
             base32::decode(
                 base32::Alphabet::Rfc4648 { padding: false },
                 "KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ"
@@ -383,7 +383,7 @@ mod tests {
     fn from_url_query_issuer() {
         let totp = Totp::from_url("otpauth://totp/GitHub:test?issuer=GitHub&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA256").unwrap();
         assert_eq!(
-            totp.secret,
+            totp.to_secret_binary(),
             base32::decode(
                 base32::Alphabet::Rfc4648 { padding: false },
                 "KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ"

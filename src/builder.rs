@@ -1,5 +1,5 @@
 use crate::error::TotpError;
-use crate::{Algorithm, Totp};
+use crate::{secret, Algorithm, Totp};
 
 /// Builder used to build a [Totp] with sane defaults.
 /// Because it contains the sensitive data of the HMAC secret, treat it accordingly.
@@ -8,7 +8,7 @@ pub struct Builder {
     #[cfg_attr(feature = "zeroize", zeroize(skip))]
     pub(super) algorithm: Algorithm,
     pub(super) digits: u32,
-    pub(super) secret: Option<Vec<u8>>,
+    pub(super) secret: Option<secret::InnerSecret>,
     pub(super) skew: u32,
     pub(super) step_duration: u64,
 
@@ -25,23 +25,24 @@ impl Builder {
     /// After build, use [Totp::to_secret_binary] or [Totp::to_secret_base32] to retrieve the newly generated secret.
     pub fn new() -> Self {
         #[cfg(feature = "gen_secret")]
-        let secret: Option<Vec<u8>> = {
-            use rand::Rng;
+        let mut secret = {
+            use rand::prelude::*;
 
             let mut rng = rand::rng();
-            let mut secret: Vec<u8> = vec![0; 20];
+            let mut secret: secret::InnerSecret = vec![0; 20].into();
             rng.fill(&mut secret[..]);
 
+            #[cfg(feature = "gen_secret")]
             Some(secret)
         };
 
         #[cfg(not(feature = "gen_secret"))]
-        let secret = None;
+        let mut secret = None;
 
         Builder {
             algorithm: Algorithm::SHA1,
             digits: 6,
-            secret: secret,
+            secret: std::mem::take(&mut secret),
             skew: 1,
             step_duration: 30,
             #[cfg(feature = "otpauth")]
@@ -75,7 +76,7 @@ impl Builder {
     ///
     /// If feature `gen_secret` is not enabled, then not calling this method will result in [Self::build] to fail.
     pub fn with_secret(mut self, secret: Vec<u8>) -> Self {
-        self.secret = Some(secret);
+        self.secret = Some(secret.into());
 
         self
     }
@@ -206,10 +207,10 @@ impl Builder {
 #[cfg(test)]
 mod tests {
     use crate::error::TotpError;
+    use crate::secret;
     use crate::{Algorithm, Builder};
 
     const GOOD_SECRET: &str = "01234567890123456789";
-
     const SHORT_SECRET: &str = "tooshort";
 
     // === Defaults ===
@@ -264,7 +265,12 @@ mod tests {
     #[test]
     fn with_secret() {
         let builder = Builder::new().with_secret(GOOD_SECRET.into());
-        assert_eq!(builder.secret.as_ref().unwrap(), GOOD_SECRET.as_bytes());
+        let to_compare: secret::InnerSecret = GOOD_SECRET.as_bytes().to_vec().into();
+
+        assert_eq!(
+            std::mem::take(&mut builder.secret.clone().unwrap()),
+            to_compare
+        );
     }
 
     #[test]
@@ -305,7 +311,7 @@ mod tests {
         assert_eq!(totp.digits, 6);
         assert_eq!(totp.skew, 1);
         assert_eq!(totp.step, 30);
-        assert_eq!(totp.secret, GOOD_SECRET.as_bytes());
+        assert_eq!(totp.to_secret_binary(), GOOD_SECRET.as_bytes());
     }
 
     #[test]
@@ -453,7 +459,7 @@ mod tests {
         let totp = Builder::new()
             .with_secret(SHORT_SECRET.into())
             .build_noncompliant();
-        assert_eq!(totp.secret, SHORT_SECRET.as_bytes());
+        assert_eq!(totp.to_secret_binary(), SHORT_SECRET.as_bytes());
     }
 
     #[test]

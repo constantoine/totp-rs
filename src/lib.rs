@@ -114,7 +114,7 @@ pub struct Totp {
     /// As per [rfc-4226](https://tools.ietf.org/html/rfc4226#section-4) the secret should come from a strong source, most likely a CSPRNG. It should be at least 128 bits, but 160 are recommended
     ///
     /// non-encoded value
-    pub(crate) secret: Vec<u8>,
+    pub(crate) secret: secret::InnerSecret,
     #[cfg(feature = "otpauth")]
     #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
     /// The "Github" part of "Github:constantoine@github.com". Must not contain a colon `:`
@@ -277,7 +277,7 @@ impl Totp {
 
     /// Will return a clone of the secret as raw bytes.
     pub fn to_secret_binary(&self) -> Vec<u8> {
-        self.secret.clone()
+        std::mem::take(&mut self.secret.clone())
     }
 
     /// Will return the base32 representation of the secret, which might be useful when users want to manually add the secret to their authenticator
