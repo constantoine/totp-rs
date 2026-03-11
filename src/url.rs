@@ -80,7 +80,7 @@ impl crate::Totp {
                         _ => {
                             return Err(TotpError::InvalidAlgorithm {
                                 algorithm: value.to_string(),
-                            })
+                            });
                         }
                     };
 
@@ -226,7 +226,10 @@ mod tests {
             .build()
             .unwrap();
         let url = totp.to_url();
-        assert_eq!(url.as_str(), "otpauth://totp/Github:constantoine%40github.com?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&issuer=Github");
+        assert_eq!(
+            url.as_str(),
+            "otpauth://totp/Github:constantoine%40github.com?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&issuer=Github"
+        );
     }
 
     #[test]
@@ -239,7 +242,10 @@ mod tests {
             .build()
             .unwrap();
         let url = totp.to_url();
-        assert_eq!(url.as_str(), "otpauth://totp/Github:constantoine%40github.com?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&algorithm=SHA256&issuer=Github");
+        assert_eq!(
+            url.as_str(),
+            "otpauth://totp/Github:constantoine%40github.com?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&algorithm=SHA256&issuer=Github"
+        );
     }
 
     #[test]
@@ -252,17 +258,22 @@ mod tests {
             .build()
             .unwrap();
         let url = totp.to_url();
-        assert_eq!(url.as_str(), "otpauth://totp/Github:constantoine%40github.com?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&algorithm=SHA512&issuer=Github");
+        assert_eq!(
+            url.as_str(),
+            "otpauth://totp/Github:constantoine%40github.com?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&algorithm=SHA512&issuer=Github"
+        );
     }
 
     #[test]
     fn from_url_err() {
         assert!(Totp::from_url("otpauth://hotp/123").is_err());
         assert!(Totp::from_url("otpauth://totp/GitHub:test").is_err());
-        assert!(Totp::from_url(
-            "otpauth://totp/GitHub:test:?secret=ABC&digits=8&period=60&algorithm=SHA256"
-        )
-        .is_err());
+        assert!(
+            Totp::from_url(
+                "otpauth://totp/GitHub:test:?secret=ABC&digits=8&period=60&algorithm=SHA256"
+            )
+            .is_err()
+        );
         assert!(Totp::from_url("otpauth://totp/Github:constantoine%40github.com?issuer=GitHub&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=6&algorithm=SHA1").is_err())
     }
 
@@ -399,7 +410,9 @@ mod tests {
 
     #[test]
     fn from_url_wrong_scheme() {
-        let totp = Totp::from_url("http://totp/GitHub:test?issuer=GitHub&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA256");
+        let totp = Totp::from_url(
+            "http://totp/GitHub:test?issuer=GitHub&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA256",
+        );
         assert!(totp.is_err());
         let err = totp.unwrap_err();
         assert!(matches!(err, TotpError::InvalidScheme { .. }));
@@ -407,7 +420,9 @@ mod tests {
 
     #[test]
     fn from_url_wrong_algo() {
-        let totp = Totp::from_url("otpauth://totp/GitHub:test?issuer=GitHub&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=MD5");
+        let totp = Totp::from_url(
+            "otpauth://totp/GitHub:test?issuer=GitHub&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=MD5",
+        );
         assert!(totp.is_err());
         let err = totp.unwrap_err();
         assert!(matches!(err, TotpError::InvalidAlgorithm { .. }));
@@ -415,7 +430,9 @@ mod tests {
 
     #[test]
     fn from_url_query_different_issuers() {
-        let totp = Totp::from_url("otpauth://totp/GitHub:test?issuer=Gitlab&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA256");
+        let totp = Totp::from_url(
+            "otpauth://totp/GitHub:test?issuer=Gitlab&secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=8&period=60&algorithm=SHA256",
+        );
         assert!(totp.is_err());
         assert!(matches!(
             totp.unwrap_err(),

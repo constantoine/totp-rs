@@ -128,26 +128,6 @@ pub struct Totp {
     pub(crate) account_name: String,
 }
 
-impl PartialEq for Totp {
-    /// Will not check for issuer and account_name equality
-    /// As they aren't taken in account for token generation/token checking
-    fn eq(&self, other: &Self) -> bool {
-        if self.algorithm != other.algorithm {
-            return false;
-        }
-        if self.digits != other.digits {
-            return false;
-        }
-        if self.skew != other.skew {
-            return false;
-        }
-        if self.step != other.step {
-            return false;
-        }
-        constant_time_eq(self.secret.as_ref(), other.secret.as_ref())
-    }
-}
-
 #[cfg(feature = "otpauth")]
 impl core::fmt::Display for Totp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -417,9 +397,10 @@ mod tests {
             .with_skew(0)
             .with_secret("TestSecretSuperSecret".into())
             .build_noncompliant();
-        assert!(totp
-            .check_current(&totp.generate_current().unwrap())
-            .unwrap());
+        assert!(
+            totp.check_current(&totp.generate_current().unwrap())
+                .unwrap()
+        );
         assert!(!totp.check_current("bogus").unwrap());
     }
 
