@@ -1,6 +1,9 @@
 #[cfg(feature = "steam")]
 use crate::{Algorithm, Builder};
 
+#[cfg(all(feature = "steam", feature = "otpauth"))]
+use alloc::string::ToString;
+
 #[cfg(feature = "steam")]
 #[cfg_attr(docsrs, doc(cfg(feature = "steam")))]
 impl Builder {

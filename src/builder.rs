@@ -1,6 +1,13 @@
 use crate::error::TotpError;
 use crate::secret::InnerSecret;
 use crate::{Algorithm, Totp};
+use alloc::vec::Vec;
+
+#[cfg(feature = "otpauth")]
+use alloc::string::{String, ToString};
+
+#[cfg(feature = "gen_secret")]
+use alloc::vec;
 
 /// Builder used to build a [Totp] with sane defaults.
 /// Because it contains the sensitive data of the HMAC secret, treat it accordingly.
@@ -33,7 +40,6 @@ impl Builder {
             let mut secret: InnerSecret = vec![0; 20].into();
             rng.fill(&mut secret[..]);
 
-            #[cfg(feature = "gen_secret")]
             Some(secret)
         };
 
@@ -43,7 +49,7 @@ impl Builder {
         Builder {
             algorithm: Algorithm::SHA1,
             digits: 6,
-            secret: std::mem::take(&mut secret),
+            secret: core::mem::take(&mut secret),
             skew: 1,
             step_duration: 30,
             #[cfg(feature = "otpauth")]
@@ -195,12 +201,12 @@ impl Builder {
             digits: self.digits,
             skew: self.skew,
             step: self.step_duration,
-            secret: std::mem::take(&mut self.secret).unwrap_or_default(),
+            secret: core::mem::take(&mut self.secret).unwrap_or_default(),
 
             #[cfg(feature = "otpauth")]
-            issuer: std::mem::take(&mut self.issuer),
+            issuer: core::mem::take(&mut self.issuer),
             #[cfg(feature = "otpauth")]
-            account_name: std::mem::take(&mut self.account_name),
+            account_name: core::mem::take(&mut self.account_name),
         }
     }
 }
@@ -269,7 +275,7 @@ mod tests {
         let to_compare: InnerSecret = GOOD_SECRET.as_bytes().to_vec().into();
 
         assert_eq!(
-            std::mem::take(&mut builder.secret.clone().unwrap()),
+            core::mem::take(&mut builder.secret.clone().unwrap()),
             to_compare
         );
     }

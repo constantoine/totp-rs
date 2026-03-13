@@ -17,6 +17,15 @@ jobs:
     - name: Build
       run: cargo build --all-features
 
+  build_no_std:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install wasm32v1-none Target
+        run: rustup target add wasm32v1-none
+      - name: Build no_std
+        run: cargo build --target wasm32v1-none --no-default-features --features steam,serde_support
+
   msrv:
     runs-on: ubuntu-latest
     steps:
