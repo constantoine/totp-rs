@@ -2,7 +2,7 @@
 name = "totp-rs"
 version = "5.7.1"
 authors = ["Cleo Rebert <cleo.rebert@gmail.com>"]
-rust-version = "1.66"
+rust-version = "1.81"
 edition = "2021"
 readme = "README.md"
 license = "MIT"
@@ -17,22 +17,34 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-default = []
+default = ["std"]
 otpauth = ["url", "urlencoding"]
 qr = ["dep:qrcodegen-image", "otpauth"]
 serde_support = ["serde"]
 gen_secret = ["rand"]
 steam = []
+std = []
 
 [dependencies]
-serde = { version = "1.0", features = ["derive"], optional = true }
-sha2 = "0.10"
-sha1 = "0.10"
-hmac = "0.12"
-base32 = "0.5"
-urlencoding = { version = "2.1", optional = true}
-url = { version = "2.4", optional = true }
-constant_time_eq = "0.3"
-rand = { version = "0.9", features = ["thread_rng"], optional = true, default-features = false }
-zeroize = { version = "1.6", features = ["alloc", "derive"], optional = true }
-qrcodegen-image = { version = "1.4", features = ["base64"], optional = true }
+sha2 = { version = "0.10", default-features = false }
+sha1 = { version = "0.10", default-features = false }
+hmac = { version = "0.12", default-features = false }
+base32 = { version = "0.5", default-features = false }
+constant_time_eq = { version = "0.3", default-features = false }
+
+serde = { version = "1.0", features = [
+  "alloc",
+  "derive",
+], optional = true, default-features = false }
+url = { version = "2.4", default-features = false, optional = true }
+urlencoding = { version = "2.1", optional = true, default-features = false }
+rand = { version = "0.9", features = [
+  "thread_rng",
+], optional = true, default-features = false }
+zeroize = { version = "1.6", features = [
+  "alloc",
+  "derive",
+], optional = true, default-features = false }
+qrcodegen-image = { version = "1.4", features = [
+  "base64",
+], optional = true, default-features = false }

@@ -77,8 +77,8 @@
 //! # }
 //! ```
 
+use alloc::{string::String, vec::Vec};
 use base32::{self, Alphabet};
-
 use constant_time_eq::constant_time_eq;
 
 /// Different ways secret parsing failed.
@@ -88,17 +88,17 @@ pub enum SecretParseError {
     ParseBase32,
 }
 
-impl std::error::Error for SecretParseError {}
+impl core::error::Error for SecretParseError {}
 
-impl std::fmt::Display for SecretParseError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for SecretParseError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             SecretParseError::ParseBase32 => write!(f, "Could not decode base32 secret."),
         }
     }
 }
 
-impl std::error::Error for Secret {}
+impl core::error::Error for Secret {}
 
 /// Shared secret between client and server to validate token against/generate token from.
 #[derive(Debug, Clone, Eq)]
@@ -178,8 +178,8 @@ impl Secret {
     }
 }
 
-impl std::fmt::Display for Secret {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for Secret {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Secret::Raw(bytes) => {
                 for b in bytes {
@@ -269,7 +269,7 @@ mod tests {
     #[cfg(feature = "gen_secret")]
     fn secret_empty() {
         let non_ascii = vec![240, 159, 146, 150];
-        let sec = Secret::Encoded(std::str::from_utf8(&non_ascii).unwrap().to_owned());
+        let sec = Secret::Encoded(core::str::from_utf8(&non_ascii).unwrap().to_owned());
 
         let to_r = sec.to_raw();
 

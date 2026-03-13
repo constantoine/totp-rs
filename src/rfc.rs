@@ -1,12 +1,14 @@
-use crate::Algorithm;
-use crate::TotpUrlError;
-use crate::TOTP;
+use crate::{Algorithm, TotpUrlError, TOTP};
+use alloc::vec::Vec;
 
 #[cfg(feature = "serde_support")]
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "zeroize")]
 use zeroize;
+
+#[cfg(feature = "otpauth")]
+use alloc::string::{String, ToString};
 
 /// Error returned when input is not compliant to [rfc-6238](https://tools.ietf.org/html/rfc6238).
 #[derive(Debug, Eq, PartialEq)]
@@ -17,10 +19,10 @@ pub enum Rfc6238Error {
     SecretTooSmall(usize),
 }
 
-impl std::error::Error for Rfc6238Error {}
+impl core::error::Error for Rfc6238Error {}
 
-impl std::fmt::Display for Rfc6238Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for Rfc6238Error {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Rfc6238Error::InvalidDigits(digits) => write!(
                 f,
@@ -118,7 +120,7 @@ impl Rfc6238 {
         let validate = || {
             assert_digits(&digits)?;
             assert_secret_length(secret.as_ref())?;
-    
+
             // NOTE: Unfortunate lack of issuer and account_name checks.
             // Will be fixed in 6.0 cause it would be breaking anyway.
 
@@ -218,7 +220,7 @@ impl TryFrom<Rfc6238> for TOTP {
             rfc.digits,
             rfc.skew,
             rfc.step,
-            std::mem::take(&mut rfc.secret),
+            core::mem::take(&mut rfc.secret),
         )
     }
 }
@@ -234,9 +236,9 @@ impl TryFrom<Rfc6238> for TOTP {
             rfc.digits,
             rfc.skew,
             rfc.step,
-            std::mem::take(&mut rfc.secret),
-            std::mem::take(&mut rfc.issuer),
-            std::mem::take(&mut rfc.account_name),
+            core::mem::take(&mut rfc.secret),
+            core::mem::take(&mut rfc.issuer),
+            core::mem::take(&mut rfc.account_name),
         )
     }
 }
