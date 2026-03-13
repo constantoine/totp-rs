@@ -1,6 +1,8 @@
 #[cfg(feature = "otpauth")]
 use url::ParseError;
 
+use alloc::string::String;
+
 use crate::Rfc6238Error;
 
 /// Errors returned mostly upon decoding URL.
@@ -38,10 +40,10 @@ pub enum TotpUrlError {
     AccountNameDecoding(String),
 }
 
-impl std::error::Error for TotpUrlError {}
+impl core::error::Error for TotpUrlError {}
 
-impl std::fmt::Display for TotpUrlError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for TotpUrlError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             TotpUrlError::AccountName(name) => write!(
                 f,
