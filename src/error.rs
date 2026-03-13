@@ -1,5 +1,5 @@
 #[cfg(feature = "otpauth")]
-use url::ParseError;
+use {alloc::string::String, url::ParseError};
 
 #[derive(Debug, Eq, PartialEq)]
 #[non_exhaustive]
@@ -55,8 +55,8 @@ pub enum TotpError {
     IssuerMismatch { path: String, query: String },
 }
 
-impl std::fmt::Display for TotpError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for TotpError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             TotpError::SecretTooShort { bits } => write!(
                 f,
@@ -123,8 +123,8 @@ impl std::fmt::Display for TotpError {
     }
 }
 
-impl std::error::Error for TotpError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+impl core::error::Error for TotpError {
+    fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
         match self {
             #[cfg(feature = "otpauth")]
             TotpError::UrlParse(e) => Some(e),
@@ -309,7 +309,7 @@ mod test {
 
     #[test]
     fn error_source_none() {
-        use std::error::Error;
+        use core::error::Error;
 
         let error = TotpError::SecretTooShort { bits: 64 };
         assert!(error.source().is_none());
@@ -324,7 +324,7 @@ mod test {
     #[test]
     #[cfg(feature = "otpauth")]
     fn error_source_url_parse() {
-        use std::error::Error;
+        use core::error::Error;
 
         let parse_error = url::ParseError::EmptyHost;
         let error = TotpError::UrlParse(parse_error);
@@ -336,7 +336,7 @@ mod test {
     #[test]
     #[cfg(feature = "otpauth")]
     fn error_source_none_otpauth_variants() {
-        use std::error::Error;
+        use core::error::Error;
 
         let error = TotpError::InvalidAlgorithm {
             algorithm: "MD5".to_string(),
