@@ -1,28 +1,18 @@
-#[cfg(all(feature = "gen_secret", feature = "otpauth"))]
-use totp_rs::{Algorithm, Secret, Totp};
+use totp_rs::{Builder, Totp};
 
-#[cfg(all(feature = "gen_secret", feature = "otpauth"))]
+#[cfg(not(feature = "otpauth"))]
 fn main() {
-    let secret = Secret::generate_secret();
+    let totp: Totp = Builder::new().build().unwrap();
 
-    let totp = Totp::new(
-        Algorithm::SHA1,
-        6,
-        1,
-        30,
-        secret.to_bytes().unwrap(),
-        None,
-        "account".to_string(),
-    )
-    .unwrap();
-
-    println!(
-        "secret raw: {} ; secret base32 {} ; code: {}",
-        secret,
-        secret.to_encoded(),
-        totp.generate_current().unwrap()
-    )
+    println!("code: {}", totp.generate_current().unwrap())
 }
 
-#[cfg(not(all(feature = "gen_secret", feature = "otpauth")))]
-fn main() {}
+#[cfg(feature = "otpauth")]
+fn main() {
+    let totp: Totp = Builder::new()
+        .with_account_name("Constantoine".to_string())
+        .build()
+        .unwrap();
+
+    println!("code: {}", totp.generate_current().unwrap())
+}

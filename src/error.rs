@@ -6,11 +6,13 @@ use url::ParseError;
 pub enum TotpError {
     // === Parameter validation errors ===
     /// Digits must be 6, 7, or 8.
-    InvalidDigits { digits: usize },
+    InvalidDigits { digits: u32 },
     /// Step is zero.
     InvalidStepZero,
     /// Secret is shorter than 128 bits (16 bytes).
     SecretTooShort { bits: usize },
+    /// Secret was not set in builder.
+    SecretNotSet,
 
     // === URL parsing errors (otpauth feature) ===
     #[cfg(feature = "otpauth")]
@@ -65,6 +67,10 @@ impl std::fmt::Display for TotpError {
                 write!(f, "Digits must be 6, 7, or 8, not {}", digits,)
             }
             TotpError::InvalidStepZero => write!(f, "Step cannot be 0."),
+            TotpError::SecretNotSet => write!(
+                f,
+                "Secret was not set in builder. Consider using the `gen_secret` feature"
+            ),
             #[cfg(feature = "otpauth")]
             TotpError::UrlParse(e) => write!(f, "Error parsing URL: {}", e),
             #[cfg(feature = "otpauth")]
