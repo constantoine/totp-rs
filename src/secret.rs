@@ -162,12 +162,7 @@ impl Secret {
     #[cfg(feature = "gen_secret")]
     #[cfg_attr(docsrs, doc(cfg(feature = "gen_secret")))]
     pub fn generate_secret() -> Secret {
-        use rand::prelude::*;
-
-        let mut rng = rand::rng();
-        let mut secret: [u8; 20] = Default::default();
-        rng.fill(&mut secret[..]);
-        Secret::Raw(secret.to_vec())
+        Secret::Raw(generate_random_bytes().to_vec())
     }
 }
 
@@ -183,6 +178,25 @@ impl core::fmt::Display for Secret {
             Secret::Encoded(s) => write!(f, "{}", s),
         }
     }
+}
+
+#[cfg(feature = "gen_secret")]
+#[cfg_attr(docsrs, doc(cfg(feature = "gen_secret")))]
+pub(crate) fn generate_random_bytes() -> [u8; 20] {
+    use rand::RngExt as _;
+
+    // Attempt to use the thread-local CSPRNG from rand::rng() if `std` is enabled.
+    // Otherwise, fallback to creating the same CSPRNG ourselves.
+    // Cryptographically, these are equally secure, enabling `std` just allows
+    // for potentially better performance, as seeding ChaCha12Rng has some initialisation cost.
+    #[cfg(feature = "std")]
+    let mut rng = rand::rng();
+    #[cfg(not(feature = "std"))]
+    let mut rng = rand::make_rng::<rand::rngs::ChaCha12Rng>();
+
+    let mut secret = [0u8; _];
+    rng.fill(&mut secret[..]);
+    secret
 }
 
 #[cfg(test)]
