@@ -1,5 +1,10 @@
 use crate::{Algorithm, Builder, Totp, TotpError};
-
+use alloc::{
+    borrow::ToOwned,
+    format,
+    string::{String, ToString},
+    vec,
+};
 use url::{Host, Url};
 
 #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]

@@ -1,14 +1,20 @@
+use alloc::{
+    boxed::Box,
+    format,
+    string::{String, ToString},
+    vec::Vec,
+};
+use core::error::Error;
+use core::fmt;
+use core::str::FromStr;
 use hmac::Mac;
-type HmacSha1 = hmac::Hmac<sha1::Sha1>;
-type HmacSha256 = hmac::Hmac<sha2::Sha256>;
-type HmacSha512 = hmac::Hmac<sha2::Sha512>;
 
 #[cfg(feature = "serde_support")]
 use serde::{Deserialize, Serialize};
 
-use std::error::Error;
-use std::fmt;
-use std::str::FromStr;
+type HmacSha1 = hmac::Hmac<sha1::Sha1>;
+type HmacSha256 = hmac::Hmac<sha2::Sha256>;
+type HmacSha512 = hmac::Hmac<sha2::Sha512>;
 
 /// Alphabet for Steam tokens.
 #[cfg(feature = "steam")]
