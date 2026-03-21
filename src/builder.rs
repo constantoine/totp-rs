@@ -6,9 +6,6 @@ use alloc::vec::Vec;
 #[cfg(feature = "otpauth")]
 use alloc::string::{String, ToString};
 
-#[cfg(feature = "gen_secret")]
-use alloc::vec;
-
 /// Builder used to build a [Totp] with sane defaults.
 /// Because it contains the sensitive data of the HMAC secret, treat it accordingly.
 #[cfg_attr(feature = "zeroize", derive(zeroize::Zeroize, zeroize::ZeroizeOnDrop))]
@@ -33,15 +30,7 @@ impl Builder {
     /// After build, use [Totp::to_secret_binary] or [Totp::to_secret_base32] to retrieve the newly generated secret.
     pub fn new() -> Self {
         #[cfg(feature = "gen_secret")]
-        let mut secret = {
-            use rand::prelude::*;
-
-            let mut rng = rand::rng();
-            let mut secret: InnerSecret = vec![0; 20].into();
-            rng.fill(&mut secret[..]);
-
-            Some(secret)
-        };
+        let mut secret = Some(Vec::from(crate::secret::generate_random_bytes()).into());
 
         #[cfg(not(feature = "gen_secret"))]
         let mut secret = None;

@@ -9,7 +9,7 @@ use core::fmt;
 use core::str::FromStr;
 use hmac::Mac;
 
-#[cfg(feature = "serde_support")]
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 type HmacSha1 = hmac::Hmac<sha1::Sha1>;
@@ -22,8 +22,8 @@ pub(super) const STEAM_CHARS: &str = "23456789BCDFGHJKMNPQRTVWXY";
 
 /// Algorithm enum holds the three standards algorithms for TOTP as per the [reference implementation](https://tools.ietf.org/html/rfc6238#appendix-A)
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-#[cfg_attr(feature = "serde_support", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "serde_support", serde(try_from = "String", into = "String"))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(try_from = "String", into = "String"))]
 pub enum Algorithm {
     /// HMAC-SHA1 is the default algorithm of most TOTP implementations.
     /// Some will outright silently ignore the algorithm parameter to force using SHA1, leading to confusion.

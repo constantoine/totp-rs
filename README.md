@@ -20,9 +20,9 @@ With optional feature "qr", you can use it to generate a base64 png qrcode. This
 
 With optional feature "otpauth", support parsing the TOTP parameters from an `otpauth` URL, and generating an `otpauth` URL. It adds 2 fields to `Totp`.
 
-### serde_support
+### serde
 
-With optional feature "serde_support", library-defined types `Totp` and `Algorithm` and will be Deserialize-able and Serialize-able.
+With optional feature "serde", library-defined types `Totp` and `Algorithm` and will be Deserialize-able and Serialize-able.
 
 ### gen_secret
 
@@ -152,7 +152,7 @@ Add it to your `Cargo.toml`:
 ```toml
 [dependencies.totp-rs]
 version = "^5.0"
-features = ["serde_support"]
+features = ["serde"]
 ```
 
 ### With otpauth url support

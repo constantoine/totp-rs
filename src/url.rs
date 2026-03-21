@@ -48,8 +48,8 @@ impl crate::Totp {
         builder.secret = None;
 
         let path = url.path().trim_start_matches('/');
-        let path = urlencoding::decode(path)
-            .map_err(|_| TotpError::AccountNameDecode {
+        let path = percent_decode(path)
+            .ok_or_else(|| TotpError::AccountNameDecode {
                 value: path.to_string(),
             })?
             .to_string();
@@ -65,8 +65,8 @@ impl crate::Totp {
             account_name = path;
         }
 
-        let account_name = urlencoding::decode(account_name.as_str())
-            .map_err(|_| TotpError::AccountNameDecode {
+        let account_name = percent_decode(account_name.as_str())
+            .ok_or_else(|| TotpError::AccountNameDecode {
                 value: account_name.to_string(),
             })?
             .to_string();
@@ -165,7 +165,7 @@ impl crate::Totp {
         if self.algorithm == Algorithm::Steam {
             host = "steam";
         }
-        let account_name = urlencoding::encode(self.account_name.as_str()).to_string();
+        let account_name = percent_encode(self.account_name.as_str()).to_string();
         let mut params = vec![format!("secret={}", self.to_secret_base32())];
         if self.digits != 6 {
             params.push(format!("digits={}", self.digits));
@@ -174,7 +174,7 @@ impl crate::Totp {
             params.push(format!("algorithm={}", self.algorithm));
         }
         let label = if let Some(issuer) = &self.issuer {
-            let issuer = urlencoding::encode(issuer);
+            let issuer = percent_encode(issuer);
             params.push(format!("issuer={}", issuer));
             format!("{}:{}", issuer, account_name)
         } else {
@@ -186,6 +186,24 @@ impl crate::Totp {
 
         format!("otpauth://{}/{}?{}", host, label, params.join("&"))
     }
+}
+
+fn percent_decode(input: &str) -> Option<impl core::fmt::Display + Clone + '_> {
+    let decoded = percent_encoding::percent_decode_str(input)
+        .decode_utf8()
+        .ok()?;
+
+    Some(decoded)
+}
+
+fn percent_encode(input: &str) -> impl core::fmt::Display + Clone + '_ {
+    const URL_INCOMPATIBLE: &percent_encoding::AsciiSet = &percent_encoding::NON_ALPHANUMERIC
+        .remove(b'-')
+        .remove(b'_')
+        .remove(b'.')
+        .remove(b'~');
+
+    percent_encoding::utf8_percent_encode(input, URL_INCOMPATIBLE)
 }
 
 #[cfg(test)]
