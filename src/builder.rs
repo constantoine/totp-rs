@@ -1,39 +1,35 @@
-use crate::error::TotpError;
-use crate::secret::InnerSecret;
-use crate::{Algorithm, Totp};
-use alloc::vec::Vec;
-
-#[cfg(feature = "otpauth")]
-use alloc::string::{String, ToString};
+use crate::{Algorithm, Secret, Totp, TotpError};
 
 /// Builder used to build a [Totp] with sane defaults.
 /// Because it contains the sensitive data of the HMAC secret, treat it accordingly.
 #[cfg_attr(feature = "zeroize", derive(zeroize::Zeroize, zeroize::ZeroizeOnDrop))]
 pub struct Builder {
     #[cfg_attr(feature = "zeroize", zeroize(skip))]
-    pub(super) algorithm: Algorithm,
-    pub(super) digits: u32,
-    pub(super) secret: Option<InnerSecret>,
-    pub(super) skew: u32,
-    pub(super) step_duration: u64,
+    pub(crate) algorithm: Algorithm,
+    digits: u32,
+    secret: Option<Secret>,
+    skew: u16,
+    step_duration: u64,
 
     #[cfg(feature = "otpauth")]
-    pub(super) account_name: String,
+    account_name: alloc::boxed::Box<str>,
     #[cfg(feature = "otpauth")]
-    pub(super) issuer: Option<String>,
+    issuer: Option<alloc::boxed::Box<str>>,
+}
+
+impl Default for Builder {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Builder {
     /// New Builder.
     /// If `gen_secret` is enabled, [Self::new] will generate a new, safe-to-use, secret.
     /// in case `gen_secret` is enabled, [Totp::default] will be equivalent to calling [Self::new] followed by [Self::build] in which case
-    /// After build, use [Totp::to_secret_binary] or [Totp::to_secret_base32] to retrieve the newly generated secret.
+    /// After build, use [Totp::secret] to retrieve the newly generated secret.
     pub fn new() -> Self {
-        #[cfg(feature = "gen_secret")]
-        let mut secret = Some(Vec::from(crate::secret::generate_random_bytes()).into());
-
-        #[cfg(not(feature = "gen_secret"))]
-        let mut secret = None;
+        let mut secret = crate::secret::generate_random_bytes().map(Secret::from);
 
         Builder {
             algorithm: Algorithm::SHA1,
@@ -42,7 +38,7 @@ impl Builder {
             skew: 1,
             step_duration: 30,
             #[cfg(feature = "otpauth")]
-            account_name: "".to_string(),
+            account_name: "".into(),
             #[cfg(feature = "otpauth")]
             issuer: None,
         }
@@ -71,8 +67,17 @@ impl Builder {
     /// Unless called, and if feature `gen_secret` is enabled, a random 160bits secret from a strong source will be the default value.
     ///
     /// If feature `gen_secret` is not enabled, then not calling this method will result in [Self::build] to fail.
-    pub fn with_secret(mut self, secret: Vec<u8>) -> Self {
+    pub fn with_secret(mut self, secret: impl Into<Secret>) -> Self {
         self.secret = Some(secret.into());
+
+        self
+    }
+
+    /// Removes the current [`Secret`], if any has been set.
+    ///
+    /// If [Self::with_secret] isn't called after this, [Self::build] will fail.
+    pub fn without_secret(mut self) -> Self {
+        self.secret = None;
 
         self
     }
@@ -80,7 +85,7 @@ impl Builder {
     /// Number of steps allowed as network delay. 1 would mean one step before current step and one step after are valids. The recommended value per [rfc-6238](https://tools.ietf.org/html/rfc6238#section-5.2) is 1. Anything more is sketchy, and anyone recommending more is, by definition, ugly and stupid.
     ///
     /// Unless called, the default value will be 1.
-    pub fn with_skew(mut self, skew: u32) -> Self {
+    pub fn with_skew(mut self, skew: u16) -> Self {
         self.skew = skew;
 
         self
@@ -101,8 +106,8 @@ impl Builder {
     /// Not calling this method will result in [Self::build] to fail.
     #[cfg(feature = "otpauth")]
     #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
-    pub fn with_account_name(mut self, account_name: String) -> Self {
-        self.account_name = account_name;
+    pub fn with_account_name(mut self, account_name: impl Into<alloc::boxed::Box<str>>) -> Self {
+        self.account_name = account_name.into();
 
         self
     }
@@ -114,8 +119,19 @@ impl Builder {
     /// Unless called, an issuer will not be present.
     #[cfg(feature = "otpauth")]
     #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
-    pub fn with_issuer(mut self, issuer: Option<String>) -> Self {
-        self.issuer = issuer;
+    pub fn with_issuer(mut self, issuer: impl Into<alloc::boxed::Box<str>>) -> Self {
+        self.issuer = Some(issuer.into());
+
+        self
+    }
+
+    /// Removes the "Github" part of "Github:constantoine@github.com", as an example.
+    ///
+    /// See also [`with_issuer`](Builder::with_issuer).
+    #[cfg(feature = "otpauth")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
+    pub fn without_issuer(mut self) -> Self {
+        self.issuer = None;
 
         self
     }
@@ -125,7 +141,7 @@ impl Builder {
     /// # Example
     ///
     /// ```rust
-    /// # #[cfg(not(feature = "otpauth"))] {
+    /// # #[cfg(feature = "std")] {
     /// use totp_rs::{Algorithm, Builder, Totp};
     ///
     /// let secret: Vec<u8> = vec![0; 20]; // You want an actual 20bytes of randomness here.
@@ -147,22 +163,28 @@ impl Builder {
     pub fn build(self) -> Result<Totp, TotpError> {
         let secret = self.secret.as_ref().ok_or(TotpError::SecretNotSet)?;
 
-        #[cfg(feature = "steam")]
-        {
-            if self.algorithm != Algorithm::Steam {
+        match self.algorithm {
+            Algorithm::SHA1 | Algorithm::SHA256 | Algorithm::SHA512 => {
                 crate::rfc::assert_digits(self.digits)?;
             }
+            #[cfg(feature = "steam")]
+            Algorithm::Steam => {
+                // TODO: Should this assert 5 digits?
+            }
         }
-
-        #[cfg(not(feature = "steam"))]
-        crate::rfc::assert_digits(self.digits)?;
-        crate::rfc::assert_secret_length(secret)?;
 
         #[cfg(feature = "otpauth")]
         {
             crate::rfc::assert_issuer_valid(&self.issuer)?;
-            crate::rfc::assert_account_name_valid(&self.account_name)?;
+
+            // Allow an empty account name to ensure enabling `otpauth` does not break
+            // existing code.
+            if !self.account_name.is_empty() {
+                crate::rfc::assert_account_name_valid(&self.account_name)?;
+            }
         }
+
+        crate::rfc::assert_secret_length(secret.as_ref())?;
 
         Ok(self.build_noncompliant())
     }
@@ -174,6 +196,7 @@ impl Builder {
     /// # Example
     ///
     /// ```rust
+    /// # #[cfg(feature = "alloc")] {
     /// use totp_rs::{Algorithm, Builder, Totp};
     ///
     /// let secret: Vec<u8> = Vec::new(); // You want an actual 20bytes of randomness here.
@@ -183,6 +206,7 @@ impl Builder {
     ///     with_secret(secret).
     ///     with_digits(10). // Not RFC-compliant.
     ///     build_noncompliant();
+    /// # }
     /// ```
     pub fn build_noncompliant(mut self) -> Totp {
         Totp {
@@ -190,7 +214,7 @@ impl Builder {
             digits: self.digits,
             skew: self.skew,
             step: self.step_duration,
-            secret: core::mem::take(&mut self.secret).unwrap_or_default(),
+            secret: core::mem::take(&mut self.secret).unwrap_or_else(Secret::empty),
 
             #[cfg(feature = "otpauth")]
             issuer: core::mem::take(&mut self.issuer),

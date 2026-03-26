@@ -53,6 +53,11 @@ pub enum TotpError {
     #[cfg(feature = "otpauth")]
     /// Issuer in path differs from issuer in query parameter.
     IssuerMismatch { path: String, query: String },
+
+    // === QR Code Errors (qr feature) ===
+    #[cfg(feature = "qr")]
+    /// The generated URL is too long to encode as a QR code.
+    URLTooLong { url: String },
 }
 
 impl core::fmt::Display for TotpError {
@@ -118,6 +123,11 @@ impl core::fmt::Display for TotpError {
                 f,
                 "Issuer mismatch: path contains \"{}\" but query parameter contains \"{}\"",
                 path, query
+            ),
+            #[cfg(feature = "qr")]
+            TotpError::URLTooLong { url } => write!(
+                f,
+                "Could not generate a QR code: the generated URL is too long to encode: {url}"
             ),
         }
     }

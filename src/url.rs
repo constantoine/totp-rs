@@ -1,4 +1,4 @@
-use crate::{Algorithm, Builder, Totp, TotpError};
+use crate::{Algorithm, Builder, Secret, Totp, TotpError};
 use alloc::{
     borrow::ToOwned,
     format,
@@ -45,7 +45,7 @@ impl crate::Totp {
             }
         }
 
-        builder.secret = None;
+        builder = builder.without_secret();
 
         let path = url.path().trim_start_matches('/');
         let path = percent_decode(path)
@@ -59,7 +59,7 @@ impl crate::Totp {
         if path.contains(':') {
             let parts = path.split_once(':').unwrap();
             issuer = Some(parts.0.to_owned());
-            builder = builder.with_issuer(issuer.clone());
+            builder = builder.with_issuer(parts.0);
             account_name = parts.1.to_owned();
         } else {
             account_name = path;
@@ -111,11 +111,8 @@ impl crate::Totp {
                     builder = builder.with_step_duration(step_duration);
                 }
                 "secret" => {
-                    let secret = base32::decode(
-                        base32::Alphabet::Rfc4648 { padding: false },
-                        value.as_ref(),
-                    )
-                    .ok_or_else(|| TotpError::InvalidSecret)?;
+                    let secret =
+                        Secret::try_from_base32(value).map_err(|_| TotpError::InvalidSecret)?;
 
                     builder = builder.with_secret(secret);
                 }
@@ -136,8 +133,8 @@ impl crate::Totp {
                         });
                     }
 
+                    builder = builder.with_issuer(&*param_issuer);
                     issuer = Some(param_issuer);
-                    builder = builder.with_issuer(issuer.clone());
                 }
                 _ => {}
             }
@@ -148,7 +145,7 @@ impl crate::Totp {
             builder = builder
                 .with_algorithm(Algorithm::Steam)
                 .with_digits(5)
-                .with_issuer(Some("Steam".to_string()));
+                .with_issuer("Steam");
         }
 
         Ok(builder)
@@ -158,15 +155,18 @@ impl crate::Totp {
     ///
     /// Label and issuer will be URL-encoded if needed be
     /// Secret will be base 32'd without padding, as per RFC.
-    pub fn to_url(&self) -> String {
+    pub fn to_url(&self) -> Result<String, TotpError> {
+        #[cfg(feature = "otpauth")]
+        crate::rfc::assert_account_name_valid(&self.account_name)?;
+
         #[allow(unused_mut)]
         let mut host = "totp";
         #[cfg(feature = "steam")]
         if self.algorithm == Algorithm::Steam {
             host = "steam";
         }
-        let account_name = percent_encode(self.account_name.as_str()).to_string();
-        let mut params = vec![format!("secret={}", self.to_secret_base32())];
+        let account_name = percent_encode(&self.account_name).to_string();
+        let mut params = vec![format!("secret={}", self.secret().to_base32())];
         if self.digits != 6 {
             params.push(format!("digits={}", self.digits));
         }
@@ -184,7 +184,7 @@ impl crate::Totp {
             params.push(format!("period={}", self.step));
         }
 
-        format!("otpauth://{}/{}?{}", host, label, params.join("&"))
+        Ok(format!("otpauth://{}/{}?{}", host, label, params.join("&")))
     }
 }
 

@@ -1,9 +1,6 @@
 #[cfg(feature = "steam")]
 use crate::{Algorithm, Builder};
 
-#[cfg(all(feature = "steam", feature = "otpauth"))]
-use alloc::string::ToString;
-
 #[cfg(feature = "steam")]
 #[cfg_attr(docsrs, doc(cfg(feature = "steam")))]
 impl Builder {
@@ -14,17 +11,14 @@ impl Builder {
     #[cfg(feature = "steam")]
     #[cfg_attr(docsrs, doc(cfg(feature = "steam")))]
     pub fn new_steam() -> Self {
-        let mut new = Self::new();
-
-        new.algorithm = Algorithm::Steam;
-        new.digits = 5;
-        new.skew = 1;
-        new.step_duration = 30;
+        let new = Self::new()
+            .with_algorithm(Algorithm::Steam)
+            .with_digits(5)
+            .with_skew(1)
+            .with_step_duration(30);
 
         #[cfg(feature = "otpauth")]
-        {
-            new.issuer = Some("Steam".to_string());
-        }
+        let new = new.with_issuer("Steam");
 
         new
     }

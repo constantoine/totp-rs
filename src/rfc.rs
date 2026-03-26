@@ -1,13 +1,10 @@
 use crate::TotpError;
 
-#[cfg(feature = "otpauth")]
-use alloc::string::String;
-
 // Check that the number of digits is RFC-compliant.
 // (between 6 and 8 inclusive).
 pub fn assert_digits(digits: u32) -> Result<(), TotpError> {
     if !(6..=8).contains(&digits) {
-        return Err(TotpError::InvalidDigits { digits: digits });
+        return Err(TotpError::InvalidDigits { digits });
     }
 
     Ok(())
@@ -27,10 +24,10 @@ pub fn assert_secret_length(secret: &[u8]) -> Result<(), TotpError> {
 
 // Checks that account_name is not empty AND doesn't contain `:`.
 #[cfg(feature = "otpauth")]
-pub fn assert_account_name_valid(account_name: &String) -> Result<(), TotpError> {
+pub fn assert_account_name_valid(account_name: &str) -> Result<(), TotpError> {
     if account_name.is_empty() || account_name.contains(':') {
         return Err(TotpError::InvalidAccountName {
-            value: account_name.clone(),
+            value: account_name.into(),
         });
     }
 
@@ -39,13 +36,13 @@ pub fn assert_account_name_valid(account_name: &String) -> Result<(), TotpError>
 
 // Checks that issuer is either unset (not recommended) or doesn't contain `:`.
 #[cfg(feature = "otpauth")]
-pub fn assert_issuer_valid(issuer: &Option<String>) -> Result<(), TotpError> {
-    if let Some(issuer) = issuer {
-        if issuer.contains(':') {
-            return Err(TotpError::InvalidIssuer {
-                value: issuer.clone(),
-            });
-        }
+pub fn assert_issuer_valid(issuer: &Option<impl AsRef<str>>) -> Result<(), TotpError> {
+    if let Some(issuer) = issuer
+        && issuer.as_ref().contains(':')
+    {
+        return Err(TotpError::InvalidIssuer {
+            value: issuer.as_ref().into(),
+        });
     }
 
     Ok(())
