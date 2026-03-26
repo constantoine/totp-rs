@@ -54,8 +54,16 @@ qrcodegen-image = { version = "1.5", features = [
 
 [[example]]
 name = "steam"
-required-features = ["steam"]
+required-features = ["steam", "std"]
 
 [[example]]
 name = "gen_secret"
-required-features = ["gen_secret", "otpauth"]
+required-features = ["gen_secret", "std"]
+
+[[example]]
+name = "ttl"
+required-features = ["std"]
+
+[[example]]
+name = "qr_code"
+required-features = ["qr"]

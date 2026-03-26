@@ -227,16 +227,16 @@ impl Builder {
 #[cfg(test)]
 mod tests {
     use crate::error::TotpError;
-    use crate::secret::InnerSecret;
     use crate::{Algorithm, Builder};
 
+    #[cfg_attr(not(feature = "alloc"), expect(dead_code))]
     const GOOD_SECRET: &str = "01234567890123456789";
+    #[cfg_attr(not(feature = "alloc"), expect(dead_code))]
     const SHORT_SECRET: &str = "tooshort";
 
     // === Defaults ===
 
     #[test]
-    #[cfg(not(feature = "otpauth"))]
     fn defaults_without_secret() {
         let builder = Builder::new();
         assert_eq!(builder.algorithm, Algorithm::SHA1);
@@ -246,10 +246,19 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(feature = "gen_secret"))]
+    fn defaults_without_secret_like_new() {
+        let expected = Builder::new();
+        let default = Builder::default();
+        assert_eq!(expected.algorithm, default.algorithm);
+        assert_eq!(expected.digits, default.digits);
+        assert_eq!(expected.skew, default.skew);
+        assert_eq!(expected.step_duration, default.step_duration);
+    }
+
+    #[test]
     fn defaults_secret_is_none_without_gen_secret() {
         let builder = Builder::new();
-        assert!(builder.secret.is_none());
+        assert!(cfg!(feature = "gen_secret") ^ builder.secret.is_none());
     }
 
     #[test]
@@ -264,7 +273,7 @@ mod tests {
     #[cfg(feature = "otpauth")]
     fn defaults_otpauth_fields() {
         let builder = Builder::new();
-        assert_eq!(builder.account_name, "");
+        assert_eq!(&*builder.account_name, "");
         assert!(builder.issuer.is_none());
     }
 
@@ -283,14 +292,12 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "alloc")]
     fn with_secret() {
-        let builder = Builder::new().with_secret(GOOD_SECRET.into());
-        let to_compare: InnerSecret = GOOD_SECRET.as_bytes().to_vec().into();
+        let builder = Builder::new().with_secret(GOOD_SECRET.as_bytes());
+        let to_compare = GOOD_SECRET.as_bytes();
 
-        assert_eq!(
-            core::mem::take(&mut builder.secret.clone().unwrap()),
-            to_compare
-        );
+        assert_eq!(builder.secret.as_deref(), Some(to_compare));
     }
 
     #[test]
@@ -308,41 +315,50 @@ mod tests {
     #[test]
     #[cfg(feature = "otpauth")]
     fn with_account_name() {
-        let builder = Builder::new().with_account_name("user@example.com".to_string());
-        assert_eq!(builder.account_name, "user@example.com");
+        let builder = Builder::new().with_account_name("user@example.com");
+        assert_eq!(&*builder.account_name, "user@example.com");
     }
 
     #[test]
     #[cfg(feature = "otpauth")]
     fn with_issuer() {
-        let builder = Builder::new().with_issuer(Some("Github".to_string()));
-        assert_eq!(builder.issuer, Some("Github".to_string()));
+        let builder = Builder::new().with_issuer("Github");
+        assert_eq!(builder.issuer.as_deref().as_ref(), Some(&"Github"));
+    }
+
+    #[test]
+    #[cfg(feature = "otpauth")]
+    fn without_issuer() {
+        let builder = Builder::new().with_issuer("Github");
+        assert_eq!(builder.issuer.as_deref().as_ref(), Some(&"Github"));
+        let builder = builder.without_issuer();
+        assert_eq!(builder.issuer.as_ref(), None);
     }
 
     // === build() success ===
 
     #[test]
-    #[cfg(not(feature = "otpauth"))]
+    #[cfg(feature = "alloc")]
     fn build_ok() {
-        let totp = Builder::new().with_secret(GOOD_SECRET.into()).build();
+        let totp = Builder::new().with_secret(GOOD_SECRET.as_bytes()).build();
         assert!(totp.is_ok());
         let totp = totp.unwrap();
         assert_eq!(totp.algorithm, Algorithm::SHA1);
         assert_eq!(totp.digits, 6);
         assert_eq!(totp.skew, 1);
         assert_eq!(totp.step, 30);
-        assert_eq!(totp.to_secret_binary(), GOOD_SECRET.as_bytes());
+        assert_eq!(totp.secret().as_bytes(), GOOD_SECRET.as_bytes());
     }
 
     #[test]
-    #[cfg(not(feature = "otpauth"))]
+    #[cfg(feature = "alloc")]
     fn build_with_all_fields() {
         let totp = Builder::new()
             .with_algorithm(Algorithm::SHA512)
             .with_digits(8)
             .with_skew(2)
             .with_step_duration(60)
-            .with_secret(GOOD_SECRET.into())
+            .with_secret(GOOD_SECRET.as_bytes())
             .build()
             .unwrap();
         assert_eq!(totp.algorithm, Algorithm::SHA512);
@@ -355,21 +371,21 @@ mod tests {
     #[cfg(feature = "otpauth")]
     fn build_ok_otpauth() {
         let result = Builder::new()
-            .with_secret(GOOD_SECRET.into())
-            .with_account_name("user@example.com".to_string())
-            .with_issuer(Some("Github".to_string()))
+            .with_secret(GOOD_SECRET.as_bytes())
+            .with_account_name("user@example.com")
+            .with_issuer("Github")
             .build();
         assert!(result.is_ok());
         let totp = result.unwrap();
-        assert_eq!(totp.account_name, "user@example.com");
-        assert_eq!(totp.issuer, Some("Github".to_string()));
+        assert_eq!(&*totp.account_name, "user@example.com");
+        assert_eq!(totp.issuer.as_deref().as_ref(), Some(&"Github"));
     }
 
     #[test]
     #[cfg(feature = "otpauth")]
     fn build_ok_without_issuer() {
         let result = Builder::new()
-            .with_secret(GOOD_SECRET.into())
+            .with_secret(GOOD_SECRET.as_bytes())
             .with_account_name("user@example.com".to_string())
             .build();
         assert!(result.is_ok());
@@ -378,17 +394,20 @@ mod tests {
     // === build() failures ===
 
     #[test]
-    #[cfg(not(feature = "gen_secret"))]
     fn build_fails_secret_not_set() {
         let result = Builder::new().build();
-        assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), TotpError::SecretNotSet);
+        if cfg!(feature = "gen_secret") {
+            assert!(result.is_ok());
+        } else {
+            assert!(result.is_err());
+            assert_eq!(result.unwrap_err(), TotpError::SecretNotSet);
+        }
     }
 
     #[test]
-    #[cfg(not(feature = "otpauth"))]
+    #[cfg(feature = "alloc")]
     fn build_fails_secret_too_short() {
-        let builder = Builder::new().with_secret(SHORT_SECRET.into());
+        let builder = Builder::new().with_secret(SHORT_SECRET.as_bytes());
         let result = builder.build();
         assert!(result.is_err());
         assert!(matches!(
@@ -398,10 +417,10 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(feature = "otpauth"))]
+    #[cfg(feature = "alloc")]
     fn build_fails_digits_too_low() {
         let builder = Builder::new()
-            .with_secret(GOOD_SECRET.into())
+            .with_secret(GOOD_SECRET.as_bytes())
             .with_digits(5);
         let result = builder.build();
         assert!(result.is_err());
@@ -409,10 +428,10 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(feature = "otpauth"))]
+    #[cfg(feature = "alloc")]
     fn build_fails_digits_too_high() {
         let builder = Builder::new()
-            .with_secret(GOOD_SECRET.into())
+            .with_secret(GOOD_SECRET.as_bytes())
             .with_digits(9);
         let result = builder.build();
         assert!(result.is_err());
@@ -421,20 +440,16 @@ mod tests {
 
     #[test]
     #[cfg(feature = "otpauth")]
-    fn build_fails_empty_account_name() {
-        let result = Builder::new().with_secret(GOOD_SECRET.into()).build();
-        assert!(result.is_err());
-        assert!(matches!(
-            result.unwrap_err(),
-            TotpError::InvalidAccountName { .. }
-        ));
+    fn build_succeeds_empty_account_name() {
+        let result = Builder::new().with_secret(GOOD_SECRET.as_bytes()).build();
+        assert!(result.is_ok());
     }
 
     #[test]
     #[cfg(feature = "otpauth")]
     fn build_fails_account_name_with_colon() {
         let result = Builder::new()
-            .with_secret(GOOD_SECRET.into())
+            .with_secret(GOOD_SECRET.as_bytes())
             .with_account_name("user:name".to_string())
             .build();
         assert!(result.is_err());
@@ -450,9 +465,9 @@ mod tests {
     #[cfg(feature = "otpauth")]
     fn build_fails_issuer_with_colon() {
         let result = Builder::new()
-            .with_secret(GOOD_SECRET.into())
-            .with_account_name("user@example.com".to_string())
-            .with_issuer(Some("Iss:uer".to_string()))
+            .with_secret(GOOD_SECRET.as_bytes())
+            .with_account_name("user@example.com")
+            .with_issuer("Iss:uer")
             .build();
         assert!(result.is_err());
         assert_eq!(
@@ -466,27 +481,28 @@ mod tests {
     // === build_noncompliant() ===
 
     #[test]
+    #[cfg(feature = "alloc")]
     fn build_noncompliant_allows_invalid_digits() {
         let totp = Builder::new()
-            .with_secret(GOOD_SECRET.into())
+            .with_secret(GOOD_SECRET.as_bytes())
             .with_digits(10)
             .build_noncompliant();
         assert_eq!(totp.digits, 10);
     }
 
     #[test]
+    #[cfg(feature = "alloc")]
     fn build_noncompliant_allows_short_secret() {
         let totp = Builder::new()
-            .with_secret(SHORT_SECRET.into())
+            .with_secret(SHORT_SECRET.as_bytes())
             .build_noncompliant();
-        assert_eq!(totp.to_secret_binary(), SHORT_SECRET.as_bytes());
+        assert_eq!(totp.secret().as_bytes(), SHORT_SECRET.as_bytes());
     }
 
     #[test]
-    #[cfg(not(feature = "gen_secret"))]
     fn build_noncompliant_no_secret_uses_empty_default() {
         let totp = Builder::new().build_noncompliant();
-        assert!(totp.secret.is_empty());
+        assert!(cfg!(feature = "gen_secret") ^ totp.secret.is_empty());
     }
 
     #[test]
@@ -500,20 +516,20 @@ mod tests {
     #[cfg(feature = "otpauth")]
     fn build_noncompliant_allows_invalid_account_name() {
         let totp = Builder::new()
-            .with_secret(GOOD_SECRET.into())
+            .with_secret(GOOD_SECRET.as_bytes())
             .with_account_name("bad:name".to_string())
             .build_noncompliant();
-        assert_eq!(totp.account_name, "bad:name");
+        assert_eq!(&*totp.account_name, "bad:name");
     }
 
     // === Digits boundary values ===
 
     #[test]
-    #[cfg(not(feature = "otpauth"))]
+    #[cfg(feature = "alloc")]
     fn build_accepts_digits() {
         for i in 6..=8 {
             let builder = Builder::new()
-                .with_secret(GOOD_SECRET.into())
+                .with_secret(GOOD_SECRET.as_bytes())
                 .with_digits(i);
             assert!(builder.build().is_ok());
         }
@@ -522,14 +538,14 @@ mod tests {
     // === Secret boundary ===
 
     #[test]
-    #[cfg(not(feature = "otpauth"))]
+    #[cfg(feature = "alloc")]
     fn build_accepts_exactly_16_byte_secret() {
         let builder = Builder::new().with_secret(vec![0u8; 16]);
         assert!(builder.build().is_ok());
     }
 
     #[test]
-    #[cfg(not(feature = "otpauth"))]
+    #[cfg(feature = "alloc")]
     fn build_rejects_15_byte_secret() {
         let result = Builder::new().with_secret(vec![0u8; 15]).build();
         assert!(result.is_err());

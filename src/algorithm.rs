@@ -164,3 +164,49 @@ impl core::fmt::Display for UnsupportedAlgorithm {
 }
 
 impl core::error::Error for UnsupportedAlgorithm {}
+
+#[cfg(test)]
+mod tests {
+    use core::str::FromStr;
+
+    use super::{Algorithm, UnsupportedAlgorithm};
+
+    /// We exhaustively test against all algorithms.
+    const ALL_ALGORITHMS: &[Algorithm] = &[
+        Algorithm::SHA1,
+        Algorithm::SHA256,
+        Algorithm::SHA512,
+        #[cfg(feature = "steam")]
+        Algorithm::Steam,
+    ];
+
+    #[test]
+    fn from_str_unsupported() {
+        let algorithm = Algorithm::from_str("not a real algorithm");
+        assert!(matches!(algorithm, Err(UnsupportedAlgorithm { .. })));
+        let error = algorithm.unwrap_err();
+        assert!(format!("{:?}", error).starts_with("Unsupported Algorithm"));
+    }
+
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn to_string_round_trip() {
+        for &alg in ALL_ALGORITHMS {
+            let to_string = String::from(alg);
+            let from_string = Algorithm::try_from(to_string);
+            assert_eq!(from_string, Ok(alg));
+        }
+    }
+
+    #[test]
+    fn signing_test() {
+        for &alg in ALL_ALGORITHMS {
+            let key = "TestSecretSuperSecret".as_bytes();
+            let data = 123456;
+
+            let signature = alg.sign(key, data);
+
+            assert!(!signature.as_ref().is_empty());
+        }
+    }
+}

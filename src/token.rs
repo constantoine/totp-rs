@@ -169,3 +169,131 @@ impl fmt::Display for Token {
 #[cfg(feature = "steam")]
 const STEAM_CHARS: &[u8] = b"23456789BCDFGHJKMNPQRTVWXY";
 
+#[cfg(test)]
+mod tests {
+    use super::Token;
+    use crate::Algorithm;
+
+    /// While 5..=8 is typical, we test with 3 digits for brevity.
+    const DIGITS: u8 = 3;
+    /// Tests are written to exhaustively search under the modular arithmetic of the token.
+    /// This caps the number of tokens to test just to avoid tests running for extremely long periods of time.
+    const MAX_TOKEN: u32 = 1_000_000;
+    /// We exhaustively test against all algorithms.
+    const ALL_ALGORITHMS: &[Algorithm] = &[
+        Algorithm::SHA1,
+        Algorithm::SHA256,
+        Algorithm::SHA512,
+        #[cfg(feature = "steam")]
+        Algorithm::Steam,
+    ];
+
+    /// Tests that all 5 and 6 digit tokens for all algorithms can
+    /// be formatted as a string and then retrieved as the same token through parsing.
+    ///
+    /// Also ensures [`Display`](core::fmt::Display) and [`Debug`](core::fmt::Debug)
+    /// formatting are equivalent.
+    #[test]
+    fn formatting_round_trip() {
+        for &alg in ALL_ALGORITHMS {
+            let digits = DIGITS;
+            let modulo = Token::modulo(alg, digits);
+            for value in 0..modulo.min(MAX_TOKEN) {
+                let token = Token::new(alg, digits, value);
+
+                let formatted = format!("{token}");
+                let re_parsed = Token::try_from_formatted_string(alg, digits, &formatted);
+                assert_eq!(
+                    Some(&token),
+                    re_parsed.as_ref(),
+                    "{formatted} could not be re-parsed!"
+                );
+
+                let debug_formatted = format!("{token:?}");
+                assert_eq!(
+                    formatted, debug_formatted,
+                    "debug and display formatting should be equivalent!"
+                );
+            }
+        }
+    }
+
+    /// Exhaustively tests that the highest bit is irrelevant.
+    #[test]
+    fn highest_bit_irrelevant() {
+        for &alg in ALL_ALGORITHMS {
+            let digits = DIGITS;
+            let modulo = Token::modulo(alg, digits);
+            for value in 0..modulo.min(MAX_TOKEN) {
+                let token = Token::new(alg, digits, value);
+                let token_with_high_bit = Token::new(alg, digits, value | 0x8000_0000);
+                let token_without_high_bit = Token::new(alg, digits, value & !0x8000_0000);
+
+                assert_eq!(
+                    token, token_with_high_bit,
+                    "setting high-bit made a difference when it shouldn't!"
+                );
+                assert_eq!(
+                    token, token_without_high_bit,
+                    "resetting high-bit made a difference when it shouldn't!"
+                );
+            }
+        }
+    }
+
+    /// Tests that the modularity of a token's value is respected.
+    #[test]
+    fn modular_arithmetic() {
+        for &alg in ALL_ALGORITHMS {
+            let digits = DIGITS;
+            let modulo = Token::modulo(alg, digits);
+            for value in 0..modulo.min(MAX_TOKEN) {
+                let token = Token::new(alg, digits, value);
+                for order in 1..5 {
+                    let token_next_mod = Token::new(alg, digits, value + order * modulo);
+                    assert_eq!(
+                        token, token_next_mod,
+                        "tokens should be equivalent under their modulo!"
+                    );
+                }
+            }
+        }
+    }
+
+    /// Tests that [`Token::from_signature`] works as expected:
+    /// * Last byte used as an offset
+    /// * offset..offset + 4 treated as a big-endian [`u32`]
+    /// * Passed into [Token::new]
+    #[test]
+    fn from_signature() {
+        for &alg in ALL_ALGORITHMS {
+            let digits = DIGITS;
+            let modulo = Token::modulo(alg, digits);
+            for value in 0..modulo.min(MAX_TOKEN) {
+                for offset in 0..4 {
+                    let mut signature = [0; 8];
+                    *signature.last_mut().unwrap() = offset as u8;
+                    signature[offset..][..4].copy_from_slice(&value.to_be_bytes());
+
+                    assert_eq!(
+                        Token::new(alg, digits, value),
+                        Token::from_signature(alg, digits, &signature),
+                        "expected {signature:?} to be equivalent to {value}!"
+                    );
+                }
+            }
+        }
+    }
+
+    /// Ensure tokens with an invalid character-set fail to parse.
+    #[test]
+    fn parsing_failure() {
+        let invalid_token_for_sha1 = "abc123";
+        let token = Token::try_from_formatted_string(
+            Algorithm::SHA1,
+            invalid_token_for_sha1.len() as u8,
+            invalid_token_for_sha1,
+        );
+        assert_eq!(token, None);
+    }
+}

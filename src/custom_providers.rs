@@ -32,14 +32,16 @@ mod test {
     #[cfg(feature = "otpauth")]
     fn to_url_steam() {
         let totp = Builder::new_steam()
-            .with_secret("TestSecretSuperSecret".into())
-            .with_account_name("constantoine".into())
+            .with_secret("TestSecretSuperSecret".as_bytes())
+            .with_account_name("constantoine")
             .build()
             .unwrap();
         let url = totp.to_url();
         assert_eq!(
-            url.as_str(),
-            "otpauth://steam/Steam:constantoine?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=5&algorithm=SHA1&issuer=Steam"
+            url.ok().as_deref(),
+            Some(
+                "otpauth://steam/Steam:constantoine?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&digits=5&algorithm=SHA1&issuer=Steam"
+            )
         );
     }
 }

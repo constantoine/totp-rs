@@ -290,7 +290,7 @@ impl Totp {
     }
 }
 
-#[cfg(all(test, not(feature = "otpauth")))]
+#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -303,97 +303,105 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(feature = "otpauth"))]
+    #[cfg(feature = "alloc")]
     fn generate_token() {
         let totp = Builder::new()
             .with_step_duration(1)
-            .with_secret("TestSecretSuperSecret".into())
+            .with_secret("TestSecretSuperSecret".as_bytes())
             .build_noncompliant();
-        assert_eq!(totp.generate(1000).as_str(), "659761");
+        assert_eq!(&totp.generate(1000).to_string(), "659761");
     }
 
     #[test]
-    #[cfg(not(feature = "otpauth"))]
+    #[cfg(feature = "std")]
     fn generate_token_current() {
         let totp = Builder::new()
             .with_step_duration(1)
-            .with_secret("TestSecretSuperSecret".into())
+            .with_secret("TestSecretSuperSecret".as_bytes())
             .build_noncompliant();
         let time = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
             .unwrap()
             .as_secs();
-        assert_eq!(
-            totp.generate(time).as_str(),
-            totp.generate_current().unwrap()
-        );
+        assert_eq!(totp.generate(time), totp.generate_current().unwrap());
     }
 
     #[test]
-    #[cfg(not(feature = "otpauth"))]
+    #[cfg(feature = "alloc")]
     fn generates_token_sha256() {
         let totp = Builder::new()
             .with_algorithm(Algorithm::SHA256)
             .with_step_duration(1)
-            .with_secret("TestSecretSuperSecret".into())
+            .with_secret("TestSecretSuperSecret".as_bytes())
             .build_noncompliant();
-        assert_eq!(totp.generate(1000).as_str(), "076417");
+        assert_eq!(&totp.generate(1000).to_string(), "076417");
     }
 
     #[test]
-    #[cfg(not(feature = "otpauth"))]
+    #[cfg(feature = "alloc")]
     fn generates_token_sha512() {
         let totp = Builder::new()
             .with_algorithm(Algorithm::SHA512)
             .with_step_duration(1)
-            .with_secret("TestSecretSuperSecret".into())
+            .with_secret("TestSecretSuperSecret".as_bytes())
             .build_noncompliant();
-        assert_eq!(totp.generate(1000).as_str(), "473536");
+        assert_eq!(&totp.generate(1000).to_string(), "473536");
     }
 
     #[test]
-    #[cfg(not(feature = "otpauth"))]
+    #[cfg(feature = "alloc")]
     fn checks_token() {
         let totp = Builder::new()
             .with_step_duration(1)
             .with_skew(0)
-            .with_secret("TestSecretSuperSecret".into())
+            .with_secret("TestSecretSuperSecret".as_bytes())
             .build_noncompliant();
         assert!(totp.check("659761", 1000));
     }
 
     #[test]
-    #[cfg(not(feature = "otpauth"))]
+    #[cfg(feature = "alloc")]
     fn checks_token_big_skew() {
         let totp = Builder::new()
             .with_step_duration(1)
             .with_skew(1000)
-            .with_secret("TestSecretSuperSecret".into())
+            .with_secret("TestSecretSuperSecret".as_bytes())
             .build_noncompliant();
         assert!(totp.check("659761", 1000));
     }
 
     #[test]
-    #[cfg(not(feature = "otpauth"))]
+    #[cfg(feature = "std")]
     fn checks_token_current() {
         let totp = Builder::new()
             .with_step_duration(1)
             .with_skew(0)
-            .with_secret("TestSecretSuperSecret".into())
+            .with_secret("TestSecretSuperSecret".as_bytes())
             .build_noncompliant();
-        assert!(
-            totp.check_current(&totp.generate_current().unwrap())
-                .unwrap()
-        );
+        let current = totp.generate_current().unwrap().to_string();
+        assert!(totp.check_current(&current).unwrap());
         assert!(!totp.check_current("bogus").unwrap());
     }
 
     #[test]
-    #[cfg(not(feature = "otpauth"))]
+    #[cfg(feature = "std")]
+    fn check_ttl() {
+        let totp = Builder::new()
+            .with_step_duration(1)
+            .with_skew(0)
+            .with_secret("TestSecretSuperSecret".as_bytes())
+            .build_noncompliant();
+
+        let ttl = totp.ttl();
+        assert!(ttl.is_err() | ttl.is_ok_and(|ttl| (0..=totp.step).contains(&ttl)));
+    }
+
+    #[test]
+    #[cfg(feature = "alloc")]
     fn checks_token_with_skew() {
         let totp = Builder::new()
             .with_step_duration(1)
-            .with_secret("TestSecretSuperSecret".into())
+            .with_secret("TestSecretSuperSecret".as_bytes())
             .build_noncompliant();
         assert!(
             totp.check("174269", 1000) && totp.check("659761", 1000) && totp.check("260393", 1000)
@@ -401,11 +409,11 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(feature = "otpauth"))]
+    #[cfg(feature = "alloc")]
     fn next_step() {
         let totp = Builder::new()
             .with_step_duration(30)
-            .with_secret("TestSecretSuperSecret".into())
+            .with_secret("TestSecretSuperSecret".as_bytes())
             .build_noncompliant();
         assert!(totp.next_step(0) == 30);
         assert!(totp.next_step(29) == 30);
@@ -413,11 +421,11 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(feature = "otpauth"))]
+    #[cfg(feature = "std")]
     fn next_step_current() {
         let totp = Builder::new()
             .with_step_duration(30)
-            .with_secret("TestSecretSuperSecret".into())
+            .with_secret("TestSecretSuperSecret".as_bytes())
             .build_noncompliant();
         let t = system_time().unwrap();
         assert!(totp.next_step_current().unwrap() == totp.next_step(t));
@@ -429,17 +437,16 @@ mod tests {
         use qrcodegen_image::qrcodegen;
         use sha2::{Digest, Sha512};
 
-        let totp = Totp::new(
-            Algorithm::SHA1,
-            6,
-            1,
-            30,
-            "TestSecretSuperSecret".as_bytes().to_vec(),
-            Some("Github".to_string()),
-            "constantoine@github.com".to_string(),
-        )
-        .unwrap();
-        let url = totp.to_url();
+        let totp = Builder::new()
+            .with_algorithm(Algorithm::SHA1)
+            .with_step_duration(30)
+            .with_skew(1)
+            .with_secret("TestSecretSuperSecret".as_bytes())
+            .with_issuer("Github")
+            .with_account_name("constantoine@github.com")
+            .build_noncompliant();
+
+        let url = totp.to_url().expect("could not generate url");
         let qr = qrcodegen::QrCode::encode_text(&url, qrcodegen::QrCodeEcc::Medium)
             .expect("could not generate qr");
         let data = qrcodegen_image::draw_canvas(qr).into_raw();
@@ -455,16 +462,15 @@ mod tests {
     #[test]
     #[cfg(feature = "qr")]
     fn generates_qr_base64_ok() {
-        let totp = Totp::new(
-            Algorithm::SHA1,
-            6,
-            1,
-            1,
-            "TestSecretSuperSecret".as_bytes().to_vec(),
-            Some("Github".to_string()),
-            "constantoine@github.com".to_string(),
-        )
-        .unwrap();
+        let totp = Builder::new()
+            .with_algorithm(Algorithm::SHA1)
+            .with_step_duration(1)
+            .with_skew(1)
+            .with_secret("TestSecretSuperSecret".as_bytes())
+            .with_issuer("Github")
+            .with_account_name("constantoine@github.com")
+            .build_noncompliant();
+
         let qr = totp.to_qr_base64();
         assert!(qr.is_ok());
     }
@@ -472,17 +478,58 @@ mod tests {
     #[test]
     #[cfg(feature = "qr")]
     fn generates_qr_png_ok() {
-        let totp = Totp::new(
-            Algorithm::SHA1,
-            6,
-            1,
-            1,
-            "TestSecretSuperSecret".as_bytes().to_vec(),
-            Some("Github".to_string()),
-            "constantoine@github.com".to_string(),
-        )
-        .unwrap();
+        let totp = Builder::new()
+            .with_algorithm(Algorithm::SHA1)
+            .with_step_duration(1)
+            .with_skew(1)
+            .with_secret("TestSecretSuperSecret".as_bytes())
+            .with_issuer("Github")
+            .with_account_name("constantoine@github.com")
+            .build_noncompliant();
+
         let qr = totp.to_qr_png();
         assert!(qr.is_ok());
+    }
+
+    #[test]
+    #[cfg(feature = "qr")]
+    fn generates_qr_url_too_long() {
+        let totp = Builder::new()
+            .with_algorithm(Algorithm::SHA1)
+            .with_step_duration(30)
+            .with_skew(1)
+            .with_secret(vec![0xAA; 2048])
+            .with_issuer("Github")
+            .with_account_name("constantoine@github.com")
+            .build_noncompliant();
+
+        assert!(totp.to_url().is_ok());
+
+        let qr = totp.to_qr_base64();
+        assert!(matches!(&qr, &Err(TotpError::URLTooLong { .. })));
+        let error_message = format!("{}", qr.unwrap_err());
+        assert!(
+            error_message.starts_with(
+                "Could not generate a QR code: the generated URL is too long to encode"
+            )
+        );
+    }
+
+    /// Catch any egregious changes to the size of the [`Totp`] type to keep its
+    /// stack size reasonably low.
+    #[test]
+    fn size_test() {
+        if cfg!(feature = "otpauth") {
+            assert_eq!(size_of::<Totp>(), 72);
+        } else {
+            assert_eq!(size_of::<Totp>(), 40);
+        }
+    }
+
+    #[test]
+    fn check_totp_display_implementation() {
+        let totp = Builder::new().build_noncompliant();
+
+        assert!(!totp.to_string().is_empty());
     }
 }

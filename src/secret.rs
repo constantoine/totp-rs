@@ -592,7 +592,7 @@ impl Clone for ByteStorage {
 #[cfg(feature = "alloc")]
 #[cfg(test)]
 mod tests {
-    use super::Secret;
+    use super::{ByteStorage, Secret, SecretParseError};
 
     const BASE32: &str = "OBWGC2LOFVZXI4TJNZTS243FMNZGK5BNGEZDG";
     const BYTES: [u8; 23] = [
@@ -602,56 +602,87 @@ mod tests {
     const BYTES_DISPLAY: &str = "706c61696e2d737472696e672d7365637265742d313233";
 
     #[test]
-    fn secret_display() {
+    fn secret_display_and_debug() {
         let base32_str = String::from(BASE32);
-        let secret_raw = Secret::Raw(BYTES.to_vec());
-        let secret_base32 = Secret::Encoded(base32_str);
+        let secret_raw = Secret::from(BYTES);
+        let secret_base32 = Secret::try_from_base32(base32_str).unwrap();
         println!("{}", secret_raw);
-        assert_eq!(secret_raw.to_string(), BYTES_DISPLAY.to_string());
-        assert_eq!(secret_base32.to_string(), BASE32.to_string());
+        assert_eq!(&secret_raw.to_string(), BYTES_DISPLAY);
+        assert_eq!(&secret_base32.to_string(), BYTES_DISPLAY);
+        assert_eq!(format!("{:?}", secret_base32), BYTES_DISPLAY);
     }
 
     #[test]
     fn secret_convert_base32_raw() {
-        let base32_str = String::from(BASE32);
-        let secret_raw = Secret::Raw(BYTES.to_vec());
-        let secret_base32 = Secret::Encoded(base32_str);
+        let secret_raw = Secret::from(BYTES);
+        let secret_base32 = Secret::try_from_base32(BASE32);
 
-        assert_eq!(&secret_raw.to_encoded(), &secret_base32);
-        assert_eq!(&secret_raw.to_raw().unwrap(), &secret_raw);
-
-        assert_eq!(&secret_base32.to_raw().unwrap(), &secret_raw);
-        assert_eq!(&secret_base32.to_encoded(), &secret_base32);
+        assert_eq!(&Ok(secret_raw), &secret_base32);
     }
 
     #[test]
     fn secret_as_bytes() {
-        let base32_str = String::from(BASE32);
+        assert_eq!(Secret::from(BYTES).as_bytes(), BYTES);
         assert_eq!(
-            Secret::Raw(BYTES.to_vec()).to_bytes().unwrap(),
-            BYTES.to_vec()
-        );
-        assert_eq!(
-            Secret::Encoded(base32_str).to_bytes().unwrap(),
-            BYTES.to_vec()
+            Secret::try_from_base32(BASE32).as_deref(),
+            Ok(BYTES.as_slice())
         );
     }
 
     #[test]
+    fn secret_cloning_equality() {
+        let a = Secret::from(BYTES);
+        let b = Secret::clone(&a);
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn secret_clone_from_equality() {
+        let a = Secret::from(BYTES);
+        let mut b = Secret::new_stack([0; 20]);
+        assert_ne!(a, b);
+
+        b.clone_from(&a);
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn secret_from_box_equivalent_to_new() {
+        let heap: Box<[u8]> = Box::new(BYTES);
+        let a = Secret::new(heap.clone());
+        let b = Secret::from(heap);
+        assert_eq!(a, b);
+    }
+
+    #[test]
     fn secret_from_string() {
-        let raw: Secret = Secret::Raw("TestSecretSuperSecret".as_bytes().to_vec());
-        let encoded: Secret = Secret::Encoded("KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ".to_string());
-        assert_eq!(raw.to_encoded(), encoded);
-        assert_eq!(raw, encoded.to_raw().unwrap());
+        let bytes = "TestSecretSuperSecret".as_bytes();
+        let base_32 = "KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ";
+
+        let raw = Secret::from(bytes);
+        let encoded = Secret::try_from_base32(base_32).unwrap();
+
+        assert_eq!(&raw.to_base32(), base_32);
+        assert_eq!(bytes, encoded.as_bytes());
+    }
+
+    #[test]
+    fn secret_from_string_failure() {
+        let base_32 = "1";
+
+        let secret = Secret::try_from_base32(base_32);
+
+        assert!(matches!(secret, Err(SecretParseError::ParseBase32)));
+        let error = secret.unwrap_err();
+        assert_eq!(&error.to_string(), "Could not decode base32 secret.");
     }
 
     #[test]
     #[cfg(feature = "gen_secret")]
     fn secret_gen_secret() {
-        let sec = Secret::generate_secret();
+        let sec = Secret::generate();
 
-        assert!(matches!(sec, Secret::Raw(_)));
-        assert_eq!(sec.to_bytes().unwrap().len(), 20);
+        assert_eq!(sec.len(), 20);
     }
 
     #[test]
@@ -659,22 +690,22 @@ mod tests {
     fn secret_gen_default() {
         let sec = Secret::default();
 
-        assert!(matches!(sec, Secret::Raw(_)));
-        assert_eq!(sec.to_bytes().unwrap().len(), 20);
+        assert_eq!(sec.len(), 20);
     }
 
     #[test]
     #[cfg(feature = "gen_secret")]
     fn secret_empty() {
         let non_ascii = vec![240, 159, 146, 150];
-        let sec = Secret::Encoded(core::str::from_utf8(&non_ascii).unwrap().to_owned());
+        let sec = Secret::try_from_base32(core::str::from_utf8(&non_ascii).unwrap());
+        assert!(sec.is_err());
+    }
 
-        let to_r = sec.to_raw();
-
-        assert!(to_r.is_err());
-
-        let to_b = sec.to_bytes();
-
-        assert!(to_b.is_err());
+    #[test]
+    fn bytestorage_cloning_consistency() {
+        use ByteStorage::{Empty, Heap, Stack};
+        assert!(matches!(Empty.clone(), Empty));
+        assert!(matches!(Heap(Box::new([])).clone(), Heap(..)));
+        assert!(matches!(Stack([0; _]).clone(), Stack(..)));
     }
 }
