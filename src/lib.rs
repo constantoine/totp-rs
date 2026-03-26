@@ -17,8 +17,8 @@
 //! let totp: Totp = Builder::new().
 //!     with_algorithm(Algorithm::SHA256).
 //!     with_secret(secret).
-//!     with_account_name("constantoine@github.com".to_string()).
-//!     with_issuer(Some("Github".to_string())).
+//!     with_account_name("constantoine@github.com").
+//!     with_issuer("Github").
 //!     build().
 //!     unwrap();
 //!
@@ -28,7 +28,7 @@
 //! ```
 //!
 //! ```rust
-//! # #[cfg(all(feature = "gen_secret", not(feature = "otpauth")))] {
+//! # #[cfg(feature = "gen_secret")] {
 //! use totp_rs::{Builder, Totp};
 //!
 //! let totp: Totp = Builder::new().
@@ -38,7 +38,7 @@
 //! let token = totp.generate_current().unwrap();
 //! println!("{}", token);
 //!
-//! let secret = totp.to_secret_binary();
+//! let secret = totp.secret().as_bytes();
 //! # }
 //! ```
 //!
@@ -50,12 +50,12 @@
 //!
 //! let totp: Totp = Builder::new().
 //!     with_secret(secret).
-//!     with_account_name("constantoine@github.com".to_string()).
-//!     with_issuer(Some("Github".to_string())).
+//!     with_account_name("constantoine@github.com").
+//!     with_issuer("Github").
 //!     build().
 //!     unwrap();
 //!
-//! let url = totp.to_url();
+//! let url = totp.to_url().unwrap();
 //! println!("{}", url);
 //! let code = totp.to_qr_base64().unwrap();
 //! println!("{}", code);
@@ -67,6 +67,7 @@
 // Only allow implicit `use std::prelude::*;` during testing.
 #![cfg_attr(not(test), no_std)]
 
+#[cfg(feature = "alloc")]
 extern crate alloc;
 
 #[cfg(feature = "std")]
@@ -78,27 +79,18 @@ mod custom_providers;
 mod error;
 mod rfc;
 mod secret;
+mod token;
 
 #[cfg(feature = "otpauth")]
 mod url;
-
-#[cfg(feature = "qr")]
-pub use qrcodegen_image;
 
 pub use algorithm::Algorithm;
 pub use builder::Builder;
 pub use error::TotpError;
 pub use secret::{Secret, SecretParseError};
+pub use token::Token;
 
-use alloc::{format, string::String, vec::Vec};
-use constant_time_eq::constant_time_eq;
 use core::fmt;
-
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
-
-#[cfg(feature = "otpauth")]
-use alloc::string::ToString;
 
 #[cfg(feature = "std")]
 use std::time::{SystemTime, SystemTimeError, UNIX_EPOCH};
@@ -111,7 +103,7 @@ fn system_time() -> Result<u64, SystemTimeError> {
 
 /// TOTP holds informations as to how to generate an auth code and validate it. Its [secret](struct.Totp.html#structfield.secret) field is sensitive data, treat it accordingly
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "zeroize", derive(zeroize::Zeroize, zeroize::ZeroizeOnDrop))]
 pub struct Totp {
     /// SHA-1 is the most widespread algorithm used, and for totp pursposes, SHA-1 hash collisions are [not a problem](https://tools.ietf.org/html/rfc4226#appendix-B.2) as HMAC-SHA-1 is not impacted. It's also the main one cited in [rfc-6238](https://tools.ietf.org/html/rfc6238#section-3) even though the [reference implementation](https://tools.ietf.org/html/rfc6238#appendix-A) permits the use of SHA-1, SHA-256 and SHA-512. Not all clients support other algorithms then SHA-1
@@ -120,105 +112,78 @@ pub struct Totp {
     /// The number of digits composing the auth code. Per [rfc-4226](https://tools.ietf.org/html/rfc4226#section-5.3), this can oscilate between 6 and 8 digits
     pub(crate) digits: u32,
     /// Number of steps allowed as network delay. 1 would mean one step before current step and one step after are valids. The recommended value per [rfc-6238](https://tools.ietf.org/html/rfc6238#section-5.2) is 1. Anything more is sketchy, and anyone recommending more is, by definition, ugly and stupid
-    pub(crate) skew: u32,
+    pub(crate) skew: u16,
     /// Duration in seconds of a step. The recommended value per [rfc-6238](https://tools.ietf.org/html/rfc6238#section-5.2) is 30 seconds
     pub(crate) step: u64,
     /// As per [rfc-4226](https://tools.ietf.org/html/rfc4226#section-4) the secret should come from a strong source, most likely a CSPRNG. It should be at least 128 bits, but 160 are recommended
     ///
     /// non-encoded value
-    pub(crate) secret: secret::InnerSecret,
+    pub(crate) secret: Secret,
     #[cfg(feature = "otpauth")]
     #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
     /// The "Github" part of "Github:constantoine@github.com". Must not contain a colon `:`
     /// For example, the name of your service/website.
     /// Not mandatory, but strongly recommended!
-    pub(crate) issuer: Option<String>,
+    pub(crate) issuer: Option<alloc::boxed::Box<str>>,
     #[cfg(feature = "otpauth")]
     #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
     /// The "constantoine@github.com" part of "Github:constantoine@github.com". Must not contain a colon `:`
     /// For example, the name of your user's account.
-    pub(crate) account_name: String,
+    pub(crate) account_name: alloc::boxed::Box<str>,
 }
 
-#[cfg(feature = "otpauth")]
 impl core::fmt::Display for Totp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "digits: {}; step: {}; alg: {}; issuer: <{}>({})",
-            self.digits,
-            self.step,
-            self.algorithm,
-            self.issuer.clone().unwrap_or_else(|| "None".to_string()),
-            self.account_name
-        )
-    }
-}
+        let mut succeeded = true;
 
-#[cfg(not(feature = "otpauth"))]
-impl core::fmt::Display for Totp {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
+        succeeded &= write!(
             f,
             "digits: {}; step: {}; alg: {}",
             self.digits, self.step, self.algorithm,
         )
+        .is_ok();
+
+        #[cfg(feature = "otpauth")]
+        {
+            succeeded &= write!(
+                f,
+                "; issuer: <{}>({})",
+                self.issuer.as_deref().unwrap_or("None"),
+                self.account_name
+            )
+            .is_ok();
+        }
+
+        succeeded.then_some(()).ok_or(fmt::Error)
     }
 }
 
 /// Default as set in [Builder::new].
 /// This implementation shall remain, to avoid breaking compatibility.
-/// Use [Self::to_secret_binary] or [Self::to_secret_base32] to retrieve the newly generated secret.
-#[cfg(all(feature = "gen_secret", not(feature = "otpauth")))]
-#[cfg_attr(
-    docsrs,
-    doc(cfg(all(feature = "gen_secret", not(feature = "otpauth"))))
-)]
+/// Use [Self::secret] to retrieve the newly generated secret.
+#[cfg(feature = "gen_secret")]
+#[cfg_attr(docsrs, doc(cfg(feature = "gen_secret")))]
 impl Default for Totp {
     fn default() -> Self {
         use crate::Builder;
 
-        Builder::new()
-            .build()
-            .expect("Default value for Builder should never fail")
+        Builder::new().build_noncompliant()
     }
 }
 
 impl Totp {
-    /// Will sign the given timestamp. Most users will want to interact with [Self::generate] and [Self::generate_current].
-    pub fn sign(&self, time: u64) -> Vec<u8> {
-        self.algorithm.sign(
-            self.secret.as_ref(),
-            (time / self.step).to_be_bytes().as_ref(),
-        )
+    /// Will sign the given timestamp. Most users will want to interact with [Self::generate].
+    pub fn sign(&self, time: u64) -> impl AsRef<[u8]> {
+        self.algorithm.sign(self.secret.as_ref(), time / self.step)
     }
 
     /// Will generate a token given the provided timestamp in seconds.
-    pub fn generate(&self, time: u64) -> String {
-        let result: &[u8] = &self.sign(time);
-        let offset = (result.last().unwrap() & 15) as usize;
-        #[allow(unused_mut)]
-        let mut result =
-            u32::from_be_bytes(result[offset..offset + 4].try_into().unwrap()) & 0x7fff_ffff;
-
-        match self.algorithm {
-            Algorithm::SHA1 | Algorithm::SHA256 | Algorithm::SHA512 => format!(
-                "{1:00$}",
-                self.digits as usize,
-                result % 10_u32.pow(self.digits)
-            ),
-            #[cfg(feature = "steam")]
-            Algorithm::Steam => (0..self.digits)
-                .map(|_| {
-                    let c = algorithm::STEAM_CHARS
-                        .chars()
-                        .nth(result as usize % algorithm::STEAM_CHARS.len())
-                        .unwrap();
-                    result /= algorithm::STEAM_CHARS.len() as u32;
-                    c
-                })
-                .collect(),
-        }
+    pub fn generate(&self, time: u64) -> Token {
+        Token::from_signature(
+            self.algorithm,
+            self.digits.try_into().unwrap(),
+            self.sign(time).as_ref(),
+        )
     }
 
     /// Returns the timestamp of the first second for the next step
@@ -232,6 +197,7 @@ impl Totp {
     /// Returns the timestamp of the first second of the next step
     /// According to system time
     #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn next_step_current(&self) -> Result<u64, SystemTimeError> {
         let t = system_time()?;
         Ok(self.next_step(t))
@@ -239,6 +205,7 @@ impl Totp {
 
     /// Give the ttl (in seconds) of the current token
     #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn ttl(&self) -> Result<u64, SystemTimeError> {
         let t = system_time()?;
         Ok(self.step - (t % self.step))
@@ -246,42 +213,43 @@ impl Totp {
 
     /// Generate a token from the current system time
     #[cfg(feature = "std")]
-    pub fn generate_current(&self) -> Result<String, SystemTimeError> {
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    pub fn generate_current(&self) -> Result<Token, SystemTimeError> {
         let t = system_time()?;
         Ok(self.generate(t))
     }
 
     /// Will check if token is valid given the provided timestamp in seconds, accounting [skew](struct.Totp.html#structfield.skew)
     pub fn check(&self, token: &str, time: u64) -> bool {
-        let basestep = time / self.step - (self.skew as u64);
-        for i in 0..(self.skew as u16) * 2 + 1 {
-            let step_time = (basestep + (i as u64)) * self.step;
+        let Some(token) = Token::try_from_formatted_string(
+            self.algorithm,
+            self.digits.try_into().unwrap(),
+            token,
+        ) else {
+            return false;
+        };
 
-            if constant_time_eq(self.generate(step_time).as_bytes(), token.as_bytes()) {
+        let origin = time / self.step;
+        for counter in (origin - self.skew as u64)..=(origin + self.skew as u64) {
+            if self.generate(counter * self.step) == token {
                 return true;
             }
         }
+
         false
     }
 
     /// Will check if token is valid by current system time, accounting [skew](struct.Totp.html#structfield.skew)
     #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn check_current(&self, token: &str) -> Result<bool, SystemTimeError> {
         let t = system_time()?;
         Ok(self.check(token, t))
     }
 
-    /// Will return a clone of the secret as raw bytes.
-    pub fn to_secret_binary(&self) -> Vec<u8> {
-        core::mem::take(&mut self.secret.clone())
-    }
-
-    /// Will return the base32 representation of the secret, which might be useful when users want to manually add the secret to their authenticator
-    pub fn to_secret_base32(&self) -> String {
-        base32::encode(
-            base32::Alphabet::Rfc4648 { padding: false },
-            self.secret.as_ref(),
-        )
+    /// Provides access to the secret used by this [`Totp`] instance.
+    pub const fn secret(&self) -> &Secret {
+        &self.secret
     }
 }
 
@@ -300,9 +268,9 @@ impl Totp {
     ///
     /// It will also return an error in case it can't encode the qr into a png.
     /// This shouldn't happen unless either the qrcode library returns malformed data, or the image library doesn't encode the data correctly
-    pub fn to_qr_base64(&self) -> Result<String, String> {
-        let url = self.to_url();
-        qrcodegen_image::draw_base64(&url)
+    pub fn to_qr_base64(&self) -> Result<alloc::string::String, TotpError> {
+        let url = self.to_url()?;
+        qrcodegen_image::draw_base64(&url).map_err(|url| TotpError::URLTooLong { url })
     }
 
     /// Will return a qrcode to automatically add a TOTP as a byte array. Needs feature `qr` to be enabled!
@@ -316,9 +284,9 @@ impl Totp {
     ///
     /// It will also return an error in case it can't encode the qr into a png.
     /// This shouldn't happen unless either the qrcode library returns malformed data, or the image library doesn't encode the data correctly
-    pub fn to_qr_png(&self) -> Result<Vec<u8>, String> {
-        let url = self.to_url();
-        qrcodegen_image::draw_png(&url)
+    pub fn to_qr_png(&self) -> Result<alloc::vec::Vec<u8>, TotpError> {
+        let url = self.to_url()?;
+        qrcodegen_image::draw_png(&url).map_err(|url| TotpError::URLTooLong { url })
     }
 }
 
