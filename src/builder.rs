@@ -170,7 +170,11 @@ impl Builder {
             }
             #[cfg(feature = "steam")]
             Algorithm::Steam => {
-                // TODO: Should this assert 5 digits?
+                if self.digits != 5 {
+                    return Err(TotpError::InvalidDigits {
+                        digits: self.digits,
+                    });
+                }
             }
         }
 
