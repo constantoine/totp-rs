@@ -1,49 +1,16 @@
-use base32;
+#![cfg(all(feature = "steam", feature = "std"))]
+
 use totp_rs::{Builder, Secret, Totp};
 
-#[cfg(feature = "otpauth")]
 fn main() {
     // create TOTP from base32 secret
-    let secret = base32::decode(
-        base32::Alphabet::Rfc4648 { padding: false },
-        "OBWGC2LOFVZXI4TJNZTS243FMNZGK5BNGEZDG",
-    )
-    .unwrap();
-    let secret_b32 = Secret::Raw(secret);
-
-    let totp_b32 = Builder::new_steam()
-        .with_secret(secret_b32.to_bytes().unwrap())
-        .with_account_name("user-account".to_string())
+    let secret_base_32 = "OBWGC2LOFVZXI4TJNZTS243FMNZGK5BNGEZDG";
+    let secret = Secret::try_from_base32(secret_base_32).unwrap();
+    let totp: Totp = Builder::new_steam()
+        .with_secret(secret.clone())
         .build()
         .unwrap();
 
-    println!(
-        "base32 {} ; raw {}",
-        secret_b32,
-        secret_b32.to_raw().unwrap()
-    );
-    println!(
-        "code from base32:\t{}",
-        totp_b32.generate_current().unwrap()
-    );
-}
-
-#[cfg(not(feature = "otpauth"))]
-fn main() {
-    // create TOTP from base32 secret
-    let secret_b32 = Secret::Encoded(String::from("OBWGC2LOFVZXI4TJNZTS243FMNZGK5BNGEZDG"));
-    let totp_b32 = Builder::new_steam()
-        .with_secret(secret_b32.to_bytes().unwrap())
-        .build()
-        .unwrap();
-
-    println!(
-        "base32 {} ; raw {}",
-        secret_b32,
-        secret_b32.to_raw().unwrap()
-    );
-    println!(
-        "code from base32:\t{}",
-        totp_b32.generate_current().unwrap()
-    );
+    println!("base32 {} ; raw {}", secret_base_32, secret);
+    println!("code from base32:\t{}", totp.generate_current().unwrap());
 }

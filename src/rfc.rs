@@ -47,16 +47,3 @@ pub fn assert_issuer_valid(issuer: &Option<impl AsRef<str>>) -> Result<(), TotpE
 
     Ok(())
 }
-
-#[cfg(test)]
-mod tests {
-    use crate::{Totp, TotpError};
-
-    const GOOD_SECRET: &str = "01234567890123456789";
-    #[cfg(feature = "otpauth")]
-    const ISSUER: Option<&str> = None;
-    #[cfg(feature = "otpauth")]
-    const ACCOUNT: &str = "valid-account";
-    #[cfg(feature = "otpauth")]
-    const INVALID_ACCOUNT: &str = ":invalid-account";
-}
