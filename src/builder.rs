@@ -2,6 +2,7 @@ use crate::{Algorithm, Secret, Totp, TotpError};
 
 /// Builder used to build a [Totp] with sane defaults.
 /// Because it contains the sensitive data of the HMAC secret, treat it accordingly.
+#[derive(Clone, Debug)]
 #[cfg_attr(feature = "zeroize", derive(zeroize::Zeroize, zeroize::ZeroizeOnDrop))]
 pub struct Builder {
     #[cfg_attr(feature = "zeroize", zeroize(skip))]

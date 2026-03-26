@@ -84,11 +84,17 @@ mod token;
 #[cfg(feature = "otpauth")]
 mod url;
 
+#[cfg(feature = "std")]
+mod migration;
+
 pub use algorithm::Algorithm;
 pub use builder::Builder;
 pub use error::TotpError;
 pub use secret::{Secret, SecretParseError};
 pub use token::Token;
+
+#[cfg(feature = "std")]
+pub use migration::*;
 
 use core::fmt;
 
