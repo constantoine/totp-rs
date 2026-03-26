@@ -25,6 +25,8 @@ jobs:
         run: rustup target add wasm32v1-none
       - name: Build no_std
         run: RUSTFLAGS='--cfg getrandom_backend="unsupported"' cargo build --target wasm32v1-none --no-default-features --features steam,serde,otpauth,gen_secret,zeroize
+      - name: Build no_alloc
+        run: RUSTFLAGS='--cfg getrandom_backend="unsupported"' cargo build --example no_alloc --target wasm32v1-none --no-default-features --features steam,serde,gen_secret,zeroize
 
   msrv:
     runs-on: ubuntu-latest

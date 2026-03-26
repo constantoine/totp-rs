@@ -67,3 +67,7 @@ required-features = ["std"]
 [[example]]
 name = "qr_code"
 required-features = ["qr"]
+
+[[example]]
+name = "no_alloc"
+required-features = []
