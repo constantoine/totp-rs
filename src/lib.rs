@@ -607,7 +607,7 @@ impl TOTP {
                     // Do not change used algorithm if this is Steam
                 }
                 "algorithm" => {
-                    algorithm = match value.as_ref() {
+                    algorithm = match value.to_uppercase().as_ref() {
                         "SHA1" => Algorithm::SHA1,
                         "SHA256" => Algorithm::SHA256,
                         "SHA512" => Algorithm::SHA512,
