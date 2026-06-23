@@ -527,7 +527,7 @@ impl core::fmt::Display for SecretParseError {
 pub(crate) fn generate_random_bytes() -> Option<[u8; 20]> {
     #[cfg(feature = "gen_secret")]
     fn generate_inner<const N: usize, T: rand::RngExt>(mut rng: T) -> [u8; N] {
-        let mut secret = [0u8; _];
+        let mut secret = [0u8; N];
         rng.fill(&mut secret[..]);
         secret
     }
