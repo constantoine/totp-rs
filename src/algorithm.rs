@@ -106,7 +106,7 @@ impl Algorithm {
     where
         D: Mac + hmac::digest::KeyInit,
     {
-        let mut digest = <D as Mac>::new_from_slice(key).unwrap();
+        let mut digest = D::new_from_slice(key).unwrap();
         let data = counter.to_be_bytes();
         digest.update(&data);
         digest.finalize().into_bytes()
