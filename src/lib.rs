@@ -226,29 +226,31 @@ impl Totp {
     }
 
     /// Will check if token is valid given the provided timestamp in seconds, accounting [skew](struct.Totp.html#structfield.skew)
-    pub fn check(&self, token: &str, time: u64) -> bool {
+    /// If the token is valid, return the matched step. 
+    pub fn check(&self, token: &str, time: u64) -> Option<u64> {
         let Some(token) = Token::try_from_formatted_string(
             self.algorithm,
             self.digits.try_into().unwrap(),
             token,
         ) else {
-            return false;
+            return None;
         };
 
         let origin = time / self.step;
         for counter in (origin.saturating_sub(self.skew as u64))..=(origin + self.skew as u64) {
             if self.generate(counter * self.step) == token {
-                return true;
+                return Some(counter);
             }
         }
 
-        false
+        None
     }
 
     /// Will check if token is valid by current system time, accounting [skew](struct.Totp.html#structfield.skew)
+    /// If the token is valid, return the matched step.
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-    pub fn check_current(&self, token: &str) -> Result<bool, SystemTimeError> {
+    pub fn check_current(&self, token: &str) -> Result<Option<u64>, SystemTimeError> {
         let t = system_time()?;
         Ok(self.check(token, t))
     }
@@ -362,7 +364,7 @@ mod tests {
             .with_skew(0)
             .with_secret("TestSecretSuperSecret".as_bytes())
             .build_noncompliant();
-        assert!(totp.check("659761", 1000));
+        assert!(totp.check("659761", 1000).is_some());
     }
 
     #[test]
@@ -373,7 +375,7 @@ mod tests {
             .with_skew(1001)
             .with_secret("TestSecretSuperSecret".as_bytes())
             .build_noncompliant();
-        assert!(totp.check("659761", 1000));
+        assert!(totp.check("659761", 1000).is_some());
     }
 
     #[test]
@@ -385,8 +387,8 @@ mod tests {
             .with_secret("TestSecretSuperSecret".as_bytes())
             .build_noncompliant();
         let current = totp.generate_current().unwrap().to_string();
-        assert!(totp.check_current(&current).unwrap());
-        assert!(!totp.check_current("bogus").unwrap());
+        assert!(totp.check_current(&current).unwrap().is_some());
+        assert!(totp.check_current("bogus").unwrap().is_none());
     }
 
     #[test]
@@ -410,7 +412,7 @@ mod tests {
             .with_secret("TestSecretSuperSecret".as_bytes())
             .build_noncompliant();
         assert!(
-            totp.check("174269", 1000) && totp.check("659761", 1000) && totp.check("260393", 1000)
+            totp.check("174269", 1000).is_some() && totp.check("659761", 1000).is_some() && totp.check("260393", 1000).is_some()
         );
     }
 
