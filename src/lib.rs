@@ -236,7 +236,7 @@ impl Totp {
         };
 
         let origin = time / self.step;
-        for counter in (origin - self.skew as u64)..=(origin + self.skew as u64) {
+        for counter in (origin.saturating_sub(self.skew as u64))..=(origin + self.skew as u64) {
             if self.generate(counter * self.step) == token {
                 return true;
             }
@@ -276,7 +276,7 @@ impl Totp {
     /// This shouldn't happen unless either the qrcode library returns malformed data, or the image library doesn't encode the data correctly
     pub fn to_qr_base64(&self) -> Result<alloc::string::String, TotpError> {
         let url = self.to_url()?;
-        qrcodegen_image::draw_base64(&url).map_err(|url| TotpError::URLTooLong { url })
+        qrcodegen_image::draw_base64(&url).map_err(|url| TotpError::UrlTooLong { url })
     }
 
     /// Will return a qrcode to automatically add a TOTP as a byte array. Needs feature `qr` to be enabled!
@@ -292,7 +292,7 @@ impl Totp {
     /// This shouldn't happen unless either the qrcode library returns malformed data, or the image library doesn't encode the data correctly
     pub fn to_qr_png(&self) -> Result<alloc::vec::Vec<u8>, TotpError> {
         let url = self.to_url()?;
-        qrcodegen_image::draw_png(&url).map_err(|url| TotpError::URLTooLong { url })
+        qrcodegen_image::draw_png(&url).map_err(|url| TotpError::UrlTooLong { url })
     }
 }
 
@@ -370,7 +370,7 @@ mod tests {
     fn checks_token_big_skew() {
         let totp = Builder::new()
             .with_step_duration(1)
-            .with_skew(1000)
+            .with_skew(1001)
             .with_secret("TestSecretSuperSecret".as_bytes())
             .build_noncompliant();
         assert!(totp.check("659761", 1000));
@@ -513,7 +513,7 @@ mod tests {
         assert!(totp.to_url().is_ok());
 
         let qr = totp.to_qr_base64();
-        assert!(matches!(&qr, &Err(TotpError::URLTooLong { .. })));
+        assert!(matches!(&qr, &Err(TotpError::UrlTooLong { .. })));
         let error_message = format!("{}", qr.unwrap_err());
         assert!(
             error_message.starts_with(

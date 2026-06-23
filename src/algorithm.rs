@@ -49,13 +49,7 @@ impl Algorithm {
 
 impl fmt::Display for Algorithm {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Algorithm::SHA1 => f.write_str("SHA1"),
-            Algorithm::SHA256 => f.write_str("SHA256"),
-            Algorithm::SHA512 => f.write_str("SHA512"),
-            #[cfg(feature = "steam")]
-            Algorithm::Steam => f.write_str("SHA1"),
-        }
+        f.write_str(self.as_str())
     }
 }
 

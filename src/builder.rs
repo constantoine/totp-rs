@@ -191,6 +191,10 @@ impl Builder {
 
         crate::rfc::assert_secret_length(secret.as_ref())?;
 
+        if self.step_duration == 0 {
+            return Err(TotpError::InvalidStepZero);
+        }
+
         Ok(self.build_noncompliant())
     }
 
@@ -411,6 +415,16 @@ mod tests {
 
     #[test]
     #[cfg(feature = "alloc")]
+    fn build_fails_step_zero() {
+        let result = Builder::new()
+            .with_secret(GOOD_SECRET.as_bytes())
+            .with_step_duration(0)
+            .build();
+        assert_eq!(result.unwrap_err(), TotpError::InvalidStepZero);
+    }
+
+    #[test]
+    #[cfg(feature = "alloc")]
     fn build_fails_secret_too_short() {
         let builder = Builder::new().with_secret(SHORT_SECRET.as_bytes());
         let result = builder.build();
@@ -461,7 +475,7 @@ mod tests {
         assert_eq!(
             result.unwrap_err(),
             TotpError::InvalidAccountName {
-                value: "user:name".to_string()
+                account_name: "user:name".to_string()
             }
         );
     }
@@ -478,7 +492,7 @@ mod tests {
         assert_eq!(
             result.unwrap_err(),
             TotpError::InvalidIssuer {
-                value: "Iss:uer".to_string()
+                issuer: "Iss:uer".to_string()
             }
         );
     }

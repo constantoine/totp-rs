@@ -27,7 +27,7 @@ pub fn assert_secret_length(secret: &[u8]) -> Result<(), TotpError> {
 pub fn assert_account_name_valid(account_name: &str) -> Result<(), TotpError> {
     if account_name.is_empty() || account_name.contains(':') {
         return Err(TotpError::InvalidAccountName {
-            value: account_name.into(),
+            account_name: account_name.into(),
         });
     }
 
@@ -41,7 +41,7 @@ pub fn assert_issuer_valid(issuer: &Option<impl AsRef<str>>) -> Result<(), TotpE
         && issuer.as_ref().contains(':')
     {
         return Err(TotpError::InvalidIssuer {
-            value: issuer.as_ref().into(),
+            issuer: issuer.as_ref().into(),
         });
     }
 

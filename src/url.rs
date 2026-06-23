@@ -16,7 +16,7 @@ impl crate::Totp {
         builder.build()
     }
 
-    /// Generate a TOTP from the standard otpauth URL, using `Totp::new_unchecked` internally
+    /// Generate a TOTP from the standard otpauth URL, using [`Builder::build_noncompliant`] internally
     pub fn from_url_unchecked<S: AsRef<str>>(url: S) -> Result<Totp, TotpError> {
         let builder = Self::parts_from_url(url)?;
         Ok(builder.build_noncompliant())
@@ -50,7 +50,7 @@ impl crate::Totp {
         let path = url.path().trim_start_matches('/');
         let path = percent_decode(path)
             .ok_or_else(|| TotpError::AccountNameDecode {
-                value: path.to_string(),
+                account_name: path.to_string(),
             })?
             .to_string();
 
@@ -67,7 +67,7 @@ impl crate::Totp {
 
         let account_name = percent_decode(account_name.as_str())
             .ok_or_else(|| TotpError::AccountNameDecode {
-                value: account_name.to_string(),
+                account_name: account_name.to_string(),
             })?
             .to_string();
 
@@ -94,7 +94,7 @@ impl crate::Totp {
                 "digits" => {
                     let digits = value
                         .parse::<u32>()
-                        .map_err(|_| TotpError::InvalidDigitsURL {
+                        .map_err(|_| TotpError::InvalidDigitsUrl {
                             digits: value.to_string(),
                         })?;
 
@@ -104,7 +104,7 @@ impl crate::Totp {
                     let step_duration =
                         value
                             .parse::<u64>()
-                            .map_err(|_| TotpError::InvalidStepURL {
+                            .map_err(|_| TotpError::InvalidStepUrl {
                                 step: value.to_string(),
                             })?;
 
@@ -171,7 +171,19 @@ impl crate::Totp {
             params.push(format!("digits={}", self.digits));
         }
         if self.algorithm != Algorithm::SHA1 {
-            params.push(format!("algorithm={}", self.algorithm));
+            // Steam tokens are computed with HMAC-SHA1, so advertise SHA1 on the
+            // wire for compatibility with generic parsers. The `steam` host
+            // carries the real semantics.
+            #[cfg(feature = "steam")]
+            let algorithm = if self.algorithm == Algorithm::Steam {
+                "SHA1"
+            } else {
+                self.algorithm.as_str()
+            };
+            #[cfg(not(feature = "steam"))]
+            let algorithm = self.algorithm.as_str();
+
+            params.push(format!("algorithm={algorithm}"));
         }
         let label = if let Some(issuer) = &self.issuer {
             let issuer = percent_encode(issuer);

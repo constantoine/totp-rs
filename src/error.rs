@@ -20,7 +20,7 @@ pub enum TotpError {
     InvalidAlgorithm { algorithm: String },
     #[cfg(feature = "otpauth")]
     /// Digits parameter is not a valid number.
-    InvalidDigitsURL { digits: String },
+    InvalidDigitsUrl { digits: String },
     #[cfg(feature = "otpauth")]
     /// URL parsing failed.
     UrlParse(ParseError),
@@ -35,21 +35,21 @@ pub enum TotpError {
     InvalidSecret,
     #[cfg(feature = "otpauth")]
     /// Step parameter is not a valid number.
-    InvalidStepURL { step: String },
+    InvalidStepUrl { step: String },
 
     // === Account/Issuer errors (otpauth feature) ===
     #[cfg(feature = "otpauth")]
     /// Account name contains invalid character ':'.
-    InvalidAccountName { value: String },
+    InvalidAccountName { account_name: String },
     #[cfg(feature = "otpauth")]
     /// Account name URL decoding failed.
-    AccountNameDecode { value: String },
+    AccountNameDecode { account_name: String },
     #[cfg(feature = "otpauth")]
     /// Issuer contains invalid character ':'.
-    InvalidIssuer { value: String },
+    InvalidIssuer { issuer: String },
     #[cfg(feature = "otpauth")]
     /// Issuer URL decoding failed.
-    IssuerDecode { value: String },
+    IssuerDecode { issuer: String },
     #[cfg(feature = "otpauth")]
     /// Issuer in path differs from issuer in query parameter.
     IssuerMismatch { path: String, query: String },
@@ -57,7 +57,7 @@ pub enum TotpError {
     // === QR Code Errors (qr feature) ===
     #[cfg(feature = "qr")]
     /// The generated URL is too long to encode as a QR code.
-    URLTooLong { url: String },
+    UrlTooLong { url: String },
 }
 
 impl core::fmt::Display for TotpError {
@@ -91,32 +91,36 @@ impl core::fmt::Display for TotpError {
             #[cfg(feature = "otpauth")]
             TotpError::InvalidHost { host } => write!(f, "Host must be \"totp\", not \"{}\"", host),
             #[cfg(feature = "otpauth")]
-            TotpError::InvalidStepURL { step } => {
+            TotpError::InvalidStepUrl { step } => {
                 write!(f, "Could not parse step \"{}\" as a number", step)
             }
             #[cfg(feature = "otpauth")]
-            TotpError::InvalidDigitsURL { digits } => {
+            TotpError::InvalidDigitsUrl { digits } => {
                 write!(f, "Could not parse digits \"{}\" as a number", digits)
             }
             #[cfg(feature = "otpauth")]
-            TotpError::InvalidAccountName { value } => {
-                write!(f, "Account name cannot contain ':', found in \"{}\"", value)
+            TotpError::InvalidAccountName { account_name } => {
+                write!(
+                    f,
+                    "Account name cannot contain ':', found in \"{}\"",
+                    account_name
+                )
             }
             #[cfg(feature = "otpauth")]
             TotpError::InvalidSecret => {
                 write!(f, "Could not parse secret as an unpadded base32 string")
             }
             #[cfg(feature = "otpauth")]
-            TotpError::AccountNameDecode { value } => {
-                write!(f, "Could not URL-decode account name \"{}\"", value)
+            TotpError::AccountNameDecode { account_name } => {
+                write!(f, "Could not URL-decode account name \"{}\"", account_name)
             }
             #[cfg(feature = "otpauth")]
-            TotpError::InvalidIssuer { value } => {
-                write!(f, "Issuer cannot contain ':', found in \"{}\"", value)
+            TotpError::InvalidIssuer { issuer } => {
+                write!(f, "Issuer cannot contain ':', found in \"{}\"", issuer)
             }
             #[cfg(feature = "otpauth")]
-            TotpError::IssuerDecode { value } => {
-                write!(f, "Could not URL-decode issuer \"{}\"", value)
+            TotpError::IssuerDecode { issuer } => {
+                write!(f, "Could not URL-decode issuer \"{}\"", issuer)
             }
             #[cfg(feature = "otpauth")]
             TotpError::IssuerMismatch { path, query } => write!(
@@ -125,7 +129,7 @@ impl core::fmt::Display for TotpError {
                 path, query
             ),
             #[cfg(feature = "qr")]
-            TotpError::URLTooLong { url } => write!(
+            TotpError::UrlTooLong { url } => write!(
                 f,
                 "Could not generate a QR code: the generated URL is too long to encode: {url}"
             ),
@@ -193,7 +197,7 @@ mod test {
     #[test]
     #[cfg(feature = "otpauth")]
     fn invalid_digits_url() {
-        let error = TotpError::InvalidDigitsURL {
+        let error = TotpError::InvalidDigitsUrl {
             digits: "six".to_string(),
         };
         assert_eq!(
@@ -243,7 +247,7 @@ mod test {
     #[test]
     #[cfg(feature = "otpauth")]
     fn invalid_step_url() {
-        let error = TotpError::InvalidStepURL {
+        let error = TotpError::InvalidStepUrl {
             step: "thirty".to_string(),
         };
         assert_eq!(
@@ -258,7 +262,7 @@ mod test {
     #[cfg(feature = "otpauth")]
     fn invalid_account_name() {
         let error = TotpError::InvalidAccountName {
-            value: "user:name".to_string(),
+            account_name: "user:name".to_string(),
         };
         assert_eq!(
             error.to_string(),
@@ -270,7 +274,7 @@ mod test {
     #[cfg(feature = "otpauth")]
     fn account_name_decode() {
         let error = TotpError::AccountNameDecode {
-            value: "bad%ZZencoding".to_string(),
+            account_name: "bad%ZZencoding".to_string(),
         };
         assert_eq!(
             error.to_string(),
@@ -282,7 +286,7 @@ mod test {
     #[cfg(feature = "otpauth")]
     fn invalid_issuer() {
         let error = TotpError::InvalidIssuer {
-            value: "Iss:uer".to_string(),
+            issuer: "Iss:uer".to_string(),
         };
         assert_eq!(
             error.to_string(),
@@ -294,7 +298,7 @@ mod test {
     #[cfg(feature = "otpauth")]
     fn issuer_decode() {
         let error = TotpError::IssuerDecode {
-            value: "bad%ZZissuer".to_string(),
+            issuer: "bad%ZZissuer".to_string(),
         };
         assert_eq!(
             error.to_string(),
