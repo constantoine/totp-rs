@@ -459,8 +459,9 @@ mod tests {
 
         // Create hash from image
         let hash_digest = Sha512::digest(data);
+        let hash_hex: String = hash_digest.iter().map(|b| format!("{b:02x}")).collect();
         assert_eq!(
-            format!("{:x}", hash_digest).as_str(),
+            hash_hex.as_str(),
             "fbb0804f1e4f4c689d22292c52b95f0783b01b4319973c0c50dd28af23dbbbe663dce4eb05a7959086d9092341cb9f103ec5a9af4a973867944e34c063145328"
         );
     }
