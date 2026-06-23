@@ -1,3 +1,10 @@
+# [5.7.2](https://github.com/constantoine/totp-rs/releases/tag/v5.7.2) (23/06/2026)
+### Fix
+- Parse algorithm from URLs more consistently. #90
+
+### Special thanks
+* [@deade1e](https://github.com/deade1e) for proposing a PR to fix that. It was changed in v6 but might as well fix it now.
+
 # [5.7.1](https://github.com/constantoine/totp-rs/releases/tag/v5.7.1) (09/03/2026)
 ### Fix
 - Secret gets zeroized more consistently. #81
