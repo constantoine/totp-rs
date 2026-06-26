@@ -1,9 +1,9 @@
 [package]
 name = "totp-rs"
-version = "5.7.2"
+version = "6.0.0"
 authors = ["Cleo Rebert <cleo.rebert@gmail.com>"]
-rust-version = "1.66"
-edition = "2021"
+rust-version = "1.88"
+edition = "2024"
 readme = "README.md"
 license = "MIT"
 description = "RFC-compliant TOTP implementation with ease of use as a goal and additionnal QoL features."
@@ -17,22 +17,57 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-default = []
-otpauth = ["url", "urlencoding"]
+default = ["std"]
+gen_secret = ["dep:rand"]
+otpauth = ["alloc", "dep:url", "dep:percent-encoding"]
 qr = ["dep:qrcodegen-image", "otpauth"]
-serde_support = ["serde"]
-gen_secret = ["rand"]
+serde = ["dep:serde", "zeroize?/serde"]
 steam = []
+std = ["rand?/thread_rng", "alloc"]
+zeroize = ["dep:zeroize"]
+alloc = ["serde?/alloc", "dep:base32", "zeroize?/alloc"]
 
 [dependencies]
-serde = { version = "1.0", features = ["derive"], optional = true }
-sha2 = "0.10"
-sha1 = "0.10"
-hmac = "0.12"
-base32 = "0.5"
-urlencoding = { version = "2.1", optional = true}
-url = { version = "2.4", optional = true }
-constant_time_eq = "0.3"
-rand = { version = "0.9", features = ["thread_rng"], optional = true, default-features = false }
-zeroize = { version = "1.6", features = ["alloc", "derive"], optional = true }
-qrcodegen-image = { version = "1.4", features = ["base64"], optional = true }
+sha2 = { version = "0.11", default-features = false }
+sha1 = { version = "0.11", default-features = false }
+hmac = { version = "0.13", default-features = false }
+constant_time_eq = { version = "0.4", default-features = false }
+
+base32 = { version = "0.5", default-features = false, optional = true }
+serde = { version = "1.0", features = [
+  "derive",
+], optional = true, default-features = false }
+url = { version = "2.4", default-features = false, optional = true }
+percent-encoding = { version = "2.3.2", features = [
+  "alloc",
+], default-features = false, optional = true }
+rand = { version = "0.10", features = [
+  "sys_rng",
+  "chacha",
+], optional = true, default-features = false }
+zeroize = { version = "1.9", features = [
+  "derive",
+], optional = true, default-features = false }
+qrcodegen-image = { version = "1.5", features = [
+  "base64",
+], optional = true, default-features = false }
+
+[[example]]
+name = "steam"
+required-features = ["steam", "std"]
+
+[[example]]
+name = "gen_secret"
+required-features = ["gen_secret", "std"]
+
+[[example]]
+name = "ttl"
+required-features = ["std"]
+
+[[example]]
+name = "qr_code"
+required-features = ["qr"]
+
+[[example]]
+name = "no_alloc"
+required-features = []
