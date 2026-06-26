@@ -133,7 +133,7 @@ impl AsRef<[u8]> for Signature {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 #[non_exhaustive]
 pub struct UnsupportedAlgorithm {
     #[cfg(feature = "alloc")]

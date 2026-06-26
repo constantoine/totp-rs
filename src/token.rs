@@ -29,7 +29,6 @@ use core::fmt;
 /// This is to preserve compatibility with the `zeroize` feature which will add
 /// a non-trivial [`Drop`] implementation.
 #[derive(Clone, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "zeroize", derive(zeroize::Zeroize, zeroize::ZeroizeOnDrop))]
 pub struct Token {
     #[cfg_attr(feature = "zeroize", zeroize(skip))]

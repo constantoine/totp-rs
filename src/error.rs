@@ -1,6 +1,15 @@
 #[cfg(feature = "otpauth")]
-use {alloc::string::String, url::ParseError};
+use {crate::algorithm::UnsupportedAlgorithm, alloc::string::String, url::ParseError};
 
+/// Errors produced when building or parsing a [`Totp`](crate::Totp).
+///
+/// Variant naming follows a fixed convention:
+/// * `Invalid<Field>`: the field was read but its value is not acceptable.
+/// * `<Field>Parse` / `<Field>Decode`: the raw input could not be interpreted
+///   (numeric parse vs. percent-decoding, respectively).
+/// * `<Field>Mismatch`: two inputs contradict each other.
+/// * `<Field>NotSet`: a required input is absent.
+/// * otherwise, a descriptive name (e.g. `SecretTooShort`, `UrlTooLong`).
 #[derive(Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum TotpError {
@@ -17,10 +26,10 @@ pub enum TotpError {
     // === URL parsing errors (otpauth feature) ===
     #[cfg(feature = "otpauth")]
     /// Algorithm is not recognized.
-    InvalidAlgorithm { algorithm: String },
+    InvalidAlgorithm { cause: UnsupportedAlgorithm },
     #[cfg(feature = "otpauth")]
     /// Digits parameter is not a valid number.
-    InvalidDigitsUrl { digits: String },
+    DigitsParse { digits: String },
     #[cfg(feature = "otpauth")]
     /// URL parsing failed.
     UrlParse(ParseError),
@@ -35,7 +44,7 @@ pub enum TotpError {
     InvalidSecret,
     #[cfg(feature = "otpauth")]
     /// Step parameter is not a valid number.
-    InvalidStepUrl { step: String },
+    StepParse { step: String },
 
     // === Account/Issuer errors (otpauth feature) ===
     #[cfg(feature = "otpauth")]
@@ -79,11 +88,7 @@ impl core::fmt::Display for TotpError {
             #[cfg(feature = "otpauth")]
             TotpError::UrlParse(e) => write!(f, "Error parsing URL: {}", e),
             #[cfg(feature = "otpauth")]
-            TotpError::InvalidAlgorithm { algorithm } => write!(
-                f,
-                "Algorithm must be SHA1, SHA256, or SHA512, not \"{}\"",
-                algorithm
-            ),
+            TotpError::InvalidAlgorithm { cause } => write!(f, "{}", cause),
             #[cfg(feature = "otpauth")]
             TotpError::InvalidScheme { scheme } => {
                 write!(f, "Scheme must be \"otpauth\", not \"{}\"", scheme)
@@ -91,11 +96,11 @@ impl core::fmt::Display for TotpError {
             #[cfg(feature = "otpauth")]
             TotpError::InvalidHost { host } => write!(f, "Host must be \"totp\", not \"{}\"", host),
             #[cfg(feature = "otpauth")]
-            TotpError::InvalidStepUrl { step } => {
+            TotpError::StepParse { step } => {
                 write!(f, "Could not parse step \"{}\" as a number", step)
             }
             #[cfg(feature = "otpauth")]
-            TotpError::InvalidDigitsUrl { digits } => {
+            TotpError::DigitsParse { digits } => {
                 write!(f, "Could not parse digits \"{}\" as a number", digits)
             }
             #[cfg(feature = "otpauth")]
@@ -141,6 +146,8 @@ impl core::error::Error for TotpError {
     fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
         match self {
             #[cfg(feature = "otpauth")]
+            TotpError::InvalidAlgorithm { cause } => Some(cause),
+            #[cfg(feature = "otpauth")]
             TotpError::UrlParse(e) => Some(e),
             _ => None,
         }
@@ -185,19 +192,15 @@ mod test {
     #[test]
     #[cfg(feature = "otpauth")]
     fn invalid_algorithm() {
-        let error = TotpError::InvalidAlgorithm {
-            algorithm: "MD5".to_string(),
-        };
-        assert_eq!(
-            error.to_string(),
-            "Algorithm must be SHA1, SHA256, or SHA512, not \"MD5\""
-        );
+        let cause = crate::Algorithm::try_from("MD5".to_string()).unwrap_err();
+        let error = TotpError::InvalidAlgorithm { cause };
+        assert_eq!(error.to_string(), "Unsupported Algorithm: MD5");
     }
 
     #[test]
     #[cfg(feature = "otpauth")]
-    fn invalid_digits_url() {
-        let error = TotpError::InvalidDigitsUrl {
+    fn digits_parse() {
+        let error = TotpError::DigitsParse {
             digits: "six".to_string(),
         };
         assert_eq!(
@@ -246,8 +249,8 @@ mod test {
 
     #[test]
     #[cfg(feature = "otpauth")]
-    fn invalid_step_url() {
-        let error = TotpError::InvalidStepUrl {
+    fn step_parse() {
+        let error = TotpError::StepParse {
             step: "thirty".to_string(),
         };
         assert_eq!(
@@ -349,13 +352,20 @@ mod test {
 
     #[test]
     #[cfg(feature = "otpauth")]
-    fn error_source_none_otpauth_variants() {
+    fn error_source_invalid_algorithm() {
         use core::error::Error;
 
-        let error = TotpError::InvalidAlgorithm {
-            algorithm: "MD5".to_string(),
-        };
-        assert!(error.source().is_none());
+        let cause = crate::Algorithm::try_from("MD5".to_string()).unwrap_err();
+        let error = TotpError::InvalidAlgorithm { cause };
+
+        let source = error.source().expect("source should be Some");
+        assert_eq!(source.to_string(), "Unsupported Algorithm: MD5");
+    }
+
+    #[test]
+    #[cfg(feature = "otpauth")]
+    fn error_source_none_otpauth_variants() {
+        use core::error::Error;
 
         let error = TotpError::InvalidScheme {
             scheme: "https".to_string(),

@@ -226,7 +226,7 @@ impl Totp {
     }
 
     /// Will check if token is valid given the provided timestamp in seconds, accounting [skew](struct.Totp.html#structfield.skew)
-    /// If the token is valid, return the matched step. 
+    /// If the token is valid, return the matched step.
     pub fn check(&self, token: &str, time: u64) -> Option<u64> {
         let Some(token) = Token::try_from_formatted_string(
             self.algorithm,
@@ -412,7 +412,9 @@ mod tests {
             .with_secret("TestSecretSuperSecret".as_bytes())
             .build_noncompliant();
         assert!(
-            totp.check("174269", 1000).is_some() && totp.check("659761", 1000).is_some() && totp.check("260393", 1000).is_some()
+            totp.check("174269", 1000).is_some()
+                && totp.check("659761", 1000).is_some()
+                && totp.check("260393", 1000).is_some()
         );
     }
 

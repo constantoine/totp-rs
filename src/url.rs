@@ -26,24 +26,21 @@ impl crate::Totp {
     /// It returns a builder with defaults values from [Builder::new] + info from the URL.
     /// Notable exception: A password will not be supplied automatically if `gen_secret` is enabled.
     fn parts_from_url<S: AsRef<str>>(url: S) -> Result<Builder, TotpError> {
-        let mut builder: Builder;
-
         let url = Url::parse(url.as_ref()).map_err(TotpError::UrlParse)?;
         if url.scheme() != "otpauth" {
             return Err(TotpError::InvalidScheme {
                 scheme: url.scheme().to_string(),
             });
         }
-        match url.host() {
-            Some(Host::Domain("totp")) => builder = Builder::new(),
+
+        let mut builder = match url.host() {
+            Some(Host::Domain("totp")) => Ok(Builder::new()),
             #[cfg(feature = "steam")]
-            Some(Host::Domain("steam")) => builder = Builder::new_steam(),
-            _ => {
-                return Err(TotpError::InvalidHost {
-                    host: url.host().unwrap().to_string(),
-                });
-            }
-        }
+            Some(Host::Domain("steam")) => Ok(Builder::new_steam()),
+            _ => Err(TotpError::InvalidHost {
+                host: url.host().unwrap().to_string(),
+            }),
+        }?;
 
         builder = builder.without_secret();
 
@@ -76,37 +73,22 @@ impl crate::Totp {
         for (key, value) in url.query_pairs() {
             match key.as_ref() {
                 "algorithm" => {
-                    let algorithm = match value.clone().to_lowercase().as_ref() {
-                        "sha1" => Algorithm::SHA1,
-                        "sha256" => Algorithm::SHA256,
-                        "sha512" => Algorithm::SHA512,
-                        #[cfg(feature = "steam")]
-                        "steam" => Algorithm::Steam,
-                        _ => {
-                            return Err(TotpError::InvalidAlgorithm {
-                                algorithm: value.to_string(),
-                            });
-                        }
-                    };
+                    let algorithm = Algorithm::try_from(value.to_string())
+                        .map_err(|cause| TotpError::InvalidAlgorithm { cause })?;
 
                     builder = builder.with_algorithm(algorithm);
                 }
                 "digits" => {
-                    let digits = value
-                        .parse::<u32>()
-                        .map_err(|_| TotpError::InvalidDigitsUrl {
-                            digits: value.to_string(),
-                        })?;
+                    let digits = value.parse::<u32>().map_err(|_| TotpError::DigitsParse {
+                        digits: value.to_string(),
+                    })?;
 
                     builder = builder.with_digits(digits);
                 }
                 "period" => {
-                    let step_duration =
-                        value
-                            .parse::<u64>()
-                            .map_err(|_| TotpError::InvalidStepUrl {
-                                step: value.to_string(),
-                            })?;
+                    let step_duration = value.parse::<u64>().map_err(|_| TotpError::StepParse {
+                        step: value.to_string(),
+                    })?;
 
                     builder = builder.with_step_duration(step_duration);
                 }
@@ -118,11 +100,6 @@ impl crate::Totp {
                 }
                 "issuer" => {
                     let param_issuer: String = value.into();
-
-                    #[cfg(feature = "steam")]
-                    if param_issuer.eq_ignore_ascii_case("steam") {
-                        builder = builder.with_algorithm(Algorithm::Steam);
-                    }
 
                     if issuer.as_ref().is_some()
                         && param_issuer.as_str() != issuer.as_ref().unwrap()
@@ -141,7 +118,12 @@ impl crate::Totp {
         }
 
         #[cfg(feature = "steam")]
-        if builder.algorithm == Algorithm::Steam {
+        if url.host().unwrap() == Host::Domain("steam")
+            || builder.algorithm == Algorithm::Steam
+            || issuer
+                .as_deref()
+                .is_some_and(|i| i.eq_ignore_ascii_case("steam"))
+        {
             builder = builder
                 .with_algorithm(Algorithm::Steam)
                 .with_digits(5)
@@ -513,5 +495,18 @@ mod tests {
         assert_eq!(totp.skew, 1);
         assert_eq!(totp.step, 30);
         assert_eq!(&**totp.issuer.as_ref().unwrap(), "Steam");
+    }
+
+    #[cfg(feature = "steam")]
+    #[test]
+    fn from_steam_host_authoritative_over_algorithm() {
+        // host=steam with no issuer hint and an explicit algorithm=SHA1: the
+        // steam host must win over the SHA1 param.
+        let totp = Totp::from_url(
+            "otpauth://steam/username?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&algorithm=SHA1",
+        )
+        .unwrap();
+        assert_eq!(totp.algorithm, Algorithm::Steam);
+        assert_eq!(totp.digits, 5);
     }
 }
