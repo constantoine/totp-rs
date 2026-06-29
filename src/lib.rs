@@ -1,4 +1,5 @@
-//! This library permits the creation of 2FA authentification tokens per TOTP, the verification of said tokens, with configurable time skew, validity time of each token, algorithm and number of digits! Default features are kept as low-dependency as possible to ensure small binaries and short compilation time
+//! This library permits the creation of 2FA authentification tokens per TOTP, the verification of said tokens, with configurable time skew, validity time of each token, algorithm and number of digits!
+//! Default features are kept as low-dependency as possible to ensure small binaries and short compilation time
 //!
 //! Be aware that some authenticator apps will accept the `SHA256`
 //! and `SHA512` algorithms but silently fallback to `SHA1` which will
@@ -112,18 +113,24 @@ fn system_time() -> Result<u64, SystemTimeError> {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "zeroize", derive(zeroize::Zeroize, zeroize::ZeroizeOnDrop))]
 pub struct Totp {
-    /// SHA-1 is the most widespread algorithm used, and for totp pursposes, SHA-1 hash collisions are [not a problem](https://tools.ietf.org/html/rfc4226#appendix-B.2) as HMAC-SHA-1 is not impacted. It's also the main one cited in [rfc-6238](https://tools.ietf.org/html/rfc6238#section-3) even though the [reference implementation](https://tools.ietf.org/html/rfc6238#appendix-A) permits the use of SHA-1, SHA-256 and SHA-512. Not all clients support other algorithms then SHA-1
+    /// SHA-1 is the most widespread algorithm used, and for totp pursposes, SHA-1 hash collisions are [not a problem](https://tools.ietf.org/html/rfc4226#appendix-B.2) as HMAC-SHA-1 is not impacted.
+    /// It's also the main one cited in [rfc-6238](https://tools.ietf.org/html/rfc6238#section-3) even though the [reference implementation](https://tools.ietf.org/html/rfc6238#appendix-A) permits the use of SHA-1, SHA-256 and SHA-512.
+    ///
+    /// <div class="warning">Not all clients support other algorithms than SHA-1, and some will silently accept them and use SHA-1 under the hood.</div>
     #[cfg_attr(feature = "zeroize", zeroize(skip))]
     pub(crate) algorithm: Algorithm,
-    /// The number of digits composing the auth code. Per [rfc-4226](https://tools.ietf.org/html/rfc4226#section-5.3), this can oscilate between 6 and 8 digits
+    /// The number of digits composing the auth code. Per [rfc-4226](https://tools.ietf.org/html/rfc4226#section-5.3), this can oscilate between 6 and 8 digits.
     pub(crate) digits: u32,
-    /// Number of steps allowed as network delay. 1 would mean one step before current step and one step after are valids. The recommended value per [rfc-6238](https://tools.ietf.org/html/rfc6238#section-5.2) is 1. Anything more is sketchy, and anyone recommending more is, by definition, ugly and stupid
+    /// Number of steps allowed as network delay. A value of 1 would mean a code valid for the step before or the step after current step would be accepted.
+    /// The recommended value per [rfc-6238](https://tools.ietf.org/html/rfc6238#section-5.2) is 1.
+    /// Anything more is sketchy, and anyone recommending more is, by definition, ugly and stupid.
     pub(crate) skew: u16,
-    /// Duration in seconds of a step. The recommended value per [rfc-6238](https://tools.ietf.org/html/rfc6238#section-5.2) is 30 seconds
+    /// Duration in seconds of a step. The recommended value per [rfc-6238](https://tools.ietf.org/html/rfc6238#section-5.2) is 30 seconds.
     pub(crate) step: u64,
-    /// As per [rfc-4226](https://tools.ietf.org/html/rfc4226#section-4) the secret should come from a strong source, most likely a CSPRNG. It should be at least 128 bits, but 160 are recommended
+    /// As per [rfc-4226](https://tools.ietf.org/html/rfc4226#section-4) the secret should come from a strong source, most likely a CSPRNG.
+    /// It should be at least 128 bits, but 160 are recommended.
     ///
-    /// non-encoded value
+    /// non-encoded value.
     pub(crate) secret: Secret,
     #[cfg(feature = "otpauth")]
     #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
@@ -178,7 +185,7 @@ impl Totp {
     /// See [Builder::with_account_name] for more details on this value.
     pub const fn account_name(&self) -> &str {
         &self.account_name
-    }    
+    }
 }
 
 impl core::fmt::Display for Totp {
@@ -270,7 +277,7 @@ impl Totp {
 
     /// Will check if token is valid given the provided timestamp in seconds, accounting [skew](struct.Totp.html#structfield.skew)
     /// If the token is valid, return the matched step.
-    /// 
+    ///
     /// <div class="warning">
     /// As per <a href="https://datatracker.ietf.org/doc/html/rfc6238#section-5.2">rfc-6239</a>, a code should only be accepted once.
     /// If a user wants to log in several times in a row (maybe multiple device?) they have to wait for the next time-window.
@@ -298,7 +305,7 @@ impl Totp {
 
     /// Will check if token is valid by current system time, accounting [skew](struct.Totp.html#structfield.skew)
     /// If the token is valid, return the matched step.
-    /// 
+    ///
     /// <div class="warning">
     /// As per <a href="https://datatracker.ietf.org/doc/html/rfc6238#section-5.2">rfc-6239</a>, a code should only be accepted once.
     /// If a user wants to log in several times in a row (maybe multiple device?) they have to wait for the next time-window.
