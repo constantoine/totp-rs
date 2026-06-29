@@ -17,8 +17,9 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-default = ["std"]
+default = ["std", "migration"]
 gen_secret = ["dep:rand"]
+migration = ["alloc"]
 otpauth = ["alloc", "dep:url", "dep:percent-encoding"]
 qr = ["dep:qrcodegen-image", "otpauth"]
 serde = ["dep:serde", "zeroize?/serde"]

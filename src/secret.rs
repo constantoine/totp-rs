@@ -147,7 +147,7 @@ impl Secret {
     /// > The length of the shared secret MUST be at least 128 bits.
     /// > This document RECOMMENDs a shared secret length of 160 bits.
     ///
-    /// ⚠️ The generated secret is not guaranteed to be a valid UTF-8 sequence.
+    /// <div class="warning">The generated secret is not guaranteed to be a valid UTF-8 sequence.</div>
     ///
     /// # Examples
     ///

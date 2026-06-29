@@ -84,7 +84,7 @@ mod token;
 #[cfg(feature = "otpauth")]
 mod url;
 
-#[cfg(feature = "std")]
+#[cfg(feature = "migration")]
 mod migration;
 
 pub use algorithm::Algorithm;
@@ -93,7 +93,7 @@ pub use error::TotpError;
 pub use secret::{Secret, SecretParseError};
 pub use token::Token;
 
-#[cfg(feature = "std")]
+#[cfg(feature = "migration")]
 pub use migration::*;
 
 use core::fmt;
@@ -136,6 +136,49 @@ pub struct Totp {
     /// The "constantoine@github.com" part of "Github:constantoine@github.com". Must not contain a colon `:`
     /// For example, the name of your user's account.
     pub(crate) account_name: alloc::boxed::Box<str>,
+}
+
+impl Totp {
+    /// Get currently used [Algorithm].
+    /// See [Builder::with_algorithm] for more details on this value.
+    pub const fn algorithm(&self) -> Algorithm {
+        self.algorithm
+    }
+
+    /// Get how many digits the generated code will be made of.
+    /// See [Builder::with_digits] for more details on this value.
+    pub const fn digits(&self) -> u32 {
+        self.digits
+    }
+
+    /// Get how many steps behind or forward are accepted to account for network skew.
+    /// See [Builder::with_skew] for more details on this value.
+    pub const fn skew(&self) -> u32 {
+        self.skew as u32
+    }
+
+    /// Get how many seconds a step lasts.
+    /// See [Builder::with_step_duration] for more details on this value.
+    pub const fn step(&self) -> u64 {
+        self.step
+    }
+
+    #[cfg(feature = "otpauth")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
+    /// Get the name of the issuer who created this Totp.
+    /// This value is not always provided.
+    /// See [Builder::with_issuer] for more details on this value.
+    pub fn issuer(&self) -> Option<&str> {
+        self.issuer.as_deref()
+    }
+
+    #[cfg(feature = "otpauth")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
+    /// Name of the account the Totp was issued for.
+    /// See [Builder::with_account_name] for more details on this value.
+    pub const fn account_name(&self) -> &str {
+        &self.account_name
+    }    
 }
 
 impl core::fmt::Display for Totp {
@@ -227,6 +270,13 @@ impl Totp {
 
     /// Will check if token is valid given the provided timestamp in seconds, accounting [skew](struct.Totp.html#structfield.skew)
     /// If the token is valid, return the matched step.
+    /// 
+    /// <div class="warning">
+    /// As per <a href="https://datatracker.ietf.org/doc/html/rfc6238#section-5.2">rfc-6239</a>, a code should only be accepted once.
+    /// If a user wants to log in several times in a row (maybe multiple device?) they have to wait for the next time-window.
+    /// This library does NOT handle this, and it is the caller's responsibility to make sure a specific step only gets accepted once.
+    /// This is the reason why check now returns an optional u64 step-number.
+    /// </div>
     pub fn check(&self, token: &str, time: u64) -> Option<u64> {
         let Some(token) = Token::try_from_formatted_string(
             self.algorithm,
@@ -248,6 +298,13 @@ impl Totp {
 
     /// Will check if token is valid by current system time, accounting [skew](struct.Totp.html#structfield.skew)
     /// If the token is valid, return the matched step.
+    /// 
+    /// <div class="warning">
+    /// As per <a href="https://datatracker.ietf.org/doc/html/rfc6238#section-5.2">rfc-6239</a>, a code should only be accepted once.
+    /// If a user wants to log in several times in a row (maybe multiple device?) they have to wait for the next time-window.
+    /// This library does NOT handle this, and it is the caller's responsibility to make sure a specific step only gets accepted once.
+    /// This is the reason why check now returns an optional u64 step-number.
+    /// </div>
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn check_current(&self, token: &str) -> Result<Option<u64>, SystemTimeError> {

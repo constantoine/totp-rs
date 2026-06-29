@@ -20,40 +20,6 @@ pub type Rfc6238Error = TotpError;
 pub type TotpUrlError = TotpError;
 
 impl Totp {
-    #[deprecated(since = "6.0.0", note = "`Totp` internals are now private")]
-    pub const fn algorithm(&self) -> Algorithm {
-        self.algorithm
-    }
-
-    #[deprecated(since = "6.0.0", note = "`Totp` internals are now private")]
-    pub const fn digits(&self) -> u32 {
-        self.digits
-    }
-
-    #[deprecated(since = "6.0.0", note = "`Totp` internals are now private")]
-    pub const fn skew(&self) -> u32 {
-        self.skew as u32
-    }
-
-    #[deprecated(since = "6.0.0", note = "`Totp` internals are now private")]
-    pub const fn step(&self) -> u64 {
-        self.step
-    }
-
-    #[cfg(feature = "otpauth")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
-    #[deprecated(since = "6.0.0", note = "`Totp` internals are now private")]
-    pub fn issuer(&self) -> Option<&str> {
-        self.issuer.as_deref()
-    }
-
-    #[cfg(feature = "otpauth")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
-    #[deprecated(since = "6.0.0", note = "`Totp` internals are now private")]
-    pub const fn account_name(&self) -> &str {
-        &self.account_name
-    }
-
     #[cfg(feature = "otpauth")]
     #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
     #[deprecated(since = "6.0.0", note = "use `Builder::new` instead")]
@@ -233,11 +199,15 @@ impl Builder {
         since = "6.0.0",
         note = "use `Builder::new` and `Builder::with_secret` instead"
     )]
+    /// Only presend to mirror [Rfc6238] during migration.
+    /// See [Builder::with_secret] for more details on the values that would be used here.
     pub fn with_defaults(secret: alloc::vec::Vec<u8>) -> Result<Builder, TotpError> {
         Ok(Builder::new().with_secret(secret))
     }
 
     #[deprecated(since = "6.0.0", note = "use `Builder::with_digits` instead")]
+    /// Only presend to mirror [Rfc6238] during migration.
+    /// See [Builder::with_digits] for more details on this value.
     pub fn digits(&mut self, value: usize) -> Result<(), TotpError> {
         *self = core::mem::take(self).with_digits(value as _);
         Ok(())
@@ -246,6 +216,8 @@ impl Builder {
     #[cfg(feature = "otpauth")]
     #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
     #[deprecated(since = "6.0.0", note = "use `Builder::with_issuer` instead")]
+    /// Only presend to mirror [Rfc6238] during migration.
+    /// See [Builder::with_issuer] for more details on this value.
     pub fn issuer(&mut self, value: alloc::string::String) {
         *self = core::mem::take(self).with_issuer(value);
     }
@@ -253,6 +225,8 @@ impl Builder {
     #[cfg(feature = "otpauth")]
     #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
     #[deprecated(since = "6.0.0", note = "use `Builder::with_account_name` instead")]
+    /// Only presend to mirror [Rfc6238] during migration.
+    /// See [Builder::with_account_name] for more details on this value.
     pub fn account_name(&mut self, value: alloc::string::String) {
         *self = core::mem::take(self).with_account_name(value);
     }

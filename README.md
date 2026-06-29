@@ -22,7 +22,7 @@ With optional feature "otpauth", support parsing the TOTP parameters from an `ot
 
 ### serde
 
-With optional feature "serde", library-defined types `Totp` and `Algorithm` and will be Deserialize-able and Serialize-able.
+With optional feature "serde", library-defined types `Totp`, `Algorithm` and `Secret` will be Deserialize-able and Serialize-able.
 
 ### gen_secret
 
@@ -36,6 +36,10 @@ Securely zero secret information when the TOTP struct is dropped.
 
 Add support for Steam TOTP tokens.
 
+### migration
+
+Enabled by default. Provides deprecated aliases and shims for the 5.7.x API so existing code keeps compiling while you port it to the 6.0 `Builder` API (see [MIGRATION.md](MIGRATION.md)). Disable it with `default-features = false` once you have finished migrating to turn any remaining 5.x calls into hard errors.
+
 ## Examples
 
 ### Summary
@@ -43,26 +47,24 @@ Add support for Steam TOTP tokens.
 0. [Understanding Secret](#understanding-secret)
 1. [Generate a token](#generate-a-token)
 2. [Enable qrcode generation](#with-qrcode-generation)
-3. [Enable serde support](#with-serde-support)
-4. [Enable otpauth url support](#with-otpauth-url-support)
-5. [Enable gen_secret support](#with-gen_secret)
-6. [With RFC-6238 compliant default](#with-rfc-6238-compliant-default)
-7. [New TOTP from steam secret](#new-totp-from-steam-secret)
+3. [Enable otpauth url support](#with-otpauth-url-support)
+4. [Enable gen_secret support](#with-gen_secret)
+5. [With RFC-6238 compliant default](#with-rfc-6238-compliant-default)
+6. [New TOTP from steam secret](#new-totp-from-steam-secret)
 
 ### Understanding Secret
 
 ---
-This new type was added as a disambiguation between Raw and already base32 encoded secrets.
+This type disambiguates between raw bytes and an already base32-encoded secret.
 
 ```Rust
-Secret::Raw("TestSecretSuperSecret".as_bytes().to_vec())
-
+Secret::from("TestSecretSuperSecret".as_bytes())
 ```
 
 Is equivalent to:
 
 ```Rust
-Secret::Encoded("KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ".to_string())
+Secret::try_from_base32("KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ").unwrap()
 ```
 
 ### Generate a token
@@ -72,46 +74,41 @@ Add it to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-totp-rs = "^5.0"
+totp-rs = "^6.0"
 ```
 
 You can then do something like:
 
 ```Rust
-use std::time::SystemTime;
-use totp_rs::{Algorithm, Totp, Secret};
+use totp_rs::{Builder, Secret, Totp};
 
 fn main() {
-    let totp = Totp::new(
-        Algorithm::SHA1,
-        6,
-        1,
-        30,
-        Secret::Raw("TestSecretSuperSecret".as_bytes().to_vec()).to_bytes().unwrap(),
-    ).unwrap();
+    let totp: Totp = Builder::new()
+        .with_secret(Secret::from("TestSecretSuperSecret".as_bytes()))
+        .build()
+        .unwrap();
     let token = totp.generate_current().unwrap();
-    println!("{}", token);   
+    println!("{}", token);
 }
 ```
 
 Which is equivalent to:
 
 ```Rust
-use std::time::SystemTime;
-use totp_rs::{Algorithm, Totp, Secret};
+use totp_rs::{Builder, Secret, Totp};
 
 fn main() {
-    let totp = Totp::new(
-        Algorithm::SHA1,
-        6,
-        1,
-        30,
-        Secret::Encoded("KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ".to_string()).to_bytes().unwrap(),
-    ).unwrap();
+    let totp: Totp = Builder::new()
+        .with_secret(Secret::try_from_base32("KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ").unwrap())
+        .build()
+        .unwrap();
     let token = totp.generate_current().unwrap();
-    println!("{}", token);   
+    println!("{}", token);
 }
 ```
+
+`generate_current` returns a `Token`. It implements `Display`, so it prints
+directly; call `.to_string()` if you need an owned `String`.
 
 ### With qrcode generation
 
@@ -120,39 +117,25 @@ Add it to your `Cargo.toml`:
 
 ```toml
 [dependencies.totp-rs]
-version = "^5.3"
+version = "^6.0"
 features = ["qr"]
 ```
 
 You can then do something like:
 
 ```Rust
-use totp_rs::{Algorithm, Totp, Secret};
+use totp_rs::{Builder, Secret, Totp};
 
 fn main() {
-    let totp = Totp::new(
-        Algorithm::SHA1,
-        6,
-        1,
-        30,
-        Secret::Encoded("KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ".to_string()).to_bytes().unwrap(),
-        Some("Github".to_string()),
-        "constantoine@github.com".to_string(),
-    ).unwrap();
-    let qr_code = totp.to_qr_base64()?;
-    println!("{}", qr_code);   
+    let totp: Totp = Builder::new()
+        .with_secret(Secret::try_from_base32("KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ").unwrap())
+        .with_issuer("Github")
+        .with_account_name("constantoine@github.com")
+        .build()
+        .unwrap();
+    let qr_code = totp.to_qr_base64().unwrap();
+    println!("{}", qr_code);
 }
-```
-
-### With serde support
-
----
-Add it to your `Cargo.toml`:
-
-```toml
-[dependencies.totp-rs]
-version = "^5.0"
-features = ["serde"]
 ```
 
 ### With otpauth url support
@@ -162,7 +145,7 @@ Add it to your `Cargo.toml`:
 
 ```toml
 [dependencies.totp-rs]
-version = "^5.0"
+version = "^6.0"
 features = ["otpauth"]
 ```
 
@@ -185,71 +168,114 @@ Add it to your `Cargo.toml`:
 
 ```toml
 [dependencies.totp-rs]
-version = "^5.3"
+version = "^6.0"
 features = ["gen_secret"]
 ```
 
-You can then do something like:
+With `gen_secret`, `Builder::new()` already holds a freshly generated secret, so
+you can build a `Totp` without supplying one:
 
 ```Rust
-use totp_rs::{Algorithm, Totp, Secret};
+use totp_rs::{Builder, Totp};
 
 fn main() {
-    let totp = Totp::new(
-        Algorithm::SHA1,
-        6,
-        1,
-        30,
-        Secret::default().to_bytes().unwrap(),
-        Some("Github".to_string()),
-        "constantoine@github.com".to_string(),
-    ).unwrap();
-    let qr_code = totp.to_qr_base64()?;
-    println!("{}", qr_code);   
+    let totp: Totp = Builder::new()
+        .build()
+        .unwrap();
+    let token = totp.generate_current().unwrap();
+    println!("{}", token);
 }
 ```
 
-Which is equivalent to:
+Which is equivalent to setting the secret explicitly:
 
 ```Rust
-use totp_rs::{Algorithm, Totp, Secret};
+use totp_rs::{Builder, Secret, Totp};
 
 fn main() {
-    let totp = Totp::new(
-        Algorithm::SHA1,
-        6,
-        1,
-        30,
-        Secret::generate_secret().to_bytes().unwrap(),
-        Some("Github".to_string()),
-        "constantoine@github.com".to_string(),
-    ).unwrap();
-    let qr_code = totp.to_qr_base64()?;
-    println!("{}", qr_code);   
+    let totp: Totp = Builder::new()
+        .with_secret(Secret::generate())
+        .build()
+        .unwrap();
+    let token = totp.generate_current().unwrap();
+    println!("{}", token);
 }
 ```
 
 ### With RFC-6238 compliant default
 
 ---
-You can do something like this:
+`Builder::new()` already starts from RFC-6238 compliant defaults (SHA1, 6 digits,
+skew of 1, 30 second step), and `build()` enforces that compliance. So the only
+mandatory step is providing a secret:
 
 ```Rust
-use totp_rs::{Algorithm, Totp, Secret, Rfc6238};
+use totp_rs::{Builder, Secret, Totp};
 
-fn main () {
-    let mut rfc = Rfc6238::with_defaults(
-            Secret::Encoded("KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ".to_string()).to_bytes().unwrap(),
-        )
+fn main() {
+    let totp: Totp = Builder::new()
+        .with_secret(Secret::try_from_base32("KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ").unwrap())
+        .build()
         .unwrap();
 
-    // optional, set digits
-    rfc.digits(8).unwrap();
+    let token = totp.generate_current().unwrap();
+    println!("{}", token);
+}
+```
 
-    // create a TOTP from rfc
-    let totp = Totp::from_rfc6238(rfc).unwrap();
+is equivalent to:
+
+```Rust
+use totp_rs::{Algorithm, Builder, Secret, Totp};
+
+fn main() {
+    let totp: Totp = Builder::new()
+        .with_secret(Secret::try_from_base32("KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ").unwrap())
+        .with_algorithm(Algorithm::SHA1)
+        .with_digits(6)
+        .with_skew(1)
+        .with_step_duration(30)
+        .build()
+        .unwrap();
+
+    let token = totp.generate_current().unwrap();
+    println!("{}", token);
+}
+```
+
+You can override each property individually:
+
+```Rust
+use totp_rs::{Builder, Secret, Totp};
+
+fn main () {
+    let totp: Totp = Builder::new()
+        .with_secret(Secret::try_from_base32("KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ").unwrap())
+        // optional, override a default; 8 digits is still RFC-compliant
+        .with_digits(8)
+        .build()
+        .unwrap();
     let code = totp.generate_current().unwrap();
     println!("code: {}", code);
+}
+```
+
+You can ignore compliance checks by using `Builder::build_noncompliant`.
+Note that the checks are here for a reason, and unless you know what you're doing, you should really not have a lot of usecases for this one.
+
+```Rust
+use totp_rs::{Builder, Secret, Totp};
+
+fn main () {
+    let totp: Totp = Builder::new()
+        // Secret is too short to be compliant.
+        .with_secret(Secret::try_from_base32("KRSXG5C").unwrap())
+        // Cannot divide by zero.
+        .with_step_duration(0)
+        .build_noncompliant();
+
+    // Panic here because you can't divide by zero.
+    let code = totp.generate_current().unwrap();
 }
 ```
 
@@ -272,20 +298,21 @@ Add it to your `Cargo.toml`:
 
 ```toml
 [dependencies.totp-rs]
-version = "^5.3"
+version = "^6.0"
 features = ["steam"]
 ```
 
 You can then do something like:
 
 ```Rust
-use totp_rs::{Totp, Secret};
+use totp_rs::{Builder, Secret, Totp};
 
 fn main() {
-    let totp = Totp::new_steam(
-        Secret::Encoded("KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ".to_string()).to_bytes().unwrap(),
-    ).unwrap();
+    let totp: Totp = Builder::new_steam()
+        .with_secret(Secret::try_from_base32("KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ").unwrap())
+        .build()
+        .unwrap();
     let code = totp.generate_current().unwrap();
-    println!("code: {}", code);   
+    println!("{}", code);
 }
 ```
