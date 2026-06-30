@@ -73,5 +73,7 @@ required-features = ["qr"]
 name = "no_alloc"
 required-features = []
 
-[dev-dependencies]
+# serde_test pulls in serde/std, which leaks into no_std example builds via
+# feature unification. Exclude it from bare-metal targets (target_os = "none").
+[target.'cfg(not(target_os = "none"))'.dev-dependencies]
 serde_test = "1.0.177"
