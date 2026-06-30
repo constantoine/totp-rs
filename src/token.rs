@@ -75,6 +75,18 @@ impl Token {
 
         let value = match algorithm {
             Algorithm::SHA1 | Algorithm::SHA256 | Algorithm::SHA512 => {
+                // `from_str_radix` accepts a leading `+`, which is not a valid
+                // token character. Reject anything but ASCII digits first, then
+                // rely on the parse only to read the value and catch overflow.
+                let bytes = string.as_bytes();
+                let mut i = 0;
+                while i < bytes.len() {
+                    if !bytes[i].is_ascii_digit() {
+                        return None;
+                    }
+                    i += 1;
+                }
+
                 match u32::from_str_radix(string, 10) {
                     Ok(value) => value,
                     Err(_) => return None,
@@ -112,9 +124,11 @@ impl Token {
 
     const fn modulo(algorithm: Algorithm, digits: u8) -> u32 {
         match algorithm {
-            Algorithm::SHA1 | Algorithm::SHA256 | Algorithm::SHA512 => 10_u32.pow(digits as u32),
+            Algorithm::SHA1 | Algorithm::SHA256 | Algorithm::SHA512 => 10_u32.checked_pow(digits as u32)
+                .expect("a `digits` value over 9 is a guaranteed corruption as 10^10 is 10_000_000_000, which does not fit in an u32."),
             #[cfg(feature = "steam")]
-            Algorithm::Steam => (STEAM_CHARS.len() as u32).pow(digits as u32),
+            Algorithm::Steam => (STEAM_CHARS.len() as u32).checked_pow(digits as u32)
+                .expect("a `digits` value over 6 is a guaranteed corruption as 26^7 is 8_031_810_176, which does not fit in an u32."),
         }
     }
 }
@@ -142,11 +156,16 @@ impl fmt::Display for Token {
                 f,
                 "{1:00$}",
                 self.digits.into(),
-                self.value % 10_u32.pow(self.digits.into())
+                self.value % 10_u32.checked_pow(self.digits.into())
+                    .expect("a `digits` value over 9 is a guaranteed corruption as 10^10 is 10_000_000_000, which does not fit in an u32."),
             ),
             #[cfg(feature = "steam")]
             Algorithm::Steam => {
                 use core::fmt::Write as _;
+
+                if self.digits >= 7 {
+                    panic!("a `digits` value over 6 is a guaranteed corruption as 26^7 is 8_031_810_176, which does not fit in an u32.")
+                }
 
                 let chars = (0..self.digits).scan(self.value, |value, _| {
                     let digit = *value as usize % STEAM_CHARS.len();
@@ -294,5 +313,24 @@ mod tests {
             invalid_token_for_sha1,
         );
         assert_eq!(token, None);
+    }
+
+    /// `u32::from_str_radix` accepts a leading sign and would otherwise treat
+    /// e.g. "+8020" as equivalent to the token "08020". Non-digit characters,
+    /// including a leading `+`, must be rejected even when the length matches.
+    #[test]
+    fn parsing_rejects_non_digits() {
+        for non_digit in ["+8020", "-8020", " 8020", "80 20"] {
+            assert_eq!(
+                Token::try_from_formatted_string(Algorithm::SHA1, 5, non_digit),
+                None,
+                "expected \"{non_digit}\" to be rejected"
+            );
+        }
+
+        // A canonical all-digit token of the same length still parses.
+        assert!(
+            Token::try_from_formatted_string(Algorithm::SHA1, 5, "08020").is_some()
+        );
     }
 }

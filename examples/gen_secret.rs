@@ -5,5 +5,5 @@ use totp_rs::{Builder, Totp};
 fn main() {
     let totp: Totp = Builder::new().build().unwrap();
 
-    println!("code: {}", totp.generate_current().unwrap())
+    println!("code: {}", totp.generate_current())
 }

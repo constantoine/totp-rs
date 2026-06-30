@@ -1,6 +1,5 @@
 use crate::{Algorithm, Builder, Secret, Totp, TotpError};
 use alloc::{
-    borrow::ToOwned,
     format,
     string::{String, ToString},
     vec,
@@ -44,29 +43,29 @@ impl crate::Totp {
 
         builder = builder.without_secret();
 
+        // Locate the issuer/account separator on the still-encoded path, then
+        // percent-decode each half exactly once. Decoding the whole path first
+        // would decode the account name twice and corrupt any account name
+        // containing a percent-escape.
         let path = url.path().trim_start_matches('/');
-        let path = percent_decode(path)
+        let (issuer_raw, account_raw) = split_label(path);
+
+        let account_name = percent_decode(account_raw)
             .ok_or_else(|| TotpError::AccountNameDecode {
-                account_name: path.to_string(),
+                account_name: account_raw.to_string(),
             })?
             .to_string();
 
-        let account_name: String;
         let mut issuer: Option<String> = None;
-        if path.contains(':') {
-            let parts = path.split_once(':').unwrap();
-            issuer = Some(parts.0.to_owned());
-            builder = builder.with_issuer(parts.0);
-            account_name = parts.1.to_owned();
-        } else {
-            account_name = path;
+        if let Some(issuer_raw) = issuer_raw {
+            let decoded = percent_decode(issuer_raw)
+                .ok_or_else(|| TotpError::IssuerDecode {
+                    issuer: issuer_raw.to_string(),
+                })?
+                .to_string();
+            builder = builder.with_issuer(&*decoded);
+            issuer = Some(decoded);
         }
-
-        let account_name = percent_decode(account_name.as_str())
-            .ok_or_else(|| TotpError::AccountNameDecode {
-                account_name: account_name.to_string(),
-            })?
-            .to_string();
 
         builder = builder.with_account_name(account_name);
 
@@ -180,6 +179,32 @@ impl crate::Totp {
 
         Ok(format!("otpauth://{}/{}?{}", host, label, params.join("&")))
     }
+}
+
+/// Splits a raw (still percent-encoded) otpauth label into its optional
+/// `issuer` and `account_name` halves at the first separator. The Key URI
+/// format allows the separator to be a literal `:` or a percent-encoded
+/// `%3A`/`%3a`; neither issuer nor account name may themselves contain a
+/// colon, so the first one encountered is unambiguously the separator. The
+/// caller is expected to percent-decode each returned half exactly once.
+fn split_label(path: &str) -> (Option<&str>, &str) {
+    let bytes = path.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b':' {
+            return (Some(&path[..i]), &path[i + 1..]);
+        }
+        if bytes[i] == b'%'
+            && i + 2 < bytes.len()
+            && bytes[i + 1] == b'3'
+            && bytes[i + 2].eq_ignore_ascii_case(&b'A')
+        {
+            return (Some(&path[..i]), &path[i + 3..]);
+        }
+        i += 1;
+    }
+
+    (None, path)
 }
 
 fn percent_decode(input: &str) -> Option<impl core::fmt::Display + Clone + '_> {
@@ -391,6 +416,33 @@ mod tests {
         assert_eq!(totp.to_url(), totp_bis.to_url());
         assert_eq!(&*totp.account_name, "constantoine");
         assert_eq!(&**totp.issuer.as_ref().unwrap(), "Github");
+    }
+
+    #[test]
+    fn from_url_account_name_percent_escape_decoded_once() {
+        // The literal account name "user%2Fadmin" percent-encodes to
+        // "user%252Fadmin". It must decode exactly once back to "user%2Fadmin";
+        // decoding twice would further turn "%2F" into "/", yielding
+        // "user/admin".
+        let totp = Totp::from_url(
+            "otpauth://totp/user%252Fadmin?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ",
+        )
+        .unwrap();
+        assert_eq!(totp.account_name(), "user%2Fadmin");
+        assert_eq!(totp.issuer(), None);
+    }
+
+    #[test]
+    fn from_url_round_trips_account_name_with_percent() {
+        let totp = Builder::new()
+            .with_account_name("user%2Fadmin")
+            .with_issuer(GOOD_ISSUER)
+            .with_secret(GOOD_SECRET)
+            .build()
+            .unwrap();
+        let round_tripped = Totp::from_url(totp.to_url().unwrap()).unwrap();
+        assert_eq!(round_tripped.account_name(), "user%2Fadmin");
+        assert_eq!(round_tripped.issuer(), Some(GOOD_ISSUER));
     }
 
     #[test]

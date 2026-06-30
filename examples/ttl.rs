@@ -10,9 +10,9 @@ fn main() {
     loop {
         println!(
             "code {}\t ttl {}\t valid until: {}",
-            totp.generate_current().unwrap(),
-            totp.ttl().unwrap(),
-            totp.next_step_current().unwrap()
+            totp.generate_current(),
+            totp.ttl(),
+            totp.next_step_current()
         );
         std::thread::sleep(std::time::Duration::from_secs(1));
     }

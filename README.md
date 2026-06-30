@@ -55,7 +55,8 @@ Enabled by default. Provides deprecated aliases and shims for the 5.7.x API so e
 ### Understanding Secret
 
 ---
-This type disambiguates between raw bytes and an already base32-encoded secret.
+`Secret` is an opaque type holding the secret's raw bytes. You can build one
+either from raw bytes or from a base32-encoded string; both yield the same value.
 
 ```Rust
 Secret::from("TestSecretSuperSecret".as_bytes())
@@ -281,7 +282,7 @@ fn main () {
 
 With `gen_secret` feature, you can go even further and have all values by default and a secure secret.
 
-Note: With `otpauth` feature, `Totp.issuer` will be `None`, and `Totp.account_name` will be `""`. Be sure to set those fields before generating an URL/QRCode
+Note: With `otpauth` feature, the issuer defaults to `None` and the account name to `""`. Be sure to set them with `Builder::with_issuer` and `Builder::with_account_name` before generating an URL/QRCode.
 
 ```Rust
 fn main() {

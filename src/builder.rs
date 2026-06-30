@@ -58,6 +58,8 @@ impl Builder {
     }
 
     /// The number of digits composing the auth code. Per [rfc-4226](https://tools.ietf.org/html/rfc4226#section-5.3), this can oscillate between 6 and 8 digits.
+    /// 
+    /// <div class="warning">Due to how the algorithm works, a value of 10 or more will panic upon trying to generate a code.</div>
     ///
     /// Unless called, the default value will be 6.
     pub fn with_digits(mut self, digits: u32) -> Self {
@@ -207,7 +209,7 @@ impl Builder {
     /// Consume the builder into a [Totp], without checking the values for RFC. See [its method's docs](struct.Builder.html#impl-Builder) for reference about each values.
     ///
     /// <div class="warning">Logical errors, such as a step_duration of 0, could cause other functions such as [Totp::generate] to panic.</div>
-    /// <div class="warning">Due to how the algorithm works, a value of 10 or more will just 0 pad and add no additional entropy.</div>
+    /// <div class="warning">Due to how the algorithm works, a value of 10 or more will panic upon trying to generate a code.</div>
     ///
     /// # Example
     ///

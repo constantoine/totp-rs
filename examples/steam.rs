@@ -12,5 +12,5 @@ fn main() {
         .unwrap();
 
     println!("base32 {} ; raw {}", secret_base_32, secret);
-    println!("code from base32:\t{}", totp.generate_current().unwrap());
+    println!("code from base32:\t{}", totp.generate_current());
 }

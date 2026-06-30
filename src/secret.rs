@@ -16,7 +16,7 @@
 //!         .build()
 //!         .unwrap();
 //!
-//! println!("code from raw secret:\t{}", totp.generate_current().unwrap());
+//! println!("code from raw secret:\t{}", totp.generate_current());
 //! # }
 //! ```
 //!
@@ -31,7 +31,7 @@
 //!         .build()
 //!         .unwrap();
 //!
-//! println!("code from base32:\t{}", totp.generate_current().unwrap());
+//! println!("code from base32:\t{}", totp.generate_current());
 //! # }
 //! ```
 //! - Create a TOTP from a Generated Secret
@@ -45,7 +45,7 @@
 //!         .build()
 //!         .unwrap();
 //!
-//! println!("code from base32:\t{}", totp_b32.generate_current().unwrap());
+//! println!("code from base32:\t{}", totp_b32.generate_current());
 //! # }
 //! ```
 //! - Create a TOTP from a Generated Secret 2
@@ -59,7 +59,7 @@
 //!     .build()
 //!     .unwrap();
 //!
-//! println!("code from base32:\t{}", totp.generate_current().unwrap());
+//! println!("code from base32:\t{}", totp.generate_current());
 //! # }
 //! ```
 
@@ -462,7 +462,11 @@ impl core::ops::Deref for Secret {
 }
 
 impl core::fmt::Debug for Secret {
-    /// Formats this [`Secret`] as a hexadecimal number.
+    /// Redacts the secret to avoid leaking it through the implicit paths that
+    /// reach [`Debug`](core::fmt::Debug): derived `Debug`, logging, and
+    /// `unwrap`/`assert` failures. Use [`Display`](core::fmt::Display),
+    /// [`as_bytes`](Secret::as_bytes), or [`to_base32`](Secret::to_base32) to
+    /// access the secret explicitly.
     ///
     /// # Examples
     ///
@@ -473,11 +477,11 @@ impl core::fmt::Debug for Secret {
     /// # #[cfg(feature = "alloc")] {
     /// # extern crate alloc;
     /// # use alloc::format;
-    /// assert_eq!(&format!("{sec}"), "00000000000000000000000000000000deadbeef");
+    /// assert_eq!(&format!("{sec:?}"), "REDACTED");
     /// # }
     /// ```
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        <Self as core::fmt::Display>::fmt(self, f)
+        write!(f, "REDACTED")
     }
 }
 
@@ -693,9 +697,11 @@ mod tests {
         let secret_raw = Secret::from(BYTES);
         let secret_base32 = Secret::try_from_base32(base32_str).unwrap();
         println!("{}", secret_raw);
+        // `Display` exposes the secret as hex on explicit request. 
         assert_eq!(&secret_raw.to_string(), BYTES_DISPLAY);
         assert_eq!(&secret_base32.to_string(), BYTES_DISPLAY);
-        assert_eq!(format!("{:?}", secret_base32), BYTES_DISPLAY);
+        // `Debug` should not leak the secret as it is not always requested explicitly.
+        assert_eq!(format!("{:?}", secret_base32), "REDACTED");
     }
 
     #[test]

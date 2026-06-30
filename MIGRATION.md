@@ -176,6 +176,16 @@ let base32: String = raw.to_base32();
 `TotpError::InvalidDigits { digits }`, `TotpError::IssuerMismatch { .. }`)
 instead of the old per-area types.
 
+## Serialized data (`serde`)
+
+The serialized representation changed, so data persisted by 5.7.x is **not**
+guaranteed to deserialize under 6.0. Re-issue or re-serialize stored values.
+
+- The `secret` field was a `Vec<u8>` on `TOTP`; it is now a [`Secret`] on `Totp`,
+  serialized as a single flat byte array.
+- `digits` changed from `usize` to `u32` and `skew` from `u8` to `u16`, which
+  width-sensitive formats (e.g. `bincode`) will reject.
+
 ## Feature flags
 
 - `serde_support` was renamed to `serde`.

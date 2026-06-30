@@ -23,7 +23,7 @@
 //!     build().
 //!     unwrap();
 //!
-//! let token = totp.generate_current().unwrap();
+//! let token = totp.generate_current();
 //! println!("{}", token);
 //! # }
 //! ```
@@ -36,7 +36,7 @@
 //!     build().
 //!     unwrap();
 //!
-//! let token = totp.generate_current().unwrap();
+//! let token = totp.generate_current();
 //! println!("{}", token);
 //!
 //! let secret = totp.secret().as_bytes();
@@ -100,12 +100,11 @@ pub use migration::*;
 use core::fmt;
 
 #[cfg(feature = "std")]
-use std::time::{SystemTime, SystemTimeError, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[cfg(feature = "std")]
-fn system_time() -> Result<u64, SystemTimeError> {
-    let t = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
-    Ok(t)
+fn system_time() -> u64 {
+    SystemTime::now().duration_since(UNIX_EPOCH).expect("system time cannot be set before the unix epoch").as_secs()
 }
 
 /// TOTP holds informations as to how to generate an auth code and validate it. Its [secret](struct.Totp.html#structfield.secret) field is sensitive data, treat it accordingly
@@ -252,27 +251,36 @@ impl Totp {
 
     /// Returns the timestamp of the first second of the next step
     /// According to system time
+    /// 
+    /// # Panics
+    /// 
+    /// Panics if system time is set before Unix Epoch.
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-    pub fn next_step_current(&self) -> Result<u64, SystemTimeError> {
-        let t = system_time()?;
-        Ok(self.next_step(t))
+    pub fn next_step_current(&self) -> u64 {
+        self.next_step(system_time())
     }
 
     /// Give the ttl (in seconds) of the current token
+    /// 
+    /// # Panics
+    /// 
+    /// Panics if system time is set before Unix Epoch.
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-    pub fn ttl(&self) -> Result<u64, SystemTimeError> {
-        let t = system_time()?;
-        Ok(self.step - (t % self.step))
+    pub fn ttl(&self) -> u64 {
+        self.step - (system_time() % self.step)
     }
 
     /// Generate a token from the current system time
+    /// 
+    /// # Panics
+    /// 
+    /// Panics if system time is set before Unix Epoch.
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-    pub fn generate_current(&self) -> Result<Token, SystemTimeError> {
-        let t = system_time()?;
-        Ok(self.generate(t))
+    pub fn generate_current(&self) -> Token {
+        self.generate(system_time())
     }
 
     /// Will check if token is valid given the provided timestamp in seconds, accounting [skew](struct.Totp.html#structfield.skew)
@@ -305,11 +313,14 @@ impl Totp {
     /// This library does NOT handle this, and it is the caller's responsibility to make sure a specific step only gets accepted once.
     /// This is the reason why check now returns an optional u64 step-number.
     /// </div>
+    /// 
+    /// # Panics
+    /// 
+    /// Panics if system time is set before Unix Epoch.
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-    pub fn check_current(&self, token: &str) -> Result<Option<u64>, SystemTimeError> {
-        let t = system_time()?;
-        Ok(self.check(token, t))
+    pub fn check_current(&self, token: &str) -> Option<u64> {
+        self.check(token, system_time())
     }
 
     /// Provides access to the secret used by this [`Totp`] instance.
@@ -388,7 +399,7 @@ mod tests {
             .duration_since(SystemTime::UNIX_EPOCH)
             .unwrap()
             .as_secs();
-        assert_eq!(totp.generate(time), totp.generate_current().unwrap());
+        assert_eq!(totp.generate(time), totp.generate_current());
     }
 
     #[test]
@@ -443,9 +454,9 @@ mod tests {
             .with_skew(0)
             .with_secret("TestSecretSuperSecret".as_bytes())
             .build_noncompliant();
-        let current = totp.generate_current().unwrap().to_string();
-        assert!(totp.check_current(&current).unwrap().is_some());
-        assert!(totp.check_current("bogus").unwrap().is_none());
+        let current = totp.generate_current().to_string();
+        assert!(totp.check_current(&current).is_some());
+        assert!(totp.check_current("bogus").is_none());
     }
 
     #[test]
@@ -458,7 +469,7 @@ mod tests {
             .build_noncompliant();
 
         let ttl = totp.ttl();
-        assert!(ttl.is_err() | ttl.is_ok_and(|ttl| (0..=totp.step).contains(&ttl)));
+        assert!((0..=totp.step).contains(&ttl));
     }
 
     #[test]
@@ -494,8 +505,7 @@ mod tests {
             .with_step_duration(30)
             .with_secret("TestSecretSuperSecret".as_bytes())
             .build_noncompliant();
-        let t = system_time().unwrap();
-        assert!(totp.next_step_current().unwrap() == totp.next_step(t));
+        assert!(totp.next_step_current() == totp.next_step(system_time()));
     }
 
     #[test]
