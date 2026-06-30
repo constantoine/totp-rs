@@ -67,7 +67,6 @@
 use alloc::{boxed::Box, string::String, vec::Vec};
 
 /// Shared secret between client and server to validate token against/generate token from.
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "zeroize", derive(zeroize::Zeroize, zeroize::ZeroizeOnDrop))]
 pub struct Secret {
     bytes: ByteStorage,
@@ -142,7 +141,7 @@ impl Secret {
     }
 
     /// Generate a CSPRNG binary value of 160 bits,
-    /// the recomended size from [rfc-4226](https://www.rfc-editor.org/rfc/rfc4226#section-4).
+    /// the recommended size from [rfc-4226](https://www.rfc-editor.org/rfc/rfc4226#section-4).
     ///
     /// > The length of the shared secret MUST be at least 128 bits.
     /// > This document RECOMMENDs a shared secret length of 160 bits.
@@ -506,6 +505,94 @@ impl core::fmt::Display for Secret {
     }
 }
 
+#[cfg(feature = "serde")]
+impl serde::Serialize for Secret {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_bytes(self.as_bytes())
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> serde::Deserialize<'de> for Secret {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct SecretVisitor;
+
+        impl<'de> serde::de::Visitor<'de> for SecretVisitor {
+            type Value = Secret;
+
+            fn expecting(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                f.write_str("a secret as a sequence of bytes")
+            }
+
+            // Binary formats with a native byte-string type. The default
+            // `visit_byte_buf` forwards here, so the owned case is covered too.
+            fn visit_bytes<E: serde::de::Error>(self, v: &[u8]) -> Result<Secret, E> {
+                secret_from_bytes(v)
+            }
+
+            // Self-describing formats without a byte type (e.g. JSON) hand the
+            // bytes over as a sequence of integers.
+            fn visit_seq<A: serde::de::SeqAccess<'de>>(
+                self,
+                mut seq: A,
+            ) -> Result<Secret, A::Error> {
+                #[cfg(feature = "alloc")]
+                {
+                    let mut buf = Vec::with_capacity(seq.size_hint().unwrap_or(20));
+                    while let Some(byte) = seq.next_element::<u8>()? {
+                        buf.push(byte);
+                    }
+                    secret_from_bytes(&buf)
+                }
+                #[cfg(not(feature = "alloc"))]
+                {
+                    let mut buf = [0u8; 20];
+                    let mut len = 0;
+                    while let Some(byte) = seq.next_element::<u8>()? {
+                        if len >= buf.len() {
+                            return Err(serde::de::Error::custom(
+                                "a secret must be at most 20 bytes without the `alloc` feature",
+                            ));
+                        }
+                        buf[len] = byte;
+                        len += 1;
+                    }
+                    secret_from_bytes(&buf[..len])
+                }
+            }
+        }
+
+        deserializer.deserialize_bytes(SecretVisitor)
+    }
+}
+
+/// Build a [`Secret`] from raw bytes during deserialization, picking the storage
+/// variant by length: a 20-byte secret is kept on the stack. With `alloc`, any
+/// other length spills to the heap; without it, only an empty secret is allowed.
+#[cfg(feature = "serde")]
+fn secret_from_bytes<E: serde::de::Error>(bytes: &[u8]) -> Result<Secret, E> {
+    if bytes.len() == 20 {
+        // The length check guarantees this conversion succeeds.
+        let array: [u8; 20] = bytes.try_into().unwrap();
+        return Ok(Secret::new_stack(array));
+    }
+
+    #[cfg(feature = "alloc")]
+    {
+        Ok(Secret::new(bytes.into()))
+    }
+    #[cfg(not(feature = "alloc"))]
+    {
+        if bytes.is_empty() {
+            Ok(Secret::empty())
+        } else {
+            Err(E::custom(
+                "a secret must be 20 bytes (or empty) without the `alloc` feature",
+            ))
+        }
+    }
+}
+
 /// Different ways secret parsing failed.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
@@ -557,7 +644,6 @@ pub(crate) fn generate_random_bytes() -> Option<[u8; 20]> {
 const RFC4648_ALPHABET: base32::Alphabet = base32::Alphabet::Rfc4648 { padding: false };
 
 /// Abstraction to allow for no_alloc secrets, or secrets on the heap.
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "zeroize", derive(zeroize::Zeroize, zeroize::ZeroizeOnDrop))]
 #[non_exhaustive]
 enum ByteStorage {
@@ -707,5 +793,62 @@ mod tests {
         assert!(matches!(Empty.clone(), Empty));
         assert!(matches!(Heap(Box::new([])).clone(), Heap(..)));
         assert!(matches!(Stack([0; _]).clone(), Stack(..)));
+    }
+
+    /// A 20-byte secret serializes as a single flat byte string (not the old
+    /// storage-tagged form) and round-trips back to the stack variant.
+    #[test]
+    #[cfg(feature = "serde")]
+    fn serde_roundtrip_stack_20() {
+        use serde_test::{Token, assert_tokens};
+
+        const STACK_20: [u8; 20] = [
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+        ];
+        let secret = Secret::new_stack(STACK_20);
+        assert!(matches!(secret.bytes, ByteStorage::Stack(_)));
+
+        assert_tokens(&secret, &[Token::Bytes(&STACK_20)]);
+    }
+
+    /// A non-20-byte secret serializes to the same flat byte string and, with
+    /// `alloc`, round-trips back through the heap variant.
+    #[test]
+    #[cfg(feature = "serde")]
+    fn serde_roundtrip_heap_non_20() {
+        use serde_test::{Token, assert_tokens};
+
+        let secret = Secret::from(BYTES); // 23 bytes
+        assert!(matches!(secret.bytes, ByteStorage::Heap(_)));
+
+        assert_tokens(&secret, &[Token::Bytes(&BYTES)]);
+    }
+
+    /// Self-describing formats without a byte type (e.g. JSON) hand the bytes
+    /// over as a sequence of integers; deserialization must accept that too.
+    #[test]
+    #[cfg(feature = "serde")]
+    fn serde_deserialize_from_integer_sequence() {
+        use serde_test::{Token, assert_de_tokens};
+
+        const STACK_20: [u8; 20] = [
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+        ];
+
+        // 20 bytes -> stack on the way back.
+        let mut tokens = vec![Token::Seq {
+            len: Some(STACK_20.len()),
+        }];
+        tokens.extend(STACK_20.iter().map(|&b| Token::U8(b)));
+        tokens.push(Token::SeqEnd);
+        assert_de_tokens(&Secret::new_stack(STACK_20), &tokens);
+
+        // Other lengths -> heap on the way back.
+        let mut tokens = vec![Token::Seq {
+            len: Some(BYTES.len()),
+        }];
+        tokens.extend(BYTES.iter().map(|&b| Token::U8(b)));
+        tokens.push(Token::SeqEnd);
+        assert_de_tokens(&Secret::from(BYTES), &tokens);
     }
 }
