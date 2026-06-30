@@ -6,7 +6,7 @@ rust-version = "1.88"
 edition = "2024"
 readme = "README.md"
 license = "MIT"
-description = "RFC-compliant TOTP implementation with ease of use as a goal and additionnal QoL features."
+description = "RFC-compliant TOTP implementation with ease of use as a goal and additional QoL features."
 repository = "https://github.com/constantoine/totp-rs"
 homepage = "https://github.com/constantoine/totp-rs"
 keywords = ["authentication", "2fa", "totp", "hmac", "otp"]
@@ -72,3 +72,6 @@ required-features = ["qr"]
 [[example]]
 name = "no_alloc"
 required-features = []
+
+[dev-dependencies]
+serde_test = "1.0.177"

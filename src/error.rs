@@ -48,6 +48,9 @@ pub enum TotpError {
 
     // === Account/Issuer errors (otpauth feature) ===
     #[cfg(feature = "otpauth")]
+    /// Account name is required to build an otpauth URL but was not set.
+    AccountNameNotSet,
+    #[cfg(feature = "otpauth")]
     /// Account name contains invalid character ':'.
     InvalidAccountName { account_name: String },
     #[cfg(feature = "otpauth")]
@@ -102,6 +105,10 @@ impl core::fmt::Display for TotpError {
             #[cfg(feature = "otpauth")]
             TotpError::DigitsParse { digits } => {
                 write!(f, "Could not parse digits \"{}\" as a number", digits)
+            }
+            #[cfg(feature = "otpauth")]
+            TotpError::AccountNameNotSet => {
+                write!(f, "Account name is required to build an otpauth URL")
             }
             #[cfg(feature = "otpauth")]
             TotpError::InvalidAccountName { account_name } => {
@@ -260,6 +267,16 @@ mod test {
     }
 
     // === Account/Issuer errors (otpauth feature) ===
+
+    #[test]
+    #[cfg(feature = "otpauth")]
+    fn account_name_not_set() {
+        let error = TotpError::AccountNameNotSet;
+        assert_eq!(
+            error.to_string(),
+            "Account name is required to build an otpauth URL"
+        );
+    }
 
     #[test]
     #[cfg(feature = "otpauth")]

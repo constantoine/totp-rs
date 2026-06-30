@@ -219,6 +219,15 @@ mod tests {
     }
 
     #[test]
+    fn to_url_without_account_name_reports_missing_not_invalid() {
+        // A Totp built for generate/check only (no account name) is valid, but
+        // turning it into an otpauth URL must fail.
+        let totp = Builder::new().with_secret(GOOD_SECRET).build().unwrap();
+        assert_eq!(totp.account_name(), "");
+        assert_eq!(totp.to_url().unwrap_err(), TotpError::AccountNameNotSet);
+    }
+
+    #[test]
     fn url_for_secret_matches_sha1_without_issuer() {
         let totp = Builder::new()
             .with_account_name(GOOD_ACCOUNT)

@@ -113,13 +113,13 @@ fn system_time() -> Result<u64, SystemTimeError> {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "zeroize", derive(zeroize::Zeroize, zeroize::ZeroizeOnDrop))]
 pub struct Totp {
-    /// SHA-1 is the most widespread algorithm used, and for totp pursposes, SHA-1 hash collisions are [not a problem](https://tools.ietf.org/html/rfc4226#appendix-B.2) as HMAC-SHA-1 is not impacted.
+    /// SHA-1 is the most widespread algorithm used, and for totp purposes, SHA-1 hash collisions are [not a problem](https://tools.ietf.org/html/rfc4226#appendix-B.2) as HMAC-SHA-1 is not impacted.
     /// It's also the main one cited in [rfc-6238](https://tools.ietf.org/html/rfc6238#section-3) even though the [reference implementation](https://tools.ietf.org/html/rfc6238#appendix-A) permits the use of SHA-1, SHA-256 and SHA-512.
     ///
     /// <div class="warning">Not all clients support other algorithms than SHA-1, and some will silently accept them and use SHA-1 under the hood.</div>
     #[cfg_attr(feature = "zeroize", zeroize(skip))]
     pub(crate) algorithm: Algorithm,
-    /// The number of digits composing the auth code. Per [rfc-4226](https://tools.ietf.org/html/rfc4226#section-5.3), this can oscilate between 6 and 8 digits.
+    /// The number of digits composing the auth code. Per [rfc-4226](https://tools.ietf.org/html/rfc4226#section-5.3), this can oscillate between 6 and 8 digits.
     pub(crate) digits: u32,
     /// Number of steps allowed as network delay. A value of 1 would mean a code valid for the step before or the step after current step would be accepted.
     /// The recommended value per [rfc-6238](https://tools.ietf.org/html/rfc6238#section-5.2) is 1.
@@ -285,22 +285,15 @@ impl Totp {
     /// This is the reason why check now returns an optional u64 step-number.
     /// </div>
     pub fn check(&self, token: &str, time: u64) -> Option<u64> {
-        let Some(token) = Token::try_from_formatted_string(
+        let token = Token::try_from_formatted_string(
             self.algorithm,
             self.digits.try_into().unwrap(),
             token,
-        ) else {
-            return None;
-        };
+        )?;
 
         let origin = time / self.step;
-        for counter in (origin.saturating_sub(self.skew as u64))..=(origin + self.skew as u64) {
-            if self.generate(counter * self.step) == token {
-                return Some(counter);
-            }
-        }
-
-        None
+        let mut window = origin.saturating_sub(self.skew as u64)..=(origin + self.skew as u64);
+        window.find(|&counter| self.generate(counter * self.step) == token)
     }
 
     /// Will check if token is valid by current system time, accounting [skew](struct.Totp.html#structfield.skew)

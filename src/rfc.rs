@@ -25,7 +25,11 @@ pub fn assert_secret_length(secret: &[u8]) -> Result<(), TotpError> {
 // Checks that account_name is not empty AND doesn't contain `:`.
 #[cfg(feature = "otpauth")]
 pub fn assert_account_name_valid(account_name: &str) -> Result<(), TotpError> {
-    if account_name.is_empty() || account_name.contains(':') {
+    if account_name.is_empty() {
+        return Err(TotpError::AccountNameNotSet);
+    }
+
+    if account_name.contains(':') {
         return Err(TotpError::InvalidAccountName {
             account_name: account_name.into(),
         });

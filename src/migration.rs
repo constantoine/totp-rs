@@ -199,14 +199,14 @@ impl Builder {
         since = "6.0.0",
         note = "use `Builder::new` and `Builder::with_secret` instead"
     )]
-    /// Only presend to mirror [Rfc6238] during migration.
+    /// Only present to mirror [Rfc6238] during migration.
     /// See [Builder::with_secret] for more details on the values that would be used here.
     pub fn with_defaults(secret: alloc::vec::Vec<u8>) -> Result<Builder, TotpError> {
         Ok(Builder::new().with_secret(secret))
     }
 
     #[deprecated(since = "6.0.0", note = "use `Builder::with_digits` instead")]
-    /// Only presend to mirror [Rfc6238] during migration.
+    /// Only present to mirror [Rfc6238] during migration.
     /// See [Builder::with_digits] for more details on this value.
     pub fn digits(&mut self, value: usize) -> Result<(), TotpError> {
         *self = core::mem::take(self).with_digits(value as _);
@@ -216,7 +216,7 @@ impl Builder {
     #[cfg(feature = "otpauth")]
     #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
     #[deprecated(since = "6.0.0", note = "use `Builder::with_issuer` instead")]
-    /// Only presend to mirror [Rfc6238] during migration.
+    /// Only present to mirror [Rfc6238] during migration.
     /// See [Builder::with_issuer] for more details on this value.
     pub fn issuer(&mut self, value: alloc::string::String) {
         *self = core::mem::take(self).with_issuer(value);
@@ -225,7 +225,7 @@ impl Builder {
     #[cfg(feature = "otpauth")]
     #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
     #[deprecated(since = "6.0.0", note = "use `Builder::with_account_name` instead")]
-    /// Only presend to mirror [Rfc6238] during migration.
+    /// Only present to mirror [Rfc6238] during migration.
     /// See [Builder::with_account_name] for more details on this value.
     pub fn account_name(&mut self, value: alloc::string::String) {
         *self = core::mem::take(self).with_account_name(value);

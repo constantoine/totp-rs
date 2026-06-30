@@ -45,7 +45,7 @@ impl Builder {
         }
     }
 
-    /// SHA-1 is the most widespread algorithm used, and for totp pursposes, SHA-1 hash collisions are [not a problem](https://tools.ietf.org/html/rfc4226#appendix-B.2) as HMAC-SHA-1 is not impacted.
+    /// SHA-1 is the most widespread algorithm used, and for totp purposes, SHA-1 hash collisions are [not a problem](https://tools.ietf.org/html/rfc4226#appendix-B.2) as HMAC-SHA-1 is not impacted.
     /// It's also the main one cited in [rfc-6238](https://tools.ietf.org/html/rfc6238#section-3) even though the [reference implementation](https://tools.ietf.org/html/rfc6238#appendix-A) permits the use of SHA-1, SHA-256 and SHA-512.
     ///
     /// <div class="warning">Not all clients support other algorithms than SHA-1, and some will silently accept them and use SHA-1 under the hood.</div>
@@ -57,7 +57,7 @@ impl Builder {
         self
     }
 
-    /// The number of digits composing the auth code. Per [rfc-4226](https://tools.ietf.org/html/rfc4226#section-5.3), this can oscilate between 6 and 8 digits.
+    /// The number of digits composing the auth code. Per [rfc-4226](https://tools.ietf.org/html/rfc4226#section-5.3), this can oscillate between 6 and 8 digits.
     ///
     /// Unless called, the default value will be 6.
     pub fn with_digits(mut self, digits: u32) -> Self {
@@ -165,8 +165,8 @@ impl Builder {
     ///
     /// - If the `digit` or `secret` size are invalid.
     /// - If secret was not set using [Self::with_secret] and the feature `gen_secret` is not enabled.
-    /// - If `issuer` is not set/is an empty string (`otpauth`` feature).
-    /// - If `issuer` or `label` contain the character ':' (`otpauth`` feature).
+    /// - If `issuer` is not set/is an empty string (`otpauth` feature).
+    /// - If `issuer` or `label` contain the character ':' (`otpauth` feature).
     pub fn build(self) -> Result<Totp, TotpError> {
         let secret = self.secret.as_ref().ok_or(TotpError::SecretNotSet)?;
 
@@ -207,6 +207,7 @@ impl Builder {
     /// Consume the builder into a [Totp], without checking the values for RFC. See [its method's docs](struct.Builder.html#impl-Builder) for reference about each values.
     ///
     /// <div class="warning">Logical errors, such as a step_duration of 0, could cause other functions such as [Totp::generate] to panic.</div>
+    /// <div class="warning">Due to how the algorithm works, a value of 10 or more will just 0 pad and add no additional entropy.</div>
     ///
     /// # Example
     ///
@@ -219,7 +220,7 @@ impl Builder {
     /// let totp: Totp = Builder::new().
     ///     with_algorithm(Algorithm::SHA256).
     ///     with_secret(secret).
-    ///     with_digits(10). // Not RFC-compliant.
+    ///     with_digits(9). // Not RFC-compliant.
     ///     build_noncompliant();
     /// # }
     /// ```
