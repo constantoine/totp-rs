@@ -121,8 +121,8 @@ impl Totp {
         builder.build()
     }
 
-    #[cfg(feature = "steam")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "steam")))]
+    #[cfg(all(feature = "steam", feature = "otpauth"))]
+    #[cfg_attr(docsrs, doc(cfg(all(feature = "steam", feature = "otpauth"))))]
     #[deprecated(
         since = "6.0.0",
         note = "use `Builder::new_steam`, `Builder::with_secret`, and `Builder::with_account_name` instead"
@@ -132,6 +132,19 @@ impl Totp {
             .with_secret(secret)
             .with_account_name(account_name)
             .build_noncompliant()
+    }
+
+    #[cfg(all(feature = "steam", not(feature = "otpauth"), feature = "alloc"))]
+    #[cfg_attr(
+        docsrs,
+        doc(cfg(all(feature = "steam", not(feature = "otpauth"), feature = "alloc")))
+    )]
+    #[deprecated(
+        since = "6.0.0",
+        note = "use `Builder::new_steam` and `Builder::with_secret` instead"
+    )]
+    pub fn new_steam(secret: alloc::vec::Vec<u8>) -> Totp {
+        Builder::new_steam().with_secret(secret).build_noncompliant()
     }
 
     #[cfg(feature = "alloc")]

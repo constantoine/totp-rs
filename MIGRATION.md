@@ -10,8 +10,11 @@ your code.
 - `Secret` is no longer a `Raw`/`Encoded` enum: use `Secret::from(bytes)` and
   `Secret::try_from_base32(...)`.
 - `generate`/`generate_current` return a [`Token`] instead of a `String`.
-- `check`/`check_current` return `Option<u64>`/`Result<Option<u64>>` (the
-  matched step counter) instead of `bool`/`Result<bool>`.
+- `check`/`check_current` return `Option<u64>` (the matched step counter)
+  instead of `bool`.
+- `generate_current`, `check_current`, `ttl`, and `next_step_current` no longer
+  return a `Result`: they return the value directly and panic only when the
+  system clock is set before the Unix epoch.
 - All errors are now the single `TotpError` type.
 - The `serde_support` feature is now `serde`, and `std` is enabled by default.
 
@@ -51,10 +54,10 @@ the return type differs. They surface as type errors at the call site.
 let code: String = totp.generate_current().unwrap();
 
 // 6.0 Token implements Display:
-let token = totp.generate_current()?;
+let token = totp.generate_current();
 println!("{token}");
 // For a String:
-let code: String = totp.generate_current()?.to_string();
+let code: String = totp.generate_current().to_string();
 ```
 
 `Token` compares in constant time and is stack-allocated. To check a token,
@@ -69,17 +72,17 @@ if totp.check_current(&token).unwrap() {
 }
 
 // 6.0 Option<u64> is Some(step) when valid:
-if totp.check_current(&token)?.is_some() {
+if totp.check_current(&token).is_some() {
     // valid
 }
 // Or use the matched step index:
-if let Some(step) = totp.check_current(&token)? {
+if let Some(step) = totp.check_current(&token) {
     // valid; `step` is the step counter that matched
 }
 ```
 
-`check` returns `Option<u64>` and `check_current` returns
-`Result<Option<u64>, SystemTimeError>`.
+Both `check` and `check_current` return `Option<u64>`; see the panics note
+below.
 
 ### `sign` returns `impl AsRef<[u8]>`
 
@@ -90,6 +93,23 @@ let sig: Vec<u8> = totp.sign(time);
 // 6.0
 let sig = totp.sign(time);
 let bytes: &[u8] = sig.as_ref();
+```
+
+### Time-based methods no longer return `Result`
+
+`generate_current`, `check_current`, `ttl`, and `next_step_current` previously
+returned `Result<_, SystemTimeError>`. Their only failure was a system clock set
+before the Unix epoch, which is not a recoverable condition, so they now return
+the value directly and panic in that case.
+
+```rust
+// 5.x
+let ttl: u64 = totp.ttl()?;
+let next: u64 = totp.next_step_current()?;
+
+// 6.0 (panics only if the clock predates the Unix epoch)
+let ttl: u64 = totp.ttl();
+let next: u64 = totp.next_step_current();
 ```
 
 ## Constructing a `Totp`

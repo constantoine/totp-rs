@@ -36,8 +36,8 @@ impl crate::Totp {
             Some(Host::Domain("totp")) => Ok(Builder::new()),
             #[cfg(feature = "steam")]
             Some(Host::Domain("steam")) => Ok(Builder::new_steam()),
-            _ => Err(TotpError::InvalidHost {
-                host: url.host().unwrap().to_string(),
+            host => Err(TotpError::InvalidHost {
+                host: host.map(|host| host.to_string()).unwrap_or_default(),
             }),
         }?;
 
@@ -472,6 +472,21 @@ mod tests {
         assert_eq!(totp.skew, 1);
         assert_eq!(totp.step, 60);
         assert_eq!(&**totp.issuer.as_ref().unwrap(), "GitHub");
+    }
+
+    #[test]
+    fn from_url_hostless_is_error_not_panic() {
+        for url in [
+            "otpauth:totp?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ",
+            "otpauth:foo",
+            "otpauth:/totp",
+        ] {
+            let err = Totp::from_url(url).unwrap_err();
+            assert!(
+                matches!(err, TotpError::InvalidHost { .. }),
+                "expected InvalidHost for {url:?}, got {err:?}"
+            );
+        }
     }
 
     #[test]

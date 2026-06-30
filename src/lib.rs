@@ -595,7 +595,10 @@ mod tests {
 
     /// Catch any egregious changes to the size of the [`Totp`] type to keep its
     /// stack size reasonably low.
+    ///
+    /// Sizes are pinned for 64-bit targets; 32-bit has narrower pointers.
     #[test]
+    #[cfg(target_pointer_width = "64")]
     fn size_test() {
         if cfg!(feature = "otpauth") {
             assert_eq!(size_of::<Totp>(), 72);

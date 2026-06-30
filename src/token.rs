@@ -98,19 +98,22 @@ impl Token {
                 let mut value = 0;
                 let mut place = 1;
                 let mut bytes = string.as_bytes();
+
                 while let [byte, rest @ ..] = bytes {
                     let mut i = 0;
                     let mut digits = STEAM_CHARS;
-                    while let [x, rest @ ..] = digits {
-                        if *x == *byte {
-                            value += i * place;
-                            break;
-                        } else {
-                            i += 1;
-                            digits = rest;
+                    let index = loop {
+                        match digits {
+                            [x, _rest @ ..] if *x == *byte => break i,
+                            [_, rest @ ..] => {
+                                i += 1;
+                                digits = rest;
+                            }
+                            [] => return None,
                         }
-                    }
+                    };
 
+                    value += index * place;
                     bytes = rest;
                     place *= radix;
                 }
@@ -332,5 +335,21 @@ mod tests {
         assert!(
             Token::try_from_formatted_string(Algorithm::SHA1, 5, "08020").is_some()
         );
+    }
+
+    /// "22222", causing [`check`](crate::Totp::check) to accept it.
+    #[test]
+    #[cfg(feature = "steam")]
+    fn steam_parsing_rejects_chars_outside_alphabet() {
+        for invalid in ["AAAAA", "2222A", "ZZZZZ", "2345I"] {
+            assert_eq!(
+                Token::try_from_formatted_string(Algorithm::Steam, 5, invalid),
+                None,
+                "expected \"{invalid}\" to be rejected"
+            );
+        }
+
+        // A token made only of alphabet characters still parses.
+        assert!(Token::try_from_formatted_string(Algorithm::Steam, 5, "22222").is_some());
     }
 }
