@@ -81,7 +81,18 @@ impl core::fmt::Display for TotpError {
                 bits
             ),
             TotpError::InvalidDigits { digits } => {
-                write!(f, "Digits must be 6, 7, or 8, not {}", digits,)
+                #[cfg(not(feature = "steam"))]
+                {
+                    write!(f, "Digits must be 6, 7, or 8, not {}", digits)
+                }
+                #[cfg(feature = "steam")]
+                {
+                    write!(
+                        f,
+                        "Digits must be 6, 7, or 8 (or exactly 5 for the Steam algorithm), not {}",
+                        digits
+                    )
+                }
             }
             TotpError::InvalidStepZero => write!(f, "Step cannot be 0."),
             TotpError::SecretNotSet => write!(
@@ -168,15 +179,27 @@ mod test {
     // === Parameter validation errors ===
 
     #[test]
+    #[cfg(not(feature = "steam"))]
     fn invalid_digits() {
         let error = TotpError::InvalidDigits { digits: 5 };
         assert_eq!(error.to_string(), "Digits must be 6, 7, or 8, not 5");
     }
 
     #[test]
+    #[cfg(not(feature = "steam"))]
     fn invalid_digits_high() {
         let error = TotpError::InvalidDigits { digits: 10 };
         assert_eq!(error.to_string(), "Digits must be 6, 7, or 8, not 10");
+    }
+
+    #[test]
+    #[cfg(feature = "steam")]
+    fn invalid_digits_steam() {
+        let error = TotpError::InvalidDigits { digits: 6 };
+        assert_eq!(
+            error.to_string(),
+            "Digits must be 6, 7, or 8 (or exactly 5 for the Steam algorithm), not 6"
+        );
     }
 
     #[test]

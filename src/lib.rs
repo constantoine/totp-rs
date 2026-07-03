@@ -159,8 +159,8 @@ impl Totp {
 
     /// Get how many steps behind or forward are accepted to account for network skew.
     /// See [Builder::with_skew] for more details on this value.
-    pub const fn skew(&self) -> u32 {
-        self.skew as u32
+    pub const fn skew(&self) -> u16 {
+        self.skew
     }
 
     /// Get how many seconds a step lasts.

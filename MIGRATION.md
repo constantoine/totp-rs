@@ -17,6 +17,9 @@ your code.
   system clock is set before the Unix epoch.
 - All errors are now the single `TotpError` type.
 - The `serde_support` feature is now `serde`, and `std` is enabled by default.
+- The `serde` representation changed: data persisted by 5.7.x is **not**
+  guaranteed to deserialize under 6.0 (see
+  [Serialized data](#serialized-data-serde)).
 
 ## The migration module
 

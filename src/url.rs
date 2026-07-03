@@ -136,6 +136,11 @@ impl crate::Totp {
     ///
     /// Label and issuer will be URL-encoded if needed be
     /// Secret will be base 32'd without padding, as per RFC.
+    ///
+    /// # Errors
+    ///
+    /// - [TotpError::AccountNameNotSet] if no account name was set on the [Totp].
+    /// - [TotpError::InvalidAccountName] if the account name contains a `:`.
     pub fn to_url(&self) -> Result<String, TotpError> {
         #[cfg(feature = "otpauth")]
         crate::rfc::assert_account_name_valid(&self.account_name)?;

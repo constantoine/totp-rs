@@ -112,7 +112,9 @@ impl Builder {
     /// The "constantoine@github.com" part of "Github:constantoine@github.com". Must not contain a colon `:`
     /// For example, the name of your user's account.
     ///
-    /// Not calling this method will result in [Self::build] to fail.
+    /// <div class="warning">The account name is not required by `build`: a `Totp` built without one
+    /// can still generate and check tokens. It is only required by `Totp::to_url` (and therefore the
+    /// QR helpers), which return `TotpError::AccountNameNotSet` if it was never set.</div>
     #[cfg(feature = "otpauth")]
     #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
     pub fn with_account_name(mut self, account_name: impl Into<alloc::boxed::Box<str>>) -> Self {
@@ -165,10 +167,14 @@ impl Builder {
     ///
     /// # Errors
     ///
-    /// - If the `digit` or `secret` size are invalid.
+    /// - If the `digits` or `secret` size are invalid.
     /// - If secret was not set using [Self::with_secret] and the feature `gen_secret` is not enabled.
-    /// - If `issuer` is not set/is an empty string (`otpauth` feature).
-    /// - If `issuer` or `label` contain the character ':' (`otpauth` feature).
+    /// - If `step_duration` is 0.
+    /// - If `issuer` or `account_name` contain the character ':' (`otpauth` feature).
+    ///
+    /// <div class="warning">With the `otpauth` feature, an unset or empty `account_name` is accepted
+    /// here so that a `Totp` can still be built for generate/check only. It only causes
+    /// `Totp::to_url` to fail later (with `TotpError::AccountNameNotSet`), not `build`.</div>
     pub fn build(self) -> Result<Totp, TotpError> {
         let secret = self.secret.as_ref().ok_or(TotpError::SecretNotSet)?;
 
