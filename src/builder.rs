@@ -8,7 +8,7 @@ pub struct Builder {
     #[cfg_attr(feature = "zeroize", zeroize(skip))]
     pub(crate) algorithm: Algorithm,
     digits: u32,
-    secret: Option<Secret>,
+    pub(crate) secret: Option<Secret>,
     skew: u16,
     step_duration: u64,
 
@@ -25,17 +25,14 @@ impl Default for Builder {
 }
 
 impl Builder {
-    /// New Builder.
-    /// If `gen_secret` is enabled, [Self::new] will generate a new, safe-to-use, secret.
-    /// in case `gen_secret` is enabled, [Totp::default] will be equivalent to calling [Self::new] followed by [Self::build] in which case
-    /// After build, use [Totp::secret] to retrieve the newly generated secret.
+    /// New [Builder] for [Totp].
+    /// If `gen_secret` is enabled, [Self::build] and [Self::build_noncompliant] will generate a new, safe-to-use, secret. [Self::new] does not generate it eagerly.
+    /// in case `gen_secret` is enabled, [Totp::default] will be equivalent to calling [Self::new] followed by [Self::build_noncompliant].
     pub fn new() -> Self {
-        let mut secret = crate::secret::generate_random_bytes().map(Secret::from);
-
         Builder {
             algorithm: Algorithm::SHA1,
             digits: 6,
-            secret: core::mem::take(&mut secret),
+            secret: None,
             skew: 1,
             step_duration: 30,
             #[cfg(feature = "otpauth")]
@@ -80,15 +77,6 @@ impl Builder {
         self
     }
 
-    /// Removes the current [`Secret`], if any has been set.
-    ///
-    /// If [Self::with_secret] isn't called after this, [Self::build] will fail.
-    pub fn without_secret(mut self) -> Self {
-        self.secret = None;
-
-        self
-    }
-
     /// Number of steps allowed as network delay. A value of 1 would mean a code valid for the step before or the step after current step would be accepted.
     /// The recommended value per [rfc-6238](https://tools.ietf.org/html/rfc6238#section-5.2) is 1.
     /// Anything more is sketchy, and anyone recommending more is, by definition, ugly and stupid.
@@ -128,21 +116,11 @@ impl Builder {
     /// Not mandatory, but strongly recommended!
     ///
     /// Unless called, an issuer will not be present.
+    /// You should not have any need to unset it, but in case you do, you would need to call it with `None::<&str>`, as a bare `None` lacks type information.
     #[cfg(feature = "otpauth")]
     #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
-    pub fn with_issuer(mut self, issuer: impl Into<alloc::boxed::Box<str>>) -> Self {
-        self.issuer = Some(issuer.into());
-
-        self
-    }
-
-    /// Removes the "Github" part of "Github:constantoine@github.com", as an example.
-    ///
-    /// See also [`with_issuer`](Builder::with_issuer).
-    #[cfg(feature = "otpauth")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
-    pub fn without_issuer(mut self) -> Self {
-        self.issuer = None;
+    pub fn with_issuer(mut self, issuer: Option<impl Into<alloc::boxed::Box<str>>>) -> Self {
+        self.issuer = issuer.map(Into::into);
 
         self
     }
@@ -175,7 +153,13 @@ impl Builder {
     /// <div class="warning">With the `otpauth` feature, an unset or empty `account_name` is accepted
     /// here so that a `Totp` can still be built for generate/check only. It only causes
     /// `Totp::to_url` to fail later (with `TotpError::AccountNameNotSet`), not `build`.</div>
-    pub fn build(self) -> Result<Totp, TotpError> {
+    #[cfg_attr(not(feature = "gen_secret"), allow(unused_mut))]
+    pub fn build(mut self) -> Result<Totp, TotpError> {
+        #[cfg(feature = "gen_secret")]
+        if self.secret.is_none() {
+            self.secret = Some(Secret::from(crate::secret::generate_random_bytes()));
+        }
+
         let secret = self.secret.as_ref().ok_or(TotpError::SecretNotSet)?;
 
         match self.algorithm {
@@ -233,6 +217,11 @@ impl Builder {
     /// # }
     /// ```
     pub fn build_noncompliant(mut self) -> Totp {
+        #[cfg(feature = "gen_secret")]
+        if self.secret.is_none() {
+            self.secret = Some(Secret::from(crate::secret::generate_random_bytes()));
+        }
+
         Totp {
             algorithm: self.algorithm,
             digits: self.digits,
@@ -280,17 +269,10 @@ mod tests {
     }
 
     #[test]
-    fn defaults_secret_is_none_without_gen_secret() {
-        let builder = Builder::new();
-        assert!(cfg!(feature = "gen_secret") ^ builder.secret.is_none());
-    }
-
-    #[test]
-    #[cfg(feature = "gen_secret")]
-    fn defaults_secret_is_generated_with_gen_secret() {
-        let builder = Builder::new();
-        assert!(builder.secret.as_ref().is_some());
-        assert_eq!(builder.secret.as_ref().unwrap().len(), 20);
+    #[cfg(all(feature = "gen_secret", feature = "alloc"))]
+    fn build_generates_secret_with_gen_secret() {
+        let totp = Builder::new().build().unwrap();
+        assert_eq!(totp.secret().as_bytes().len(), 20);
     }
 
     #[test]
@@ -346,16 +328,16 @@ mod tests {
     #[test]
     #[cfg(feature = "otpauth")]
     fn with_issuer() {
-        let builder = Builder::new().with_issuer("Github");
+        let builder = Builder::new().with_issuer(Some("Github"));
         assert_eq!(builder.issuer.as_deref().as_ref(), Some(&"Github"));
     }
 
     #[test]
     #[cfg(feature = "otpauth")]
     fn without_issuer() {
-        let builder = Builder::new().with_issuer("Github");
+        let builder = Builder::new().with_issuer(Some("Github"));
         assert_eq!(builder.issuer.as_deref().as_ref(), Some(&"Github"));
-        let builder = builder.without_issuer();
+        let builder = builder.with_issuer(None::<&str>);
         assert_eq!(builder.issuer.as_ref(), None);
     }
 
@@ -397,7 +379,7 @@ mod tests {
         let result = Builder::new()
             .with_secret(GOOD_SECRET.as_bytes())
             .with_account_name("user@example.com")
-            .with_issuer("Github")
+            .with_issuer(Some("Github"))
             .build();
         assert!(result.is_ok());
         let totp = result.unwrap();
@@ -501,7 +483,7 @@ mod tests {
         let result = Builder::new()
             .with_secret(GOOD_SECRET.as_bytes())
             .with_account_name("user@example.com")
-            .with_issuer("Iss:uer")
+            .with_issuer(Some("Iss:uer"))
             .build();
         assert!(result.is_err());
         assert_eq!(

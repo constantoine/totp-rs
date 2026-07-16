@@ -41,7 +41,7 @@ impl Totp {
             .with_account_name(account_name);
 
         let builder = match issuer {
-            Some(issuer) => builder.with_issuer(issuer),
+            Some(issuer) => builder.with_issuer(Some(issuer)),
             None => builder,
         };
 
@@ -89,7 +89,7 @@ impl Totp {
             .with_account_name(account_name);
 
         let builder = match issuer {
-            Some(issuer) => builder.with_issuer(issuer),
+            Some(issuer) => builder.with_issuer(Some(issuer)),
             None => builder,
         };
 
@@ -232,7 +232,7 @@ impl Builder {
     /// Only present to mirror [Rfc6238] during migration.
     /// See [Builder::with_issuer] for more details on this value.
     pub fn issuer(&mut self, value: alloc::string::String) {
-        *self = core::mem::take(self).with_issuer(value);
+        *self = core::mem::take(self).with_issuer(Some(value));
     }
 
     #[cfg(feature = "otpauth")]

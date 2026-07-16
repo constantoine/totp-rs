@@ -18,7 +18,7 @@ impl Builder {
             .with_step_duration(30);
 
         #[cfg(feature = "otpauth")]
-        let new = new.with_issuer("Steam");
+        let new = new.with_issuer(Some("Steam"));
 
         new
     }

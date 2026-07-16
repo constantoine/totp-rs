@@ -135,7 +135,7 @@ use totp_rs::{Algorithm, Builder};
 let totp = Builder::new()
     .with_algorithm(Algorithm::SHA1)
     .with_secret("TestSecretSuperSecret".as_bytes())
-    .with_issuer("Github")
+    .with_issuer(Some("Github"))
     .with_account_name("constantoine@github.com")
     .build()?;
 ```

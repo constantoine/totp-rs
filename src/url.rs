@@ -8,16 +8,35 @@ use url::{Host, Url};
 
 #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
 impl crate::Totp {
-    /// Generate a TOTP from the standard otpauth URL
+    /// Generate a TOTP from the standard otpauth URL.
+    /// 
+    /// # Errors
+    /// 
+    /// If decoding the URL fails, an error will be surfaced.
+    /// Outside of that, the error cases are the same as [Builder::build].
     pub fn from_url<S: AsRef<str>>(url: S) -> Result<Totp, TotpError> {
         let builder = Self::parts_from_url(url)?;
+        
+        if builder.secret.is_none() {
+            return Err(TotpError::SecretNotSet)
+        }
 
         builder.build()
     }
 
-    /// Generate a TOTP from the standard otpauth URL, using [`Builder::build_noncompliant`] internally
+    /// Generate a TOTP from the standard otpauth URL, using [`Builder::build_noncompliant`] internally.
+    /// 
+    /// # Errors
+    /// 
+    /// If decoding the URL fails, an error will be surfaced.
+    /// Outside of that, it will only error if a secret is not set.
     pub fn from_url_unchecked<S: AsRef<str>>(url: S) -> Result<Totp, TotpError> {
         let builder = Self::parts_from_url(url)?;
+        
+        if builder.secret.is_none() {
+            return Err(TotpError::SecretNotSet)
+        }
+        
         Ok(builder.build_noncompliant())
     }
 
@@ -41,8 +60,6 @@ impl crate::Totp {
             }),
         }?;
 
-        builder = builder.without_secret();
-
         // Locate the issuer/account separator on the still-encoded path, then
         // percent-decode each half exactly once. Decoding the whole path first
         // would decode the account name twice and corrupt any account name
@@ -63,7 +80,7 @@ impl crate::Totp {
                     issuer: issuer_raw.to_string(),
                 })?
                 .to_string();
-            builder = builder.with_issuer(&*decoded);
+            builder = builder.with_issuer(Some(&*decoded));
             issuer = Some(decoded);
         }
 
@@ -109,7 +126,7 @@ impl crate::Totp {
                         });
                     }
 
-                    builder = builder.with_issuer(&*param_issuer);
+                    builder = builder.with_issuer(Some(&*param_issuer));
                     issuer = Some(param_issuer);
                 }
                 _ => {}
@@ -126,7 +143,7 @@ impl crate::Totp {
             builder = builder
                 .with_algorithm(Algorithm::Steam)
                 .with_digits(5)
-                .with_issuer("Steam");
+                .with_issuer(Some("Steam"));
         }
 
         Ok(builder)
@@ -279,7 +296,7 @@ mod tests {
         let totp = Builder::new()
             .with_algorithm(Algorithm::SHA1)
             .with_account_name(GOOD_ACCOUNT)
-            .with_issuer(GOOD_ISSUER)
+            .with_issuer(Some(GOOD_ISSUER))
             .with_secret(GOOD_SECRET)
             .build()
             .unwrap();
@@ -297,7 +314,7 @@ mod tests {
         let totp = Builder::new()
             .with_algorithm(Algorithm::SHA256)
             .with_account_name(GOOD_ACCOUNT)
-            .with_issuer(GOOD_ISSUER)
+            .with_issuer(Some(GOOD_ISSUER))
             .with_secret(GOOD_SECRET)
             .build()
             .unwrap();
@@ -315,7 +332,7 @@ mod tests {
         let totp = Builder::new()
             .with_algorithm(Algorithm::SHA512)
             .with_account_name(GOOD_ACCOUNT)
-            .with_issuer(GOOD_ISSUER)
+            .with_issuer(Some(GOOD_ISSUER))
             .with_secret(GOOD_SECRET)
             .build()
             .unwrap();
@@ -388,7 +405,7 @@ mod tests {
         let totp_bis = Builder::new()
             .with_algorithm(Algorithm::SHA1)
             .with_account_name(GOOD_ACCOUNT)
-            .with_issuer(GOOD_ISSUER)
+            .with_issuer(Some(GOOD_ISSUER))
             .with_secret(GOOD_SECRET)
             .build()
             .unwrap();
@@ -414,7 +431,7 @@ mod tests {
         let totp_bis = Builder::new()
             .with_algorithm(Algorithm::SHA1)
             .with_account_name("constantoine")
-            .with_issuer(GOOD_ISSUER)
+            .with_issuer(Some(GOOD_ISSUER))
             .with_secret(GOOD_SECRET)
             .build()
             .unwrap();
@@ -441,7 +458,7 @@ mod tests {
     fn from_url_round_trips_account_name_with_percent() {
         let totp = Builder::new()
             .with_account_name("user%2Fadmin")
-            .with_issuer(GOOD_ISSUER)
+            .with_issuer(Some(GOOD_ISSUER))
             .with_secret(GOOD_SECRET)
             .build()
             .unwrap();
@@ -456,7 +473,7 @@ mod tests {
         let totp_bis = Builder::new()
             .with_algorithm(Algorithm::SHA1)
             .with_account_name("constantoine")
-            .with_issuer(GOOD_ISSUER)
+            .with_issuer(Some(GOOD_ISSUER))
             .with_secret(GOOD_SECRET)
             .build()
             .unwrap();

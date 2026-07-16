@@ -88,7 +88,7 @@ fn main() {
         .with_secret(Secret::from("TestSecretSuperSecret".as_bytes()))
         .build()
         .unwrap();
-    let token = totp.generate_current().unwrap();
+    let token = totp.generate_current();
     println!("{}", token);
 }
 ```
@@ -103,7 +103,7 @@ fn main() {
         .with_secret(Secret::try_from_base32("KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ").unwrap())
         .build()
         .unwrap();
-    let token = totp.generate_current().unwrap();
+    let token = totp.generate_current();
     println!("{}", token);
 }
 ```
@@ -130,7 +130,7 @@ use totp_rs::{Builder, Secret, Totp};
 fn main() {
     let totp: Totp = Builder::new()
         .with_secret(Secret::try_from_base32("KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ").unwrap())
-        .with_issuer("Github")
+        .with_issuer(Some("Github"))
         .with_account_name("constantoine@github.com")
         .build()
         .unwrap();
@@ -158,7 +158,7 @@ use totp_rs::Totp;
 fn main() {
     let otpauth = "otpauth://totp/GitHub:constantoine@github.com?secret=KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ&issuer=GitHub";
     let totp = Totp::from_url(otpauth).unwrap();
-    println!("{}", totp.generate_current().unwrap());
+    println!("{}", totp.generate_current());
 }
 ```
 
@@ -183,7 +183,7 @@ fn main() {
     let totp: Totp = Builder::new()
         .build()
         .unwrap();
-    let token = totp.generate_current().unwrap();
+    let token = totp.generate_current();
     println!("{}", token);
 }
 ```
@@ -198,7 +198,7 @@ fn main() {
         .with_secret(Secret::generate())
         .build()
         .unwrap();
-    let token = totp.generate_current().unwrap();
+    let token = totp.generate_current();
     println!("{}", token);
 }
 ```
@@ -219,7 +219,7 @@ fn main() {
         .build()
         .unwrap();
 
-    let token = totp.generate_current().unwrap();
+    let token = totp.generate_current();
     println!("{}", token);
 }
 ```
@@ -239,7 +239,7 @@ fn main() {
         .build()
         .unwrap();
 
-    let token = totp.generate_current().unwrap();
+    let token = totp.generate_current();
     println!("{}", token);
 }
 ```
@@ -256,7 +256,7 @@ fn main () {
         .with_digits(8)
         .build()
         .unwrap();
-    let code = totp.generate_current().unwrap();
+    let code = totp.generate_current();
     println!("code: {}", code);
 }
 ```
@@ -276,7 +276,7 @@ fn main () {
         .build_noncompliant();
 
     // Panic here because you can't divide by zero.
-    let code = totp.generate_current().unwrap();
+    let code = totp.generate_current();
 }
 ```
 
@@ -287,7 +287,7 @@ Note: With `otpauth` feature, the issuer defaults to `None` and the account name
 ```Rust
 fn main() {
     let totp = Totp::default();
-    let code = totp.generate_current().unwrap();
+    let code = totp.generate_current();
     println!("code: {}", code);
 }
 ```
@@ -313,7 +313,7 @@ fn main() {
         .with_secret(Secret::try_from_base32("KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ").unwrap())
         .build()
         .unwrap();
-    let code = totp.generate_current().unwrap();
+    let code = totp.generate_current();
     println!("{}", code);
 }
 ```

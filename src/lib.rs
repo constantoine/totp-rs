@@ -10,7 +10,7 @@
 //! # Examples
 //!
 //! ```rust
-//! # #[cfg(feature = "otpauth")] {
+//! # #[cfg(all(feature = "otpauth", feature = "std"))] {
 //! use totp_rs::{Algorithm, Builder, Totp};
 //!
 //! let secret: Vec<u8> = vec![0; 20]; // You want an actual 20bytes of randomness here.
@@ -19,7 +19,7 @@
 //!     with_algorithm(Algorithm::SHA256).
 //!     with_secret(secret).
 //!     with_account_name("constantoine@github.com").
-//!     with_issuer("Github").
+//!     with_issuer(Some("Github")).
 //!     build().
 //!     unwrap();
 //!
@@ -29,7 +29,7 @@
 //! ```
 //!
 //! ```rust
-//! # #[cfg(feature = "gen_secret")] {
+//! # #[cfg(all(feature = "gen_secret", feature = "std"))] {
 //! use totp_rs::{Builder, Totp};
 //!
 //! let totp: Totp = Builder::new().
@@ -52,7 +52,7 @@
 //! let totp: Totp = Builder::new().
 //!     with_secret(secret).
 //!     with_account_name("constantoine@github.com").
-//!     with_issuer("Github").
+//!     with_issuer(Some("Github")).
 //!     build().
 //!     unwrap();
 //!
@@ -519,7 +519,7 @@ mod tests {
             .with_step_duration(30)
             .with_skew(1)
             .with_secret("TestSecretSuperSecret".as_bytes())
-            .with_issuer("Github")
+            .with_issuer(Some("Github"))
             .with_account_name("constantoine@github.com")
             .build_noncompliant();
 
@@ -545,7 +545,7 @@ mod tests {
             .with_step_duration(1)
             .with_skew(1)
             .with_secret("TestSecretSuperSecret".as_bytes())
-            .with_issuer("Github")
+            .with_issuer(Some("Github"))
             .with_account_name("constantoine@github.com")
             .build_noncompliant();
 
@@ -561,7 +561,7 @@ mod tests {
             .with_step_duration(1)
             .with_skew(1)
             .with_secret("TestSecretSuperSecret".as_bytes())
-            .with_issuer("Github")
+            .with_issuer(Some("Github"))
             .with_account_name("constantoine@github.com")
             .build_noncompliant();
 
@@ -577,7 +577,7 @@ mod tests {
             .with_step_duration(30)
             .with_skew(1)
             .with_secret(vec![0xAA; 2048])
-            .with_issuer("Github")
+            .with_issuer(Some("Github"))
             .with_account_name("constantoine@github.com")
             .build_noncompliant();
 

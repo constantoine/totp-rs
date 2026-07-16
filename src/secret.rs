@@ -22,7 +22,7 @@
 //!
 //! - Create a TOTP from a base32 encoded secret
 //! ```
-//! # #[cfg(feature = "alloc")] {
+//! # #[cfg(all(feature = "alloc", feature = "std"))] {
 //! use totp_rs::{Algorithm, Builder, Secret};
 //!
 //! let secret = Secret::try_from_base32("OBWGC2LOFVZXI4TJNZTS243FMNZGK5BNGEZDG").unwrap();
@@ -36,7 +36,7 @@
 //! ```
 //! - Create a TOTP from a Generated Secret
 //! ```
-//! # #[cfg(feature = "gen_secret")] {
+//! # #[cfg(all(feature = "gen_secret", feature = "std"))] {
 //! use totp_rs::{Algorithm, Builder, Totp, Secret};
 //!
 //! let secret_b32 = Secret::default();
@@ -50,7 +50,7 @@
 //! ```
 //! - Create a TOTP from a Generated Secret 2
 //! ```
-//! # #[cfg(feature = "gen_secret")] {
+//! # #[cfg(all(feature = "gen_secret", feature = "std"))] {
 //! use totp_rs::{Algorithm, Builder, Totp, Secret };
 //!
 //! let secret = Secret::generate();
@@ -146,7 +146,10 @@ impl Secret {
     /// > The length of the shared secret MUST be at least 128 bits.
     /// > This document RECOMMENDs a shared secret length of 160 bits.
     ///
-    /// <div class="warning">The generated secret is not guaranteed to be a valid UTF-8 sequence.</div>
+    /// <div class="warning">
+    /// The generated secret is not guaranteed to be a valid UTF-8 sequence.
+    /// Base-32 string representation is the canonical way of displaying it to a user if you ever need to.
+    /// </div>
     ///
     /// # Examples
     ///
@@ -159,7 +162,7 @@ impl Secret {
     #[cfg(feature = "gen_secret")]
     #[cfg_attr(docsrs, doc(cfg(feature = "gen_secret")))]
     pub fn generate() -> Self {
-        Self::from(generate_random_bytes().unwrap())
+        Self::from(generate_random_bytes())
     }
 
     /// Parse a Base32 encoded string and use that as the bytes for a [`Secret`].
@@ -615,8 +618,8 @@ impl core::fmt::Display for SecretParseError {
     }
 }
 
-pub(crate) fn generate_random_bytes() -> Option<[u8; 20]> {
-    #[cfg(feature = "gen_secret")]
+#[cfg(feature = "gen_secret")]
+pub(crate) fn generate_random_bytes() -> [u8; 20] {
     fn generate_inner<const N: usize, T: rand::RngExt>(mut rng: T) -> [u8; N] {
         let mut secret = [0u8; N];
         rng.fill(&mut secret[..]);
@@ -627,21 +630,14 @@ pub(crate) fn generate_random_bytes() -> Option<[u8; 20]> {
     // Otherwise, fallback to creating the same CSPRNG ourselves.
     // Cryptographically, these are equally secure, enabling `std` just allows
     // for potentially better performance, as seeding ChaCha12Rng has some initialisation cost.
-    #[cfg(all(feature = "gen_secret", feature = "std"))]
-    return Some(generate_inner(rand::rng()));
+    #[cfg(feature = "std")]
+    return generate_inner(rand::rng());
 
-    #[cfg(feature = "gen_secret")]
     #[allow(
         unreachable_code,
         reason = "allowing an unreachable statement here ensures this codepath is valid even if no_std isn't properly tested."
     )]
-    return Some(generate_inner(rand::make_rng::<rand::rngs::ChaCha12Rng>()));
-
-    #[allow(
-        unreachable_code,
-        reason = "allowing an unreachable statement here ensures this codepath is valid even if no_gen_secret isn't properly tested."
-    )]
-    None
+    return generate_inner(rand::make_rng::<rand::rngs::ChaCha12Rng>());
 }
 
 #[cfg(feature = "alloc")]
