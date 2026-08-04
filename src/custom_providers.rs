@@ -8,6 +8,11 @@ impl Builder {
     /// to the values Steam uses.
     ///
     /// If `otpauth` is enabled, will set `issuer` to `Some("Steam")`.
+    /// 
+    /// <div class="warning">
+    ///   Calling [self::with_step_duration], [with::with_algorithm] and [with_digits]
+    ///   will lead to an incorrect code generation.
+    /// </div>
     #[cfg(feature = "steam")]
     #[cfg_attr(docsrs, doc(cfg(feature = "steam")))]
     pub fn new_steam() -> Self {
