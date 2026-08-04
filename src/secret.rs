@@ -794,7 +794,7 @@ mod tests {
         use ByteStorage::{Empty, Heap, Stack};
         assert!(matches!(Empty.clone(), Empty));
         assert!(matches!(Heap(Box::new([])).clone(), Heap(..)));
-        assert!(matches!(Stack([0; _]).clone(), Stack(..)));
+        assert!(matches!(Stack([0; 20]).clone(), Stack(..)));
     }
 
     /// A 20-byte secret serializes as a single flat byte string (not the old

@@ -1,7 +1,7 @@
 #![cfg_attr(all(not(feature = "std"), panic = "abort"), no_std)]
 #![cfg_attr(all(not(feature = "std"), panic = "abort"), no_main)]
 
-use totp_rs::{Builder, Totp};
+use totp_rs::{Builder, Secret, Totp};
 
 #[cfg_attr(all(not(feature = "std"), panic = "abort"), unsafe(no_mangle))]
 pub fn main() {
@@ -11,6 +11,8 @@ pub fn main() {
         loop {}
     }
 
-    let totp: Totp = Builder::new().build().unwrap();
+    let secret = Secret::new_stack(*b"12345678901234567890");
+
+    let totp: Totp = Builder::new().with_secret(secret).build().unwrap();
     let _token = totp.generate(12345678);
 }
