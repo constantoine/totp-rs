@@ -1,4 +1,4 @@
-//! Items and aliases to assist in migrating from 5.7.0 to 6.0.0
+//! Items and aliases to assist in migrating from 5.7.0 to 6.0.0.
 //!
 //! Note this isn't enough to make the upgrade a minor patch, actual migration
 //! from end users is almost certainly still required.

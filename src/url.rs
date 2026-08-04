@@ -42,7 +42,7 @@ impl crate::Totp {
 
     /// Parse the TOTP parts from the standard otpauth URL.
     /// It returns a builder with defaults values from [Builder::new] + info from the URL.
-    /// Notable exception: A password will not be supplied automatically if `gen_secret` is enabled.
+    /// Notable exception: A secret will not be supplied automatically if `gen_secret` is enabled.
     fn parts_from_url<S: AsRef<str>>(url: S) -> Result<Builder, TotpError> {
         let url = Url::parse(url.as_ref()).map_err(TotpError::UrlParse)?;
         if url.scheme() != "otpauth" {
@@ -149,7 +149,7 @@ impl crate::Totp {
         Ok(builder)
     }
 
-    /// Will generate a standard URL used to automatically add TOTP auths. Usually used with qr codes
+    /// Will generate a standard URL used to automatically add TOTP auths. Usually used with qr codes.
     ///
     /// Label and issuer will be URL-encoded if needed be
     /// Secret will be base 32'd without padding, as per RFC.

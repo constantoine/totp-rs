@@ -1,4 +1,4 @@
-//! Representation of a secret either a "raw" \[u8\] or "base 32" encoded String
+//! Representation of a secret either a "raw" \[u8\] or "base 32" encoded String.
 //!
 //! # Examples
 //!

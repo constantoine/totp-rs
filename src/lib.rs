@@ -1,5 +1,5 @@
 //! This library permits the creation of 2FA authentification tokens per TOTP, the verification of said tokens, with configurable time skew, validity time of each token, algorithm and number of digits!
-//! Default features are kept as low-dependency as possible to ensure small binaries and short compilation time
+//! Default features are kept as low-dependency as possible to ensure small binaries and short compilation time.
 //!
 //! Be aware that some authenticator apps will accept the `SHA256`
 //! and `SHA512` algorithms but silently fallback to `SHA1` which will
@@ -107,7 +107,7 @@ fn system_time() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).expect("system time cannot be set before the unix epoch").as_secs()
 }
 
-/// TOTP holds informations as to how to generate an auth code and validate it. Its [secret](struct.Totp.html#structfield.secret) field is sensitive data, treat it accordingly
+/// TOTP holds informations as to how to generate an auth code and validate it. Its [secret](struct.Totp.html#structfield.secret) field is sensitive data, treat it accordingly.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "zeroize", derive(zeroize::Zeroize, zeroize::ZeroizeOnDrop))]
@@ -242,7 +242,7 @@ impl Totp {
     }
 
     /// Returns the timestamp of the first second for the next step
-    /// given the provided timestamp in seconds
+    /// given the provided timestamp in seconds.
     pub fn next_step(&self, time: u64) -> u64 {
         let step = time / self.step;
 
@@ -250,7 +250,7 @@ impl Totp {
     }
 
     /// Returns the timestamp of the first second of the next step
-    /// According to system time
+    /// According to system time.
     /// 
     /// # Panics
     /// 
@@ -261,7 +261,7 @@ impl Totp {
         self.next_step(system_time())
     }
 
-    /// Give the ttl (in seconds) of the current token
+    /// Give the ttl (in seconds) of the current token.
     /// 
     /// # Panics
     /// 
@@ -272,7 +272,7 @@ impl Totp {
         self.step - (system_time() % self.step)
     }
 
-    /// Generate a token from the current system time
+    /// Generate a token from the current system time.
     /// 
     /// # Panics
     /// 
@@ -343,7 +343,7 @@ impl Totp {
     /// Which would be too long for some browsers anyway.
     ///
     /// It will also return an error in case it can't encode the qr into a png.
-    /// This shouldn't happen unless either the qrcode library returns malformed data, or the image library doesn't encode the data correctly
+    /// This shouldn't happen unless either the qrcode library returns malformed data, or the image library doesn't encode the data correctly.
     pub fn to_qr_base64(&self) -> Result<alloc::string::String, TotpError> {
         let url = self.to_url()?;
         qrcodegen_image::draw_base64(&url).map_err(|url| TotpError::UrlTooLong { url })
@@ -359,7 +359,7 @@ impl Totp {
     /// Which would be too long for some browsers anyway.
     ///
     /// It will also return an error in case it can't encode the qr into a png.
-    /// This shouldn't happen unless either the qrcode library returns malformed data, or the image library doesn't encode the data correctly
+    /// This shouldn't happen unless either the qrcode library returns malformed data, or the image library doesn't encode the data correctly.
     pub fn to_qr_png(&self) -> Result<alloc::vec::Vec<u8>, TotpError> {
         let url = self.to_url()?;
         qrcodegen_image::draw_png(&url).map_err(|url| TotpError::UrlTooLong { url })
