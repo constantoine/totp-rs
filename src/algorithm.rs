@@ -193,6 +193,52 @@ mod tests {
         }
     }
 
+    /// `Steam` is spelled `STEAM` everywhere the algorithm is named. v5 rendered
+    /// it as `SHA1`; only `Totp::to_url` still does, for wire compatibility.
+    #[cfg(feature = "steam")]
+    #[test]
+    fn steam_is_spelled_steam() {
+        assert_eq!(Algorithm::Steam.as_str(), "STEAM");
+        assert_eq!(Algorithm::from_str("STEAM"), Ok(Algorithm::Steam));
+        assert_eq!(Algorithm::from_str("steam"), Ok(Algorithm::Steam));
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn serde_repr_is_as_str() {
+        for alg in ALL_ALGORITHMS {
+            let name = alg.as_str();
+
+            #[cfg(feature = "alloc")]
+            serde_test::assert_tokens(alg, &[serde_test::Token::Str(name)]);
+
+            #[cfg(not(feature = "alloc"))]
+            serde_test::assert_tokens(
+                alg,
+                &[serde_test::Token::UnitVariant {
+                    name: "Algorithm",
+                    variant: name,
+                }],
+            );
+        }
+    }
+
+    #[cfg(all(feature = "serde", feature = "steam"))]
+    #[test]
+    fn serde_deserialize_case_sensitivity() {
+        #[cfg(feature = "alloc")]
+        serde_test::assert_de_tokens(&Algorithm::Steam, &[serde_test::Token::Str("steam")]);
+
+        #[cfg(not(feature = "alloc"))]
+        serde_test::assert_de_tokens_error::<Algorithm>(
+            &[serde_test::Token::UnitVariant {
+                name: "Algorithm",
+                variant: "steam",
+            }],
+            "unknown variant `steam`, expected one of `SHA1`, `SHA256`, `SHA512`, `STEAM`",
+        );
+    }
+
     #[test]
     fn signing_test() {
         for &alg in ALL_ALGORITHMS {
