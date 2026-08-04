@@ -30,6 +30,7 @@ pub enum Algorithm {
     SHA512,
     #[cfg(feature = "steam")]
     #[cfg_attr(docsrs, doc(cfg(feature = "steam")))]
+    #[serde(rename = "STEAM")]
     /// Steam TOTP token algorithm.
     Steam,
 }
