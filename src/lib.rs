@@ -233,6 +233,10 @@ impl Totp {
     }
 
     /// Will generate a token given the provided timestamp in seconds.
+    /// 
+    /// # Panics
+    /// 
+    /// Panic if [Self::digits] is >= 10, or >= 7 if this [Self::algorithm] == [Algorithm::Steam].
     pub fn generate(&self, time: u64) -> Token {
         Token::from_signature(
             self.algorithm,
@@ -292,6 +296,10 @@ impl Totp {
     /// This library does NOT handle this, and it is the caller's responsibility to make sure a specific step only gets accepted once.
     /// This is the reason why check now returns an optional u64 step-number.
     /// </div>
+    /// 
+    /// # Panics
+    /// 
+    /// Panic if [Self::digits] is >= 10, or >= 7 if this [Self::algorithm] == [Algorithm::Steam].
     pub fn check(&self, token: &str, time: u64) -> Option<u64> {
         let token = Token::try_from_formatted_string(
             self.algorithm,

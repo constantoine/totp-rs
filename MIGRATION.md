@@ -16,6 +16,7 @@ your code.
   return a `Result`: they return the value directly and panic only when the
   system clock is set before the Unix epoch.
 - All errors are now the single `TotpError` type.
+- The string representation of `Algorithm::Steam` is now `STEAM` instead of `SHA1`.
 - The `serde_support` feature is now `serde`, and `std` is enabled by default.
 - The `serde` representation changed: data persisted by 5.7.x is **not**
   guaranteed to deserialize under 6.0 (see

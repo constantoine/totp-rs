@@ -1,6 +1,6 @@
 # totp-rs
 
-![Build Status](https://github.com/constantoine/totp-rs/workflows/Rust/badge.svg) [![docs](https://docs.rs/totp-rs/badge.svg)](https://docs.rs/totp-rs) [![](https://img.shields.io/crates/v/totp-rs.svg)](https://crates.io/crates/totp-rs) [![codecov](https://codecov.io/gh/constantoine/totp-rs/branch/master/graph/badge.svg?token=Q50RAIFVWZ)](https://codecov.io/gh/constantoine/totp-rs) [![cargo-audit](https://github.com/constantoine/totp-rs/actions/workflows/security.yml/badge.svg)](https://github.com/constantoine/totp-rs/actions/workflows/security.yml)
+![Build Status](https://github.com/constantoine/totp-rs/workflows/Rust/badge.svg) [![docs](https://docs.rs/totp-rs/badge.svg)](https://docs.rs/totp-rs) [![crates.io](https://img.shields.io/crates/v/totp-rs.svg)](https://crates.io/crates/totp-rs) [![codecov](https://codecov.io/gh/constantoine/totp-rs/branch/master/graph/badge.svg?token=Q50RAIFVWZ)](https://codecov.io/gh/constantoine/totp-rs) [![cargo-audit](https://github.com/constantoine/totp-rs/actions/workflows/security.yml/badge.svg)](https://github.com/constantoine/totp-rs/actions/workflows/security.yml)
 
 This library permits the creation of 2FA authentification tokens per TOTP, the verification of said tokens, with configurable time skew, validity time of each token, algorithm and number of digits! Default features are kept as lightweight as possible to ensure small binaries and short compilation time.
 
@@ -40,6 +40,14 @@ Add support for Steam TOTP tokens.
 
 Enabled by default. Provides deprecated aliases and shims for the 5.7.x API so existing code keeps compiling while you port it to the 6.0 `Builder` API (see [MIGRATION.md](MIGRATION.md)). Disable it with `default-features = false` once you have finished migrating to turn any remaining 5.x calls into hard errors.
 
+### std
+
+Enabled by default, and enables `alloc`. Gives access to the methods that read the system clock: `generate_current`, `check_current`, `ttl` and `next_step_current`. Without it, pass the current Unix timestamp yourself to `generate`, `check` and `next_step`.
+
+### alloc
+
+Enabled by `std`, `otpauth`, `qr` and `migration`. Required by everything that allocates: the base32 conversions (`Secret::try_from_base32` and `Secret::to_base32`), the `String` conversions of `Algorithm`, and secrets of any length other than 20 bytes.
+
 ## Examples
 
 ### Summary
@@ -51,6 +59,7 @@ Enabled by default. Provides deprecated aliases and shims for the 5.7.x API so e
 4. [Enable gen_secret support](#with-gen_secret)
 5. [With RFC-6238 compliant default](#with-rfc-6238-compliant-default)
 6. [New TOTP from steam secret](#new-totp-from-steam-secret)
+7. [Using it without `std`](#using-it-without-std)
 
 ### Understanding Secret
 
@@ -173,8 +182,7 @@ version = "^6.0"
 features = ["gen_secret"]
 ```
 
-With `gen_secret`, `Builder::new()` already holds a freshly generated secret, so
-you can build a `Totp` without supplying one:
+With `gen_secret`, `Builder::new()` already holds a freshly generated secret, so you can build a `Totp` without supplying one:
 
 ```Rust
 use totp_rs::{Builder, Totp};
@@ -317,3 +325,35 @@ fn main() {
     println!("{}", code);
 }
 ```
+
+### Using it without `std`
+
+---
+
+The crate is `#![no_std]` whenever the `std` feature is off, and needs no allocator at all when `alloc` is off too. `serde`, `steam`, `gen_secret` and `zeroize` all work in that configuration. `otpauth`, `qr` and `migration` do not, as they enable `alloc`.
+
+```toml
+[dependencies.totp-rs]
+version = "^6.0"
+default-features = false
+# Anything except otpauth, qr and migration.
+features = ["steam"]
+```
+
+Without `alloc`, a secret is exactly the 160 bits [rfc-4226](https://www.rfc-editor.org/rfc/rfc4226#section-4) recommends, built with `Secret::new_stack`:
+
+```Rust
+use totp_rs::{Builder, Secret, Totp};
+
+fn token_at(unix_time: u64) -> impl core::fmt::Display {
+    let totp: Totp = Builder::new()
+        .with_secret(Secret::new_stack(*b"12345678901234567890"))
+        .build()
+        .unwrap();
+
+    // No system clock without `std`, so the timestamp is provided.
+    totp.generate(unix_time)
+}
+```
+
+With `gen_secret`, `Secret::generate` also works without an allocator. See [examples/no_alloc.rs](examples/no_alloc.rs) for a full bare-metal program; CI builds it for `wasm32v1-none`.
