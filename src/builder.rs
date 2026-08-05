@@ -200,6 +200,12 @@ impl Builder {
     ///
     /// <div class="warning">Logical errors, such as a step_duration of 0, could cause other functions such as [Totp::generate] to panic.</div>
     /// <div class="warning">Due to how the algorithm works, a value of 10 or more will panic upon trying to generate a code.</div>
+    /// <div class="warning">
+    ///     Without the `gen_secret` feature, calling this method without
+    ///     [Self::with_secret] produces a [Totp] with an empty secret:
+    ///     it works, but generates the same predictable token sequence for every
+    ///     such instance.
+    /// </div>
     ///
     /// # Example
     ///

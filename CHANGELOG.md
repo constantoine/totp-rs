@@ -16,6 +16,8 @@ This is a BIG API change. Please check [MIGRATION.md](./MIGRATION.md) for more d
 
 - Types and methods were renamed to more idiomatic alternatives.
 - Functions that check the validity of a token now return the matched step to give user more tools to prevent token reuse. #63 ans #75.
+- `Secret` serializes to an unpadded base32 string in human-readable formats (JSON, TOML, ...) and to a raw byte string in binary formats. Deserialization accepts both, plus integer sequences from formats without a native byte type.
+- `Totp` now implements `PartialEq` and `Eq`, using `Secret`'s constant-time comparison for the secret field.
 
 ### Special thanks
 

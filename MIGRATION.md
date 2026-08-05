@@ -9,6 +9,8 @@ your code.
 - `TOTP` is now `Totp`, built with a `Builder` instead of `TOTP::new(...)`.
 - `Secret` is no longer a `Raw`/`Encoded` enum: use `Secret::from(bytes)` and
   `Secret::try_from_base32(...)`.
+- The struct fields (`TOTP::digits`, `TOTP::secret`, ...) are now private: use
+  the getter methods of the same names (`Totp::digits()`, `Totp::secret()`, ...).
 - `generate`/`generate_current` return a [`Token`] instead of a `String`.
 - `check`/`check_current` return `Option<u64>` (the matched step counter)
   instead of `bool`.
@@ -44,12 +46,38 @@ remaining 5.x calls into hard errors:
 | `Secret::generate_secret()`                                                           | `Secret::generate()`                                            |
 | `secret.to_bytes()`                                                                   | `secret.as_bytes()`                                             |
 | `Rfc6238::with_defaults(s)`                                                           | `Builder::new().with_secret(s)`                                 |
+| `Rfc6238::new(digits, s, issuer, account)`                                            | `Builder::new()` + `.with_*` (no shim)                          |
 
 These keep building with warnings, so you can migrate incrementally. The five
-changes below cannot be shimmed, because the method name is unchanged and only
-the return type differs. They surface as type errors at the call site.
+changes below cannot be shimmed, because the name is unchanged while its type
+or visibility differs. They surface as compile errors at the call site.
 
 ## Breaking changes with no shim
+
+### Struct fields are now private
+
+5.x exposed every field of `TOTP` publicly. 6.0 makes them private; read them
+through the getter methods of the same names. Some types changed along the way.
+
+```rust
+// 5.x
+let digits: usize = totp.digits;
+let skew: u8 = totp.skew;
+let secret: &Vec<u8> = &totp.secret;
+let issuer: Option<String> = totp.issuer.clone();
+let account_name: String = totp.account_name.clone();
+
+// 6.0
+let digits: u32 = totp.digits();
+let skew: u16 = totp.skew();
+let secret: &Secret = totp.secret();
+let issuer: Option<&str> = totp.issuer();
+let account_name: &str = totp.account_name();
+```
+
+There is no write access after construction: build a new `Totp` with `Builder`.
+The 5.x generic parameter is also gone, so `TOTP<Vec<u8>>` annotations must
+drop the parameter.
 
 ### `generate` / `generate_current` return `Token`
 
@@ -206,7 +234,8 @@ The serialized representation changed, so data persisted by 5.7.x is **not**
 guaranteed to deserialize under 6.0. Re-issue or re-serialize stored values.
 
 - The `secret` field was a `Vec<u8>` on `TOTP`; it is now a [`Secret`] on `Totp`,
-  serialized as a single flat byte array.
+  serialized as an unpadded base32 string in human-readable formats
+  (JSON, TOML, ...) and as a flat byte string in binary formats.
 - `digits` changed from `usize` to `u32` and `skew` from `u8` to `u16`, which
   width-sensitive formats (e.g. `bincode`) will reject.
 

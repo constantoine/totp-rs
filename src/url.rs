@@ -10,6 +10,16 @@ use url::{Host, Url};
 impl crate::Totp {
     /// Generate a TOTP from the standard otpauth URL.
     ///
+    /// # Steam
+    ///
+    /// With the `steam` feature, a URL is recognized as a Steam token if its
+    /// host is `steam`, its `algorithm` parameter is `STEAM`, or its issuer is
+    /// `Steam` (case-insensitive). Such a URL is normalized to
+    /// [Algorithm::Steam], 5 digits, and the issuer `Steam`. Explicit
+    /// `algorithm`, `digits`, or `issuer` parameters saying otherwise are
+    /// overridden. A non-Steam TOTP whose issuer is literally "Steam" can
+    /// therefore not round-trip through a URL and will generate incorrect data.
+    ///
     /// # Errors
     ///
     /// If decoding the URL fails, an error will be surfaced.
@@ -25,6 +35,8 @@ impl crate::Totp {
     }
 
     /// Generate a TOTP from the standard otpauth URL, using [`Builder::build_noncompliant`] internally.
+    ///
+    /// Steam URLs are normalized the same way as in [Totp::from_url].
     ///
     /// # Errors
     ///

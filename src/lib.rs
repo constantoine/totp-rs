@@ -111,7 +111,9 @@ fn system_time() -> u64 {
 }
 
 /// TOTP holds informations as to how to generate an auth code and validate it. Its [secret](struct.Totp.html#structfield.secret) field is sensitive data, treat it accordingly.
-#[derive(Debug, Clone)]
+///
+/// Comparison via [PartialEq] uses [Secret]'s constant-time equality for the secret field.
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "zeroize", derive(zeroize::Zeroize, zeroize::ZeroizeOnDrop))]
 pub struct Totp {
@@ -623,5 +625,149 @@ mod tests {
         let totp = Builder::new().build_noncompliant();
 
         assert!(!totp.to_string().is_empty());
+    }
+
+    /// Pins the serde wire format of the whole [`Totp`] struct: field names,
+    /// field order, and both [`Secret`] representations. A failure here means
+    /// previously serialized state can no longer be read back.
+    #[test]
+    #[cfg(all(feature = "serde", feature = "otpauth"))]
+    fn serde_totp_wire_format() {
+        use serde_test::{Configure, Token, assert_tokens};
+
+        let totp = Builder::new()
+            .with_secret("TestSecretSuperSecret".as_bytes())
+            .with_issuer(Some("Github"))
+            .with_account_name("constantoine@github.com")
+            .build()
+            .unwrap();
+
+        // Human-readable formats carry the secret as unpadded base32.
+        assert_tokens(
+            &totp.clone().readable(),
+            &[
+                Token::Struct {
+                    name: "Totp",
+                    len: 7,
+                },
+                Token::Str("algorithm"),
+                Token::Str("SHA1"),
+                Token::Str("digits"),
+                Token::U32(6),
+                Token::Str("skew"),
+                Token::U16(1),
+                Token::Str("step"),
+                Token::U64(30),
+                Token::Str("secret"),
+                Token::Str("KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ"),
+                Token::Str("issuer"),
+                Token::Some,
+                Token::Str("Github"),
+                Token::Str("account_name"),
+                Token::Str("constantoine@github.com"),
+                Token::StructEnd,
+            ],
+        );
+
+        // Binary formats carry the secret as a raw byte string.
+        assert_tokens(
+            &totp.compact(),
+            &[
+                Token::Struct {
+                    name: "Totp",
+                    len: 7,
+                },
+                Token::Str("algorithm"),
+                Token::Str("SHA1"),
+                Token::Str("digits"),
+                Token::U32(6),
+                Token::Str("skew"),
+                Token::U16(1),
+                Token::Str("step"),
+                Token::U64(30),
+                Token::Str("secret"),
+                Token::Bytes(b"TestSecretSuperSecret"),
+                Token::Str("issuer"),
+                Token::Some,
+                Token::Str("Github"),
+                Token::Str("account_name"),
+                Token::Str("constantoine@github.com"),
+                Token::StructEnd,
+            ],
+        );
+    }
+
+    /// Without `otpauth`, the `issuer` and `account_name` fields do not exist:
+    /// the two layouts are deliberately not interchangeable.
+    #[test]
+    #[cfg(all(feature = "serde", feature = "alloc", not(feature = "otpauth")))]
+    fn serde_totp_wire_format_without_otpauth() {
+        use serde_test::{Configure, Token, assert_tokens};
+
+        let totp = Builder::new()
+            .with_secret("TestSecretSuperSecret".as_bytes())
+            .build()
+            .unwrap();
+
+        assert_tokens(
+            &totp.readable(),
+            &[
+                Token::Struct {
+                    name: "Totp",
+                    len: 5,
+                },
+                Token::Str("algorithm"),
+                Token::Str("SHA1"),
+                Token::Str("digits"),
+                Token::U32(6),
+                Token::Str("skew"),
+                Token::U16(1),
+                Token::Str("step"),
+                Token::U64(30),
+                Token::Str("secret"),
+                Token::Str("KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ"),
+                Token::StructEnd,
+            ],
+        );
+    }
+
+    /// A Steam [`Totp`] keeps its `STEAM` algorithm tag and 5 digits through
+    /// the serde round-trip.
+    #[test]
+    #[cfg(all(feature = "serde", feature = "steam", feature = "otpauth"))]
+    fn serde_totp_wire_format_steam() {
+        use serde_test::{Configure, Token, assert_tokens};
+
+        let totp = Builder::new_steam()
+            .with_secret("TestSecretSuperSecret".as_bytes())
+            .with_account_name("constantoine@github.com")
+            .build()
+            .unwrap();
+
+        assert_tokens(
+            &totp.readable(),
+            &[
+                Token::Struct {
+                    name: "Totp",
+                    len: 7,
+                },
+                Token::Str("algorithm"),
+                Token::Str("STEAM"),
+                Token::Str("digits"),
+                Token::U32(5),
+                Token::Str("skew"),
+                Token::U16(1),
+                Token::Str("step"),
+                Token::U64(30),
+                Token::Str("secret"),
+                Token::Str("KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ"),
+                Token::Str("issuer"),
+                Token::Some,
+                Token::Str("Steam"),
+                Token::Str("account_name"),
+                Token::Str("constantoine@github.com"),
+                Token::StructEnd,
+            ],
+        );
     }
 }
