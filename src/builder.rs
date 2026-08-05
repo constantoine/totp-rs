@@ -55,7 +55,7 @@ impl Builder {
     }
 
     /// The number of digits composing the auth code. Per [rfc-4226](https://tools.ietf.org/html/rfc4226#section-5.3), this can oscillate between 6 and 8 digits.
-    /// 
+    ///
     /// <div class="warning">Due to how the algorithm works, a value of 10 or more will panic upon trying to generate a code.</div>
     ///
     /// Unless called, the default value will be 6.

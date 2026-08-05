@@ -104,7 +104,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 #[cfg(feature = "std")]
 fn system_time() -> u64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).expect("system time cannot be set before the unix epoch").as_secs()
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system time cannot be set before the unix epoch")
+        .as_secs()
 }
 
 /// TOTP holds informations as to how to generate an auth code and validate it. Its [secret](struct.Totp.html#structfield.secret) field is sensitive data, treat it accordingly.
@@ -233,9 +236,9 @@ impl Totp {
     }
 
     /// Will generate a token given the provided timestamp in seconds.
-    /// 
+    ///
     /// # Panics
-    /// 
+    ///
     /// Panic if [Self::digits] is >= 10, or >= 7 if this [Self::algorithm] == [Algorithm::Steam].
     pub fn generate(&self, time: u64) -> Token {
         Token::from_signature(
@@ -255,9 +258,9 @@ impl Totp {
 
     /// Returns the timestamp of the first second of the next step
     /// According to system time.
-    /// 
+    ///
     /// # Panics
-    /// 
+    ///
     /// Panics if system time is set before Unix Epoch.
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
@@ -266,9 +269,9 @@ impl Totp {
     }
 
     /// Give the ttl (in seconds) of the current token.
-    /// 
+    ///
     /// # Panics
-    /// 
+    ///
     /// Panics if system time is set before Unix Epoch.
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
@@ -277,9 +280,9 @@ impl Totp {
     }
 
     /// Generate a token from the current system time.
-    /// 
+    ///
     /// # Panics
-    /// 
+    ///
     /// Panics if system time is set before Unix Epoch.
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
@@ -296,9 +299,9 @@ impl Totp {
     /// This library does NOT handle this, and it is the caller's responsibility to make sure a specific step only gets accepted once.
     /// This is the reason why check now returns an optional u64 step-number.
     /// </div>
-    /// 
+    ///
     /// # Panics
-    /// 
+    ///
     /// Panic if [Self::digits] is >= 10, or >= 7 if this [Self::algorithm] == [Algorithm::Steam].
     pub fn check(&self, token: &str, time: u64) -> Option<u64> {
         let token = Token::try_from_formatted_string(
@@ -321,9 +324,9 @@ impl Totp {
     /// This library does NOT handle this, and it is the caller's responsibility to make sure a specific step only gets accepted once.
     /// This is the reason why check now returns an optional u64 step-number.
     /// </div>
-    /// 
+    ///
     /// # Panics
-    /// 
+    ///
     /// Panics if system time is set before Unix Epoch.
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]

@@ -332,9 +332,7 @@ mod tests {
         }
 
         // A canonical all-digit token of the same length still parses.
-        assert!(
-            Token::try_from_formatted_string(Algorithm::SHA1, 5, "08020").is_some()
-        );
+        assert!(Token::try_from_formatted_string(Algorithm::SHA1, 5, "08020").is_some());
     }
 
     /// "22222", causing [`check`](crate::Totp::check) to accept it.

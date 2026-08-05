@@ -9,34 +9,34 @@ use url::{Host, Url};
 #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
 impl crate::Totp {
     /// Generate a TOTP from the standard otpauth URL.
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// If decoding the URL fails, an error will be surfaced.
     /// Outside of that, the error cases are the same as [Builder::build].
     pub fn from_url<S: AsRef<str>>(url: S) -> Result<Totp, TotpError> {
         let builder = Self::parts_from_url(url)?;
-        
+
         if builder.secret.is_none() {
-            return Err(TotpError::SecretNotSet)
+            return Err(TotpError::SecretNotSet);
         }
 
         builder.build()
     }
 
     /// Generate a TOTP from the standard otpauth URL, using [`Builder::build_noncompliant`] internally.
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// If decoding the URL fails, an error will be surfaced.
     /// Outside of that, it will only error if a secret is not set.
     pub fn from_url_unchecked<S: AsRef<str>>(url: S) -> Result<Totp, TotpError> {
         let builder = Self::parts_from_url(url)?;
-        
+
         if builder.secret.is_none() {
-            return Err(TotpError::SecretNotSet)
+            return Err(TotpError::SecretNotSet);
         }
-        
+
         Ok(builder.build_noncompliant())
     }
 

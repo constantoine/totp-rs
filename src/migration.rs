@@ -144,7 +144,9 @@ impl Totp {
         note = "use `Builder::new_steam` and `Builder::with_secret` instead"
     )]
     pub fn new_steam(secret: alloc::vec::Vec<u8>) -> Totp {
-        Builder::new_steam().with_secret(secret).build_noncompliant()
+        Builder::new_steam()
+            .with_secret(secret)
+            .build_noncompliant()
     }
 
     #[cfg(feature = "alloc")]

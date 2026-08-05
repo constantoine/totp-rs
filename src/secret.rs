@@ -693,7 +693,7 @@ mod tests {
         let secret_raw = Secret::from(BYTES);
         let secret_base32 = Secret::try_from_base32(base32_str).unwrap();
         println!("{}", secret_raw);
-        // `Display` exposes the secret as hex on explicit request. 
+        // `Display` exposes the secret as hex on explicit request.
         assert_eq!(&secret_raw.to_string(), BYTES_DISPLAY);
         assert_eq!(&secret_base32.to_string(), BYTES_DISPLAY);
         // `Debug` should not leak the secret as it is not always requested explicitly.

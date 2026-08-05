@@ -6,10 +6,10 @@ use crate::{Algorithm, Builder};
 impl Builder {
     /// New Builder as created by [Self::new], that is then modified to have the `algorithm` and `digits` options
     /// to the values Steam uses.
-    /// 
+    ///
     /// It is equivalent to calling [Self::new] followed by [Self::with_algorithm]([Algorithm::Steam]) and [Self::with_digits](5).
     /// If `otpauth` is enabled, will set `issuer` to `Some("Steam")`.
-    /// 
+    ///
     /// <div class="warning">
     ///   Calling [self::with_step_duration], [with::with_algorithm] and [with_digits]
     ///   will lead to an incorrect code generation.
@@ -17,9 +17,7 @@ impl Builder {
     #[cfg(feature = "steam")]
     #[cfg_attr(docsrs, doc(cfg(feature = "steam")))]
     pub fn new_steam() -> Self {
-        let new = Self::new()
-            .with_algorithm(Algorithm::Steam)
-            .with_digits(5);
+        let new = Self::new().with_algorithm(Algorithm::Steam).with_digits(5);
 
         #[cfg(feature = "otpauth")]
         let new = new.with_issuer(Some("Steam"));
