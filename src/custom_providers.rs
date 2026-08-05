@@ -7,7 +7,7 @@ impl Builder {
     /// New Builder as created by [Self::new], that is then modified to have the `algorithm` and `digits` options
     /// to the values Steam uses.
     ///
-    /// It is equivalent to calling [Self::new] followed by [Self::with_algorithm]([Algorithm::Steam]) and [Self::with_digits](5).
+    /// It is equivalent to calling [Self::new] followed by [Self::with_algorithm]\([Algorithm::Steam]) and [Self::with_digits]\(5).
     /// If `otpauth` is enabled, will set `issuer` to `Some("Steam")`.
     ///
     /// <div class="warning">
