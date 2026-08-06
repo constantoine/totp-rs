@@ -108,7 +108,16 @@ impl core::fmt::Display for TotpError {
                 write!(f, "Scheme must be \"otpauth\", not \"{}\"", scheme)
             }
             #[cfg(feature = "otpauth")]
-            TotpError::InvalidHost { host } => write!(f, "Host must be \"totp\", not \"{}\"", host),
+            TotpError::InvalidHost { host } => {
+                #[cfg(not(feature = "steam"))]
+                {
+                    write!(f, "Host must be \"totp\", not \"{}\"", host)
+                }
+                #[cfg(feature = "steam")]
+                {
+                    write!(f, "Host must be \"totp\" or \"steam\", not \"{}\"", host)
+                }
+            }
             #[cfg(feature = "otpauth")]
             TotpError::StepParse { step } => {
                 write!(f, "Could not parse step \"{}\" as a number", step)
@@ -259,12 +268,24 @@ mod test {
     }
 
     #[test]
-    #[cfg(feature = "otpauth")]
+    #[cfg(all(feature = "otpauth", not(feature = "steam")))]
     fn invalid_host() {
         let error = TotpError::InvalidHost {
             host: "hotp".to_string(),
         };
         assert_eq!(error.to_string(), "Host must be \"totp\", not \"hotp\"");
+    }
+
+    #[test]
+    #[cfg(all(feature = "otpauth", feature = "steam"))]
+    fn invalid_host_steam() {
+        let error = TotpError::InvalidHost {
+            host: "hotp".to_string(),
+        };
+        assert_eq!(
+            error.to_string(),
+            "Host must be \"totp\" or \"steam\", not \"hotp\""
+        );
     }
 
     #[test]
