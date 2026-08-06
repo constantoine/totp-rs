@@ -1,3 +1,29 @@
+# [6.0.0](https://github.com/constantoine/totp-rs/releases/tag/v6.0.0) (unreleased)
+
+## Breaking
+
+This is a BIG API change. Please check [MIGRATION.md](./MIGRATION.md) for more details.
+
+### What's new
+
+- MSRV was bumped to 1.88.
+- Edition was bumped to `2024`.
+- `[no_std]` support with #87 and #88.
+- We now use the builder pattern to instanciate a `Totp` struct.
+- Error types were unified into one Error type.
+
+### Changes
+
+- Types and methods were renamed to more idiomatic alternatives.
+- Functions that check the validity of a token now return the matched step to give user more tools to prevent token reuse. #63 ans #75.
+- `Secret` serializes to an unpadded base32 string in human-readable formats (JSON, TOML, ...) and to a raw byte string in binary formats. Deserialization accepts both, plus integer sequences from formats without a native byte type.
+- `Totp` now implements `PartialEq` and `Eq`, using `Secret`'s constant-time comparison for the secret field.
+
+### Special thanks
+
+* [@bushrat011899](https://github.com/bushrat011899) For huge work on #87, #88.
+* [@Amandeepsinghghai](https://github.com/Amandeepsinghghai) and [@sidrubs](https://github.com/sidrubs) For pointing out something should be done about to avoid token reuse.
+
 # [5.7.2](https://github.com/constantoine/totp-rs/releases/tag/v5.7.2) (23/06/2026)
 ### Fix
 - Parse algorithm from URLs more consistently. #90
