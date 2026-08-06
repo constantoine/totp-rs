@@ -1,4 +1,4 @@
-# [6.0.0](https://github.com/constantoine/totp-rs/releases/tag/v6.0.0) (unreleased)
+# [6.0.0](https://github.com/constantoine/totp-rs/releases/tag/v6.0.0) (06/08/2026)
 
 ## Breaking
 
