@@ -138,12 +138,14 @@ pub struct Totp {
     pub(crate) secret: Secret,
     #[cfg(feature = "otpauth")]
     #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
+    #[cfg_attr(feature = "serde", serde(default))]
     /// The "Github" part of "Github:constantoine@github.com". Must not contain a colon `:`
     /// For example, the name of your service/website.
     /// Not mandatory, but strongly recommended!
     pub(crate) issuer: Option<alloc::boxed::Box<str>>,
     #[cfg(feature = "otpauth")]
     #[cfg_attr(docsrs, doc(cfg(feature = "otpauth")))]
+    #[cfg_attr(feature = "serde", serde(default))]
     /// The "constantoine@github.com" part of "Github:constantoine@github.com". Must not contain a colon `:`
     /// For example, the name of your user's account.
     pub(crate) account_name: alloc::boxed::Box<str>,
@@ -697,8 +699,7 @@ mod tests {
         );
     }
 
-    /// Without `otpauth`, the `issuer` and `account_name` fields do not exist:
-    /// the two layouts are deliberately not interchangeable.
+    /// Without `otpauth`, the `issuer` and `account_name` fields do not exist.
     #[test]
     #[cfg(all(feature = "serde", feature = "alloc", not(feature = "otpauth")))]
     fn serde_totp_wire_format_without_otpauth() {
@@ -711,6 +712,43 @@ mod tests {
 
         assert_tokens(
             &totp.readable(),
+            &[
+                Token::Struct {
+                    name: "Totp",
+                    len: 5,
+                },
+                Token::Str("algorithm"),
+                Token::Str("SHA1"),
+                Token::Str("digits"),
+                Token::U32(6),
+                Token::Str("skew"),
+                Token::U16(1),
+                Token::Str("step"),
+                Token::U64(30),
+                Token::Str("secret"),
+                Token::Str("KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TFOQ"),
+                Token::StructEnd,
+            ],
+        );
+    }
+
+    /// Data serialized without the `otpauth` feature carries no `issuer` or
+    /// `account_name` field. With `otpauth` enabled, such data must still
+    /// deserialize, with both fields taking their unset values (`None`, `""`).
+    #[test]
+    #[cfg(all(feature = "serde", feature = "otpauth"))]
+    fn serde_totp_deserializes_data_without_otpauth_fields() {
+        use serde_test::{Configure, Token, assert_de_tokens};
+
+        let expected = Builder::new()
+            .with_secret("TestSecretSuperSecret".as_bytes())
+            .build()
+            .unwrap();
+        assert_eq!(expected.issuer(), None);
+        assert_eq!(expected.account_name(), "");
+
+        assert_de_tokens(
+            &expected.readable(),
             &[
                 Token::Struct {
                     name: "Totp",
