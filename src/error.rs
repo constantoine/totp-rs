@@ -15,7 +15,7 @@ use {crate::algorithm::UnsupportedAlgorithm, alloc::string::String, url::ParseEr
 pub enum TotpError {
     // === Parameter validation errors ===
     /// Digits must be 6, 7, or 8.
-    InvalidDigits { digits: u32 },
+    InvalidDigits { digits: u8 },
     /// Step is zero.
     InvalidStepZero,
     /// Secret is shorter than 128 bits (16 bytes).

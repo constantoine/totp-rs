@@ -2,7 +2,7 @@ use crate::TotpError;
 
 // Check that the number of digits is RFC-compliant.
 // (between 6 and 8 inclusive).
-pub fn assert_digits(digits: u32) -> Result<(), TotpError> {
+pub fn assert_digits(digits: u8) -> Result<(), TotpError> {
     if !(6..=8).contains(&digits) {
         return Err(TotpError::InvalidDigits { digits });
     }

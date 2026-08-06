@@ -34,7 +34,7 @@ impl Totp {
     ) -> Result<Totp, TotpError> {
         let builder = Builder::new()
             .with_algorithm(algorithm)
-            .with_digits(digits as _)
+            .with_digits(digits.try_into().unwrap_or(u8::MAX))
             .with_skew(skew as _)
             .with_step_duration(step as _)
             .with_secret(secret)
@@ -60,7 +60,7 @@ impl Totp {
     ) -> Result<Totp, TotpError> {
         let builder = Builder::new()
             .with_algorithm(algorithm)
-            .with_digits(digits as _)
+            .with_digits(digits.try_into().unwrap_or(u8::MAX))
             .with_skew(skew as _)
             .with_step_duration(step as _)
             .with_secret(secret);
@@ -82,7 +82,7 @@ impl Totp {
     ) -> Totp {
         let builder = Builder::new()
             .with_algorithm(algorithm)
-            .with_digits(digits as _)
+            .with_digits(digits.try_into().unwrap_or(u8::MAX))
             .with_skew(skew as _)
             .with_step_duration(step as _)
             .with_secret(secret)
@@ -108,7 +108,7 @@ impl Totp {
     ) -> Totp {
         let builder = Builder::new()
             .with_algorithm(algorithm)
-            .with_digits(digits as _)
+            .with_digits(digits.try_into().unwrap_or(u8::MAX))
             .with_skew(skew as _)
             .with_step_duration(step as _)
             .with_secret(secret);
@@ -224,7 +224,7 @@ impl Builder {
     /// Only present to mirror [Rfc6238] during migration.
     /// See [Builder::with_digits] for more details on this value.
     pub fn digits(&mut self, value: usize) -> Result<(), TotpError> {
-        *self = core::mem::take(self).with_digits(value as _);
+        *self = core::mem::take(self).with_digits(value.try_into().unwrap_or(u8::MAX));
         Ok(())
     }
 

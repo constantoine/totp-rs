@@ -124,7 +124,7 @@ pub struct Totp {
     #[cfg_attr(feature = "zeroize", zeroize(skip))]
     pub(crate) algorithm: Algorithm,
     /// The number of digits composing the auth code. Per [rfc-4226](https://tools.ietf.org/html/rfc4226#section-5.3), this can oscillate between 6 and 8 digits.
-    pub(crate) digits: u32,
+    pub(crate) digits: u8,
     /// Number of steps allowed as network delay. A value of 1 would mean a code valid for the step before or the step after current step would be accepted.
     /// The recommended value per [rfc-6238](https://tools.ietf.org/html/rfc6238#section-5.2) is 1.
     /// Anything more is sketchy, and anyone recommending more is, by definition, ugly and stupid.
@@ -160,7 +160,7 @@ impl Totp {
 
     /// Get how many digits the generated code will be made of.
     /// See [Builder::with_digits] for more details on this value.
-    pub const fn digits(&self) -> u32 {
+    pub const fn digits(&self) -> u8 {
         self.digits
     }
 
@@ -245,11 +245,7 @@ impl Totp {
     ///
     /// Panic if [Self::digits] is >= 10, or >= 7 if this [Self::algorithm] == [Algorithm::Steam].
     pub fn generate(&self, time: u64) -> Token {
-        Token::from_signature(
-            self.algorithm,
-            self.digits.try_into().unwrap(),
-            self.sign(time).as_ref(),
-        )
+        Token::from_signature(self.algorithm, self.digits, self.sign(time).as_ref())
     }
 
     /// Returns the timestamp of the first second for the next step
@@ -308,11 +304,7 @@ impl Totp {
     ///
     /// Panic if [Self::digits] is >= 10, or >= 7 if this [Self::algorithm] == [Algorithm::Steam].
     pub fn check(&self, token: &str, time: u64) -> Option<u64> {
-        let token = Token::try_from_formatted_string(
-            self.algorithm,
-            self.digits.try_into().unwrap(),
-            token,
-        )?;
+        let token = Token::try_from_formatted_string(self.algorithm, self.digits, token)?;
 
         let origin = time / self.step;
         let mut window = origin.saturating_sub(self.skew as u64)..=(origin + self.skew as u64);
@@ -655,7 +647,7 @@ mod tests {
                 Token::Str("algorithm"),
                 Token::Str("SHA1"),
                 Token::Str("digits"),
-                Token::U32(6),
+                Token::U8(6),
                 Token::Str("skew"),
                 Token::U16(1),
                 Token::Str("step"),
@@ -682,7 +674,7 @@ mod tests {
                 Token::Str("algorithm"),
                 Token::Str("SHA1"),
                 Token::Str("digits"),
-                Token::U32(6),
+                Token::U8(6),
                 Token::Str("skew"),
                 Token::U16(1),
                 Token::Str("step"),
@@ -720,7 +712,7 @@ mod tests {
                 Token::Str("algorithm"),
                 Token::Str("SHA1"),
                 Token::Str("digits"),
-                Token::U32(6),
+                Token::U8(6),
                 Token::Str("skew"),
                 Token::U16(1),
                 Token::Str("step"),
@@ -757,7 +749,7 @@ mod tests {
                 Token::Str("algorithm"),
                 Token::Str("SHA1"),
                 Token::Str("digits"),
-                Token::U32(6),
+                Token::U8(6),
                 Token::Str("skew"),
                 Token::U16(1),
                 Token::Str("step"),
@@ -792,7 +784,7 @@ mod tests {
                 Token::Str("algorithm"),
                 Token::Str("STEAM"),
                 Token::Str("digits"),
-                Token::U32(5),
+                Token::U8(5),
                 Token::Str("skew"),
                 Token::U16(1),
                 Token::Str("step"),

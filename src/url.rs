@@ -107,7 +107,7 @@ impl crate::Totp {
                     builder = builder.with_algorithm(algorithm);
                 }
                 "digits" => {
-                    let digits = value.parse::<u32>().map_err(|_| TotpError::DigitsParse {
+                    let digits = value.parse::<u8>().map_err(|_| TotpError::DigitsParse {
                         digits: value.to_string(),
                     })?;
 

@@ -7,7 +7,7 @@ use crate::{Algorithm, Secret, Totp, TotpError};
 pub struct Builder {
     #[cfg_attr(feature = "zeroize", zeroize(skip))]
     pub(crate) algorithm: Algorithm,
-    digits: u32,
+    digits: u8,
     pub(crate) secret: Option<Secret>,
     skew: u16,
     step_duration: u64,
@@ -59,7 +59,7 @@ impl Builder {
     /// <div class="warning">Due to how the algorithm works, a value of 10 or more will panic upon trying to generate a code.</div>
     ///
     /// Unless called, the default value will be 6.
-    pub fn with_digits(mut self, digits: u32) -> Self {
+    pub fn with_digits(mut self, digits: u8) -> Self {
         self.digits = digits;
 
         self
