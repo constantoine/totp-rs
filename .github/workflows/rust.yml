@@ -98,11 +98,13 @@ jobs:
     - name: no_alloc, serde+steam feature
       run: cargo +1.88 test --no-default-features --features=serde,steam
     - name: Create coverage file
-      run: ./grcov . --binary-path ./target/debug/deps/ -s . -t cobertura --branch --ignore-not-existing --ignore '../*' --ignore "/*" -o target/coverage/cobertura.xml
+      run: ./grcov . --llvm-path "$(rustup run 1.88 rustc --print sysroot)/lib/rustlib/x86_64-unknown-linux-gnu/bin" --binary-path ./target/debug/deps/ -s . -t cobertura --branch --ignore-not-existing --ignore '../*' --ignore "/*" -o target/coverage/cobertura.xml
     - name: Upload to codecov.io
       uses: codecov/codecov-action@v7
       with:
         token: ${{secrets.CODECOV_TOKEN}}
+        files: target/coverage/cobertura.xml
+        fail_ci_if_error: true
 
     - name: Archive code coverage results
       uses: actions/upload-artifact@v7
